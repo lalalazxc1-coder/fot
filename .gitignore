@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database
+*.db
+*.sqlite3
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+out/
+build/
+frontend/dist/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
