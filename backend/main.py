@@ -16,7 +16,7 @@ from database import models # Ensure models are loaded
 Base.metadata.create_all(bind=engine)
 
 # 4. Import Routers
-from routers import auth, roles, users, structure, employees, admin, planning, requests, market
+from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics
 
 app = FastAPI(title="FOT System MVP")
 
@@ -38,6 +38,7 @@ app.include_router(admin.router)
 app.include_router(planning.router)
 app.include_router(requests.router)
 app.include_router(market.router)
+app.include_router(analytics.router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

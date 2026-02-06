@@ -5,30 +5,12 @@ import {
     flexRender,
     ColumnDef,
 } from '@tanstack/react-table';
-import { Plus, Edit2, Trash2, Search, History } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, History, Loader2 } from 'lucide-react';
 import { Card, Button, Input } from './ui-mocks';
 import Modal from './Modal';
 import { api } from '../lib/api';
-
-const CURRENCY = '₸';
-const formatMoney = (val: number) => val.toLocaleString('ru-RU') + ' ' + CURRENCY;
-
-const MoneyInput = ({ value, onChange, placeholder, className }: { value: number, onChange: (val: number) => void, placeholder?: string, className?: string }) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const raw = e.target.value.replace(/\D/g, '');
-        onChange(raw ? parseInt(raw, 10) : 0);
-    };
-
-    return (
-        <Input
-            type="text"
-            className={className}
-            placeholder={placeholder}
-            value={value === 0 ? '' : value.toLocaleString('ru-RU')}
-            onChange={handleChange}
-        />
-    );
-};
+import { formatMoney } from '../utils';
+import { MoneyInput } from './shared';
 
 type PlanRow = {
     id: number;
@@ -70,6 +52,33 @@ export default function PlanningTable({ user }: { user: any }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [branchFilter, setBranchFilter] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState('');
+
+    // Infinite Scroll State
+    const [visibleRows, setVisibleRows] = useState(50);
+    const observerTarget = React.useRef<HTMLDivElement>(null);
+
+    // Reset infinite scroll when filters change
+    useEffect(() => {
+        setVisibleRows(50);
+    }, [searchQuery, branchFilter, departmentFilter]);
+
+    // Infinite Scroll Observer
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    setVisibleRows((prev) => prev + 50);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => observer.disconnect();
+    }, [visibleRows]);
 
     const fetchData = async () => {
         try {
@@ -360,31 +369,53 @@ export default function PlanningTable({ user }: { user: any }) {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                    <th key={header.id} className="px-6 py-4 font-bold text-slate-500 select-none">
-                                        {flexRender(header.column.columnDef.header, header.getContext())}
-                                    </th>
-                                ))}
-                            </tr>
-                        ))}
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {table.getRowModel().rows.map(row => (
-                            <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
-                                {row.getVisibleCells().map(cell => (
-                                    <td key={cell.id} className="px-6 py-4">
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={headerGroup.id}>
+                                    {headerGroup.headers.map(header => (
+                                        <th
+                                            key={header.id}
+                                            className="px-4 py-3 font-bold text-slate-500 select-none"
+                                            onClick={header.column.getToggleSortingHandler()}
+                                        >
+                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                        </th>
+                                    ))}
+                                </tr>
+                            ))}
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {table.getRowModel().rows.slice(0, visibleRows).map(row => (
+                                <tr
+                                    key={row.id}
+                                    className="hover:bg-slate-50/80 transition-colors"
+                                >
+                                    {row.getVisibleCells().map(cell => (
+                                        <td key={cell.id} className="px-4 py-3 align-top">
+                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Infinite Scroll Sentinel */}
+                    {visibleRows < table.getRowModel().rows.length && (
+                        <div
+                            ref={observerTarget}
+                            className="h-20 w-full flex justify-center items-center text-slate-400 text-sm cursor-pointer hover:bg-slate-50 transition-colors"
+                            onClick={() => setVisibleRows(prev => prev + 50)}
+                        >
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Загрузка...
+                        </div>
+                    )}
+                </div>
+
                 {filteredData.length === 0 && (
                     <div className="p-12 text-center text-slate-400">
                         {data.length === 0 ? "Список позиций пуст. Добавьте первую позицию." : "По вашему запросу ничего не найдено."}

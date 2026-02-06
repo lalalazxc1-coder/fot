@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import PayrollTable from './components/PayrollTable';
 import PlanningTable from './components/PlanningTable';
 import DashboardLayout from './components/DashboardLayout';

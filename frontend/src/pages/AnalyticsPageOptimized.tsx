@@ -34,12 +34,7 @@ type TopEmployee = {
     total_net: number;
 };
 
-const COLORS = [
-    '#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', // Slate
-    '#0891b2', '#06b6d4', '#22d3ee', // Cyan
-    '#059669', '#10b981', '#34d399', // Emerald
-    '#7c3aed', '#8b5cf6', '#a78bfa', // Violet
-];
+const COLORS = ['#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
 
 // --- Simple Table Component with Data Bars ---
 const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data }) => {
@@ -179,12 +174,24 @@ export default function AnalyticsPageOptimized() {
         await loadData();
     }, [loadData]);
 
-    // --- Optimization: Removed grouping to show all branches ---
+    // --- Optimization: Group small slices for Pie Chart ---
     const processedPieData = useMemo(() => {
         if (!costDistribution || costDistribution.length === 0) return [];
 
-        // Sort by value descending and return all
-        return [...costDistribution].sort((a, b) => b.value - a.value);
+        // Sort by value descending
+        const sorted = [...costDistribution].sort((a, b) => b.value - a.value);
+
+        // If 7 or fewer items, show all
+        if (sorted.length <= 7) return sorted;
+
+        // Otherwise keep top 6 and group rest
+        const top = sorted.slice(0, 6);
+        const othersValue = sorted.slice(6).reduce((acc, curr) => acc + curr.value, 0);
+
+        return [
+            ...top,
+            { name: 'Прочее', value: othersValue }
+        ];
     }, [costDistribution]);
 
     if (loading && !summary) {

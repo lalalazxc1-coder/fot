@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Plus, Trash2, Search, TrendingUp, BarChart2, Globe } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { formatMoney } from '../utils';
 
 type MarketRow = {
     id: number;
@@ -12,9 +13,6 @@ type MarketRow = {
     source: string;
     updated_at: string;
 };
-
-const formatMoney = (val: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'KZT', maximumFractionDigits: 0 }).format(val);
 
 export default function MarketPage() {
     const { user } = useOutletContext<{ user: any }>();
