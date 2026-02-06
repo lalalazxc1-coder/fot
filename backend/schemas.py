@@ -58,6 +58,7 @@ class EmployeeCreate(BaseModel):
     bonus_net: float = 0
     bonus_gross: float = 0
     
+    hire_date: Optional[str] = None
     status: str = "Активен"
 
 class FinancialUpdate(BaseModel):
@@ -73,3 +74,26 @@ class FinancialUpdate(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
+
+class SalaryRequestCreate(BaseModel):
+    employee_id: int
+    type: str # 'raise', 'bonus'
+    current_value: float
+    requested_value: float
+    reason: str
+
+class SalaryRequestUpdate(BaseModel):
+    status: str # 'approved', 'rejected'
+
+class MarketDataCreate(BaseModel):
+    position_title: str
+    min_salary: int
+    max_salary: int
+    median_salary: int
+    source: str | None = None
+
+class MarketDataUpdate(BaseModel):
+    min_salary: int | None = None
+    max_salary: int | None = None
+    median_salary: int | None = None
+    source: str | None = None

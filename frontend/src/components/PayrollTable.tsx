@@ -100,6 +100,7 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
 
   const [newEmployee, setNewEmployee] = useState({
     full_name: '',
+    hire_date: '', // New field
     position_title: '',
     branch_id: '',
     department_id: '',
@@ -121,12 +122,14 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
 
   // Helper render for cell
   const renderDual = (val: FinancialValue, isTotal = false) => (
-    <div className="flex flex-col text-xs">
-      <div className={`flex justify-between gap-2 ${isTotal ? 'text-emerald-200' : 'text-slate-500'}`}>
-        <span>Net:</span> <span className={`font-medium ${isTotal ? 'text-white font-bold' : 'text-emerald-700'}`}>{formatMoney(val.net)}</span>
+    <div className="flex flex-col text-[10px] min-w-[90px]">
+      <div className={`flex justify-between items-center gap-1.5 ${isTotal ? 'text-emerald-200' : 'text-slate-400'}`}>
+        <span className="opacity-70">Net</span>
+        <span className={`font-bold text-right truncate ${isTotal ? 'text-white text-xs' : 'text-emerald-700 text-[11px]'}`}>{formatMoney(val.net)}</span>
       </div>
-      <div className={`flex justify-between gap-2 border-t mt-0.5 pt-0.5 ${isTotal ? 'border-emerald-600/30' : 'border-slate-100'}`}>
-        <span className={isTotal ? 'text-emerald-300' : 'text-slate-400'}>Grs:</span> <span className={isTotal ? 'text-emerald-100' : 'text-slate-600'}>{formatMoney(val.gross)}</span>
+      <div className={`flex justify-between items-center gap-1.5 border-t mt-0.5 pt-0.5 ${isTotal ? 'border-emerald-600/30' : 'border-slate-100'}`}>
+        <span className={`opacity-70 ${isTotal ? 'text-emerald-300' : 'text-slate-400'}`}>Grs</span>
+        <span className={`text-right truncate ${isTotal ? 'text-emerald-100' : 'text-slate-500'}`}>{formatMoney(val.gross)}</span>
       </div>
     </div>
   );
@@ -173,7 +176,7 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
       await api.post('/employees', payload);
       setIsAddOpen(false);
       setNewEmployee({
-        full_name: '', position_title: '', branch_id: '', department_id: '',
+        full_name: '', hire_date: '', position_title: '', branch_id: '', department_id: '',
         base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0
       });
       fetchData();
@@ -287,8 +290,39 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
 
   const hasDismissed = useMemo(() => data.some(e => e.status === 'Dismissed'), [data]);
 
+  // Assuming EmployeeRecord is defined elsewhere, adding hire_date to it.
+  // For example, if EmployeeRecord was defined like this:
+  // interface EmployeeRecord {
+  //   id: number;
+  //   full_name: string;
+  //   position: string;
+  //   branch: string;
+  //   department?: string;
+  //   base: FinancialValue;
+  //   kpi: FinancialValue;
+  //   bonus: FinancialValue;
+  //   total: FinancialValue;
+  //   status: string;
+  // }
+  // It would become:
+  // interface EmployeeRecord {
+  //   id: number;
+  //   full_name: string;
+  //   position: string;
+  //   branch: string;
+  //   department?: string;
+  //   base: FinancialValue;
+  //   kpi: FinancialValue;
+  //   bonus: FinancialValue;
+  //   total: FinancialValue;
+  //   status: string;
+  //   hire_date?: string; // Added
+  // }
+
+
   const columns: ColumnDef<EmployeeRecord>[] = [
     { accessorKey: 'full_name', header: 'ФИО Сотрудника', cell: i => <div className="font-semibold text-slate-800">{i.getValue() as string}</div> },
+    { accessorKey: 'hire_date', header: 'Дата приема', cell: i => <div className="text-slate-500 text-xs font-mono whitespace-nowrap">{i.getValue() as string || '-'}</div> }, // Added Column
     { accessorKey: 'position', header: 'Должность' },
     {
       accessorKey: 'branch',
@@ -326,7 +360,7 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
           </button>
 
           {/* Edit Button */}
-          {(user.role === 'Administrator' || user.permissions.add_employees) && activeTab === 'active' && (
+          {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
             <>
               <button onClick={() => openEdit(row.original)} className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-emerald-600 transition-colors" title="Редактировать">
                 <Edit2 className="w-4 h-4" />
@@ -464,7 +498,7 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
         </div>
 
         <div className="ml-auto">
-          {(user.role === 'Administrator' || user.permissions.add_employees) && activeTab === 'active' && (
+          {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
             <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold" onClick={() => setIsAddOpen(true)}>
               <Plus className="w-4 h-4 mr-2" /> Добавить сотрудника
             </Button>
@@ -506,6 +540,10 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
       <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Добавить сотрудника">
         <form onSubmit={handleAddEmployee} className="space-y-4">
           <Input required placeholder="ФИО сотрудника" value={newEmployee.full_name} onChange={e => setNewEmployee({ ...newEmployee, full_name: e.target.value })} />
+          <div className="mt-2">
+            <label className="text-xs font-bold text-slate-500 ml-1">Дата приема</label>
+            <Input type="date" required value={newEmployee.hire_date} onChange={e => setNewEmployee({ ...newEmployee, hire_date: e.target.value })} />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -601,8 +639,19 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
                 <div key={i} className="grid grid-cols-3 gap-2 items-center">
                   <span className="text-sm font-medium text-slate-600">{group.label}</span>
                   {/* Using type assertions for dynamic access as defined in MoneyInput */}
-                  <MoneyInput className="bg-white" value={(editDetails as any)[group.fields[0]]} onChange={val => setEditDetails(prev => ({ ...prev, [group.fields[0]]: val }))} placeholder="Net" />
-                  <MoneyInput className="bg-white" value={(editDetails as any)[group.fields[1]]} onChange={val => setEditDetails(prev => ({ ...prev, [group.fields[1]]: val }))} placeholder="Gross" />
+                  {/* Disabled inputs for strict sync */}
+                  <Input
+                    className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                    value={(editDetails as any)[group.fields[0]]?.toLocaleString('ru-RU')}
+                    readOnly
+                    disabled
+                  />
+                  <Input
+                    className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                    value={(editDetails as any)[group.fields[1]]?.toLocaleString('ru-RU')}
+                    readOnly
+                    disabled
+                  />
                 </div>
               ))}
             </div>
@@ -614,21 +663,71 @@ export default function PayrollTable({ onLogout, user }: { onLogout: () => void,
 
       {/* HISTORY MODAL */}
       <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title="История изменений">
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar p-1">
           {auditLogs.length === 0 ? <p className="text-slate-400 text-center py-4">История пуста</p> :
-            auditLogs.map((log, i) => (
-              <div key={i} className="flex gap-4 text-sm border-b border-slate-100 pb-3 last:border-0">
-                <div className="w-24 text-slate-400 text-xs">{new Date(log.date).toLocaleString('ru-RU')}</div>
-                <div>
-                  <div className="font-bold text-slate-700">{log.user}</div>
-                  <div className="text-slate-600 mt-1">
-                    Изменено поле <span className="font-mono text-xs bg-slate-100 px-1 rounded">{log.field}</span>:
-                    <span className="text-red-400 line-through mx-1">{log.oldVal}</span>
-                    {log.newVal && <>→ <span className="text-emerald-600 font-medium mx-1">{log.newVal}</span></>}
+            (() => {
+              // Group logs by Date + User
+              const grouped = [];
+              let last = null;
+              for (const log of auditLogs) {
+                if (last && last.date === log.date && last.user === log.user) {
+                  last.changes.push(log);
+                } else {
+                  last = { date: log.date, user: log.user, changes: [log] };
+                  grouped.push(last);
+                }
+              }
+
+              return grouped.map((group, i) => {
+                const fieldLabels: any = {
+                  base_net: "Оклад (Net)", base_gross: "Оклад (Gross)",
+                  kpi_net: "KPI (Net)", kpi_gross: "KPI (Gross)",
+                  bonus_net: "Бонусы (Net)", bonus_gross: "Бонусы (Gross)",
+                  full_name: "ФИО", position_title: "Должность",
+                  branch_id: "Филиал (ID)", department_id: "Отдел (ID)",
+                };
+
+                // Extract sync source if present
+                const syncLog = group.changes.find((c: any) => c.field === 'sync_source');
+                const normalChanges = group.changes.filter((c: any) => c.field !== 'sync_source');
+
+                return (
+                  <div key={i} className="flex gap-4 text-sm relative">
+                    {/* Timeline line */}
+                    {i !== grouped.length - 1 && <div className="absolute left-[88px] top-6 bottom-[-24px] w-px bg-slate-100"></div>}
+
+                    <div className="w-20 text-slate-400 text-[10px] text-right pt-1.5 font-mono">{group.date.split(' ')[0]}<br />{group.date.split(' ')[1]}</div>
+
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="font-bold text-slate-800 text-xs uppercase tracking-wider">{group.user}</div>
+                        {syncLog && (
+                          <div className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100 font-medium flex items-center">
+                            ⚡ {syncLog.newVal.replace('Обновлено (', '').replace(')', '')}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                        {normalChanges.map((log: any, j: number) => {
+                          const label = fieldLabels[log.field] || log.field;
+                          return (
+                            <div key={j} className="px-4 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 hover:bg-white transition-colors">
+                              <span className="text-slate-600 font-medium text-xs">{label}</span>
+                              <div className="flex items-center gap-2 text-xs">
+                                {log.oldVal && <span className="text-red-400 line-through decoration-red-200/50">{log.oldVal}</span>}
+                                {log.oldVal && log.newVal && <span className="text-slate-300 text-[10px]">➜</span>}
+                                {log.newVal && <span className="font-bold text-slate-700 bg-white shadow-sm border border-slate-100 px-1.5 py-0.5 rounded">{log.newVal}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
+                );
+              });
+            })()
           }
         </div>
       </Modal>

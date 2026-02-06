@@ -12,8 +12,13 @@ router = APIRouter(prefix="/api/structure", tags=["structure"])
 def get_structure(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     branches = db.query(OrganizationUnit).filter_by(type="branch").all()
     
-    # 1. No Restrictions
-    if not current_user.scope_branches:
+    # 1. No Restrictions if Admin or no scope
+    is_admin = False
+    if current_user.role_rel:
+        if current_user.role_rel.name == 'Administrator': is_admin = True
+        if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+    
+    if is_admin or not current_user.scope_branches:
         pass 
     else:
         # Filter Branches (safe cast)
@@ -43,7 +48,9 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
         dept_ids_in_branch = {d.id for d in all_depts}
         intersection = user_dept_ids.intersection(dept_ids_in_branch)
         
-        if intersection:
+        if is_admin:
+             visible_depts = all_depts
+        elif intersection:
             visible_depts = [d for d in all_depts if d.id in intersection]
         else:
             visible_depts = all_depts # Show all if none specifically restricted

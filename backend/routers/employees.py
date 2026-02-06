@@ -23,7 +23,13 @@ def get_employees(db: Session = Depends(get_db), current_user: User = Depends(ge
     query = db.query(Employee).options(joinedload(Employee.financial_records), joinedload(Employee.org_unit))
 
     # Apply Scope Filter
-    if current_user.scope_branches:
+    is_admin = False
+    if current_user.role_rel:
+        if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+        # Fallback for legacy
+        if current_user.role_rel.name == 'Administrator': is_admin = True
+    
+    if not is_admin and current_user.scope_branches:
         allowed_ids = []
         # Ensure we have a set of ints for departments
         user_dept_ids = set()
@@ -87,26 +93,35 @@ def get_employees(db: Session = Depends(get_db), current_user: User = Depends(ge
             "kpi": {"net": kpi_n, "gross": kpi_g},
             "bonus": {"net": bonus_n, "gross": bonus_g},
             "total": {"net": total_n, "gross": total_g},
-            "status": emp.status or "Активен"
+            "status": emp.status or "Активен",
+            "hire_date": emp.hire_date
         })
     return results
 
 @router.post("/employees")
 def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # 1. Check Permissions: 'add_employees' OR 'Administrator' role
+    # 1. Check Permissions: 'add_employees' OR 'admin_access'
     has_perm = False
-    if current_user.role_rel and current_user.role_rel.name == 'Administrator':
-        has_perm = True
-    elif current_user.role_rel and current_user.role_rel.permissions.get('add_employees'):
-        has_perm = True
-        
+    
+    if current_user.role_rel:
+         perms = current_user.role_rel.permissions or {}
+         if perms.get('admin_access') or perms.get('add_employees'):
+             has_perm = True
+         if current_user.role_rel.name == 'Administrator': has_perm = True
+
     if not has_perm:
         raise HTTPException(403, "Permission 'add_employees' required")
 
     target_org_id = data.department_id if data.department_id else data.branch_id
     
-    # Restrict creation to own scope
-    if current_user.scope_branches:
+    # Restrict creation to own scope (unless Super Admin)
+    is_super = False
+    if current_user.role_rel:
+        if current_user.role_rel.permissions.get('admin_access'): is_super = True
+        if current_user.role_rel.name == 'Administrator': is_super = True
+
+    if not is_super and current_user.scope_branches:
         # Re-calculate allowed IDs (should extract to function, but inline for now)
         allowed_ids = []
         user_dept_ids = set()
@@ -133,7 +148,7 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current
         db.add(pos)
         db.flush()
     
-    new_emp = Employee(full_name=data.full_name, position_id=pos.id, org_unit_id=target_org_id, status=data.status)
+    new_emp = Employee(full_name=data.full_name, position_id=pos.id, org_unit_id=target_org_id, status=data.status, hire_date=data.hire_date)
     db.add(new_emp)
     db.commit()
     db.refresh(new_emp)
@@ -167,17 +182,32 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current
         total_payment=total_n
     )
     db.add(fin)
+    # Create initial audit log for creation
+    db.add(AuditLog(
+        user_id=current_user.id,
+        target_entity="employee",
+        target_entity_id=new_emp.id,
+        timestamp=datetime.now().strftime("%d.%m.%Y %H:%M"),
+        old_values={},
+        new_values={
+            "created": f"Создан сотрудник: {new_emp.full_name}",
+            "position": pos.title,
+            "hire_date": new_emp.hire_date or "-"
+        }
+    ))
     db.commit()
+
     return {"status": "success", "id": new_emp.id}
 
 @router.patch("/employees/{emp_id}/financials")
 def update_financials(emp_id: int, update: FinancialUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # 1. Check Permissions: 'edit_financials' OR 'Administrator' role
+    # 1. Check Permissions: 'edit_financials' OR 'admin_access'
     has_perm = False
-    if current_user.role_rel and current_user.role_rel.name == 'Administrator':
-        has_perm = True
-    elif current_user.role_rel and current_user.role_rel.permissions.get('edit_financials'):
-        has_perm = True
+    if current_user.role_rel:
+        perms = current_user.role_rel.permissions or {}
+        if perms.get('admin_access') or perms.get('edit_financials'):
+            has_perm = True
+        if current_user.role_rel.name == 'Administrator': has_perm = True
         
     if not has_perm:
         raise HTTPException(403, "Permission 'edit_financials' required")
@@ -186,7 +216,13 @@ def update_financials(emp_id: int, update: FinancialUpdate, db: Session = Depend
     emp = db.query(Employee).get(emp_id)
     if not emp: raise HTTPException(404, "Employee not found")
     
-    if current_user.scope_branches:
+    # Check Scope (skip if Super Admin)
+    is_super = False
+    if current_user.role_rel:
+        if current_user.role_rel.permissions.get('admin_access'): is_super = True
+        if current_user.role_rel.name == 'Administrator': is_super = True
+
+    if not is_super and current_user.scope_branches:
         allowed_ids = []
         user_dept_ids = set()
         if current_user.scope_departments:
@@ -258,8 +294,14 @@ class EmpDetailsUpdate(BaseModel):
 
 @router.patch("/employees/{emp_id}/details")
 def update_employee_details(emp_id: int, data: EmpDetailsUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    has_perm = current_user.role_rel.name == 'Administrator' or current_user.role_rel.permissions.get('add_employees')
-    if not has_perm: raise HTTPException(403, "Permission 'add_employees' required")
+    has_perm = False
+    if current_user.role_rel:
+         perms = current_user.role_rel.permissions or {}
+         if perms.get('admin_access') or perms.get('add_employees'): # Assuming add_employees covers verify details? Or edit_employees? Using add/edit.
+             has_perm = True
+         if current_user.role_rel.name == 'Administrator': has_perm = True
+
+    if not has_perm: raise HTTPException(403, "Permission required")
 
     emp = db.query(Employee).get(emp_id)
     if not emp: raise HTTPException(404, "Employee not found")
@@ -296,7 +338,13 @@ def update_employee_details(emp_id: int, data: EmpDetailsUpdate, db: Session = D
 
 @router.post("/employees/{emp_id}/dismiss")
 def dismiss_employee(emp_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    has_perm = current_user.role_rel.name == 'Administrator' or current_user.role_rel.permissions.get('add_employees')
+    has_perm = False
+    if current_user.role_rel:
+         perms = current_user.role_rel.permissions or {}
+         if perms.get('admin_access') or perms.get('add_employees'): # Dismiss usually requires same high level perm
+             has_perm = True
+         if current_user.role_rel.name == 'Administrator': has_perm = True
+
     if not has_perm: raise HTTPException(403, "Permission required")
     
     emp = db.query(Employee).get(emp_id)
@@ -327,7 +375,7 @@ def get_audit_logs(emp_id: int, db: Session = Depends(get_db)):
         # Actually dismiss is an update.
         if not log.new_values and not log.old_values: continue
         
-        # Determine fields from new_values or old_values
+        # Standard handling
         keys = set()
         if log.new_values: keys.update(log.new_values.keys())
         if log.old_values: keys.update(log.old_values.keys())

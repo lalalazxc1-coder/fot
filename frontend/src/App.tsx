@@ -5,6 +5,8 @@ import PlanningTable from './components/PlanningTable';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './pages/LoginPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import RequestsPage from './pages/RequestsPage';
+import MarketPage from './pages/MarketPage';
 import { api } from './lib/api';
 
 // Admin SubPages
@@ -111,6 +113,8 @@ function App() {
                     <Route path="/analytics" element={<AnalyticsPage />} />
                     <Route path="/payroll" element={<PlanningTable user={user} />} />
                     <Route path="/employees" element={<PayrollTable user={user} onLogout={handleLogout} />} />
+                    <Route path="/requests" element={<RequestsPage />} />
+                    <Route path="/market" element={<MarketPage />} />
 
                     {/* Nested Admin Routes - SECURED */}
                     <Route path="/admin" element={

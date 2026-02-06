@@ -44,7 +44,12 @@ def check_manage_permission(user: User):
     return user.role_rel.permissions.get('manage_planning', False)
 
 def filter_by_scope(query, user: User, db: Session):
-    if user.role_rel.name == 'Administrator': return query
+    is_admin = False
+    if user.role_rel:
+        if user.role_rel.name == 'Administrator': is_admin = True
+        if user.role_rel.permissions.get('admin_access'): is_admin = True
+        
+    if is_admin: return query
     
     allowed_branch_ids = []
     
@@ -172,6 +177,81 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
             new_values={k: v['new'] for k,v in changes.items()}
         )
         db.add(audit)
+        
+        # --- AUTO-SYNC TO EMPLOYEES ---
+        # Check if financial fields were changed
+        fin_fields = {'base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross'}
+        changed_fin_fields = set(changes.keys()).intersection(fin_fields)
+        
+        if changed_fin_fields:
+            # Find matching employees
+            # 1. Resolve Position ID
+            from database.models import Position, Employee, FinancialRecord
+            pos = db.query(Position).filter_by(title=db_plan.position_title).first()
+            
+            # 2. Resolve OrgUnit ID (Dept if exists, else Branch)
+            target_org_id = db_plan.department_id if db_plan.department_id else db_plan.branch_id
+            
+            if pos and target_org_id:
+                # Query using SQLAlchemy expression for status to be safe
+                # Assuming status is 'Active' or 'Dismissed'
+                employees = db.query(Employee).filter(
+                    Employee.position_id == pos.id,
+                    Employee.org_unit_id == target_org_id,
+                    Employee.status != 'Dismissed'
+                ).all()
+                
+                sync_count = 0
+                for emp in employees:
+                    # Find latest financial record
+                    fin = db.query(FinancialRecord).filter_by(employee_id=emp.id).order_by(desc(FinancialRecord.id)).first()
+                    if fin:
+                        # Track changes for Audit Log
+                        emp_audit_changes = {}
+
+                        def apply_change(field, new_value):
+                            old_val = getattr(fin, field)
+                            if old_val != new_value:
+                                setattr(fin, field, new_value)
+                                emp_audit_changes[field] = {'old': old_val, 'new': new_value}
+
+                        # Apply updates if they were changed in Plan
+                        if 'base_net' in changes: apply_change('base_net', db_plan.base_net)
+                        if 'base_gross' in changes: apply_change('base_gross', db_plan.base_gross)
+                        
+                        if 'kpi_net' in changes: apply_change('kpi_net', db_plan.kpi_net)
+                        if 'kpi_gross' in changes: apply_change('kpi_gross', db_plan.kpi_gross)
+                        
+                        if 'bonus_net' in changes: apply_change('bonus_net', db_plan.bonus_net)
+                        if 'bonus_gross' in changes: apply_change('bonus_gross', db_plan.bonus_gross)
+                        
+                        if emp_audit_changes:
+                            # Recalc totals
+                            fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
+                            fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
+                            
+                            # Legacy Sync
+                            fin.base_salary = fin.base_net
+                            fin.kpi_amount = fin.kpi_net
+                            fin.total_payment = fin.total_net
+
+                            sync_count += 1
+                            
+                            # Add metadata about source
+                            emp_audit_changes['sync_source'] = {'old': '', 'new': f'План (ID: {plan_id})'}
+
+                            # Audit for Employee
+                            db.add(AuditLog(
+                                user_id=current_user.id,
+                                target_entity="employee",
+                                target_entity_id=emp.id,
+                                timestamp=ts,
+                                old_values={k: v['old'] for k,v in emp_audit_changes.items()},
+                                new_values={k: v['new'] for k,v in emp_audit_changes.items()}
+                            ))
+                
+                print(f"Auto-synced {sync_count} employees for plan {plan_id}")
+
         db.commit()
         
     return {"status": "updated"}

@@ -168,7 +168,7 @@ export default function PlanningTable({ user }: { user: any }) {
 
 
     // --- Permissions Check ---
-    const canManage = user.role === 'Administrator' || user.permissions.manage_planning;
+    const canManage = user.role === 'Administrator' || user.permissions.manage_planning || user.permissions.admin_access;
 
     const columns = useMemo<ColumnDef<PlanRow>[]>(() => [
         {
@@ -445,24 +445,64 @@ export default function PlanningTable({ user }: { user: any }) {
             </Modal>
 
             <Modal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} title="История изменений">
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                    {historyLogs.length === 0 ? (
-                        <div className="text-center text-slate-400 py-8">История изменений пуста</div>
-                    ) : (
-                        historyLogs.map((log, idx) => (
-                            <div key={idx} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0">
-                                <div className="flex justify-between items-start mb-1">
-                                    <div className="text-xs font-bold text-slate-700">{log.user}</div>
-                                    <div className="text-[10px] text-slate-400 font-mono">{log.date}</div>
-                                </div>
-                                <div className="text-xs text-slate-600">
-                                    <span className="font-semibold text-slate-500">{log.field}:</span>{' '}
-                                    <span className="line-through text-red-300 mr-2">{log.oldVal}</span>
-                                    <span className="text-emerald-600 font-medium">{log.newVal}</span>
-                                </div>
-                            </div>
-                        ))
-                    )}
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar p-1">
+                    {historyLogs.length === 0 ? <p className="text-slate-400 text-center py-4">История пуста</p> :
+                        (() => {
+                            // Group logs by Date + User
+                            const grouped = [];
+                            let last = null;
+                            for (const log of historyLogs) {
+                                if (last && last.date === log.date && last.user === log.user) {
+                                    last.changes.push(log);
+                                } else {
+                                    last = { date: log.date, user: log.user, changes: [log] };
+                                    grouped.push(last);
+                                }
+                            }
+
+                            return grouped.map((group, i) => {
+                                const fieldLabels: any = {
+                                    base_net: "Оклад (Net)", base_gross: "Оклад (Gross)",
+                                    kpi_net: "KPI (Net)", kpi_gross: "KPI (Gross)",
+                                    bonus_net: "Бонусы (Net)", bonus_gross: "Бонусы (Gross)",
+                                    position_title: "Должность", count: "Количество",
+                                    branch_id: "Филиал (ID)", department_id: "Отдел (ID)",
+                                    schedule: "График"
+                                };
+
+                                return (
+                                    <div key={i} className="flex gap-4 text-sm relative">
+                                        {/* Timeline line */}
+                                        {i !== grouped.length - 1 && <div className="absolute left-[88px] top-6 bottom-[-24px] w-px bg-slate-100"></div>}
+
+                                        <div className="w-20 text-slate-400 text-[10px] text-right pt-1.5 font-mono">{group.date.split(' ')[0]}<br />{group.date.split(' ')[1]}</div>
+
+                                        <div className="flex-1 pb-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="font-bold text-slate-800 text-xs uppercase tracking-wider">{group.user}</div>
+                                            </div>
+
+                                            <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+                                                {group.changes.map((log: any, j: number) => {
+                                                    const label = fieldLabels[log.field] || log.field;
+                                                    return (
+                                                        <div key={j} className="px-4 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 hover:bg-white transition-colors">
+                                                            <span className="text-slate-600 font-medium text-xs">{label}</span>
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                {log.oldVal && <span className="text-red-400 line-through decoration-red-200/50">{log.oldVal}</span>}
+                                                                {log.oldVal && log.newVal && <span className="text-slate-300 text-[10px]">➜</span>}
+                                                                {log.newVal && <span className="font-bold text-slate-700 bg-white shadow-sm border border-slate-100 px-1.5 py-0.5 rounded">{log.newVal}</span>}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()
+                    }
                 </div>
             </Modal>
         </div>
