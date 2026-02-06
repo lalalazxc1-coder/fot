@@ -23,7 +23,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     except (JWTError, ValueError):
         raise credentials_exception
         
-    user = db.query(User).get(user_id)
+    from sqlalchemy.orm import joinedload
+    user = db.query(User).options(joinedload(User.role_rel)).get(user_id)
     if user is None:
         raise credentials_exception
         

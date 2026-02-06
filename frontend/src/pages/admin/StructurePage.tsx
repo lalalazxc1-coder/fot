@@ -21,6 +21,8 @@ export default function StructurePage() {
     const [newItemName, setNewItemName] = useState('');
     const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
 
+    const [loading, setLoading] = useState(false);
+
     useEffect(() => {
         fetchStructure();
     }, []);
@@ -47,6 +49,7 @@ export default function StructurePage() {
 
     const handleAddBranch = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
         try {
             await api.post('/structure/branch', { name: newItemName, type: 'branch' });
             setNewItemName('');
@@ -54,12 +57,15 @@ export default function StructurePage() {
             fetchStructure();
         } catch (e: any) {
             alert(e.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleAddDept = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedBranchId) return;
+        setLoading(true);
         try {
             await api.post('/structure/department', {
                 name: newItemName,
@@ -71,6 +77,8 @@ export default function StructurePage() {
             fetchStructure();
         } catch (e: any) {
             alert(e.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -149,7 +157,9 @@ export default function StructurePage() {
                         required
                         autoFocus
                     />
-                    <button className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all">Создать</button>
+                    <button disabled={loading} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {loading ? 'Создание...' : 'Создать'}
+                    </button>
                 </form>
             </Modal>
 
@@ -166,7 +176,9 @@ export default function StructurePage() {
                         required
                         autoFocus
                     />
-                    <button className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all">Добавить отдел</button>
+                    <button disabled={loading} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {loading ? 'Добавление...' : 'Добавить отдел'}
+                    </button>
                 </form>
             </Modal>
         </div>

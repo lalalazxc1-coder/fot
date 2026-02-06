@@ -1,0 +1,71 @@
+name: Bug Report
+description: Сообщить об ошибке
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение об ошибке! Пожалуйста, заполните приведенную ниже форму.
+        
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание проблемы
+      description: Что именно произошло? Что вы ожидали увидеть?
+      placeholder: Подробно опишите проблему
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Шаги для воспроизведения
+      description: Как воспроизвести эту ошибку?
+      placeholder: |
+        1. Перейдите в '...'
+        2. Нажмите на '...'
+        3. Прокрутите вниз до '...'
+        4. Увидите ошибку
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+      description: Что должно было произойти?
+      placeholder: Опишите ожидаемое поведение
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Окружение
+      description: Информация о вашей системе
+      placeholder: |
+        - ОС: [например, Windows 11, macOS 13, Ubuntu 22.04]
+        - Python версия: [например, 3.10.5]
+        - Node.js версия: [например, 18.16.0]
+        - Браузер: [например, Chrome 120, Firefox 121]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи и скриншоты
+      description: Если возможно, приложите логи ошибок и скриншоты
+      placeholder: Вставьте логи или перетащите сюда скриншоты
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительный контекст
+      description: Любая другая информация о проблеме
+      placeholder: Добавьте любую дополнительную информацию
+    validations:
+      required: false

@@ -129,6 +129,18 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                             >
                                 Сотрудники
                             </NavLink>
+                            <NavLink
+                                to="/requests"
+                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                            >
+                                Заявки
+                            </NavLink>
+                            <NavLink
+                                to="/market"
+                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                            >
+                                Рынок
+                            </NavLink>
                         </nav>
                     </div>
 
@@ -177,7 +189,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 py-8">
-                <Outlet />
+                <Outlet context={{ user }} />
             </main>
 
             <Modal isOpen={isPassOpen} onClose={() => setIsPassOpen(false)} title="Смена пароля">

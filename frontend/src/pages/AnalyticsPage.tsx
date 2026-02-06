@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
-import { Users, TrendingUp, DollarSign, Wallet, Target, AlertCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { Users, TrendingUp, DollarSign, Wallet, Target, AlertCircle, PieChart as PieIcon, Briefcase } from 'lucide-react';
 import { api } from '../lib/api';
-import { Card } from '../components/ui-mocks';
 
 // --- Types ---
 type FinancialValue = { net: number; gross: number };
 type EmployeeRecord = {
     id: number;
     full_name: string;
+    position: string; // Added position
     branch: string; // Name
+    status: string;
     total: FinancialValue;
 };
 
 type PlanRow = {
     id: number;
     branch_id?: string | number;
-    department_id?: string | number; // Added
+    department_id?: string | number;
     count: number;
     base_net: number;
     kpi_net: number;
@@ -36,6 +37,8 @@ type Structure = {
 const formatMoney = (val: number) =>
     new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'KZT', maximumFractionDigits: 0 }).format(val);
 
+const COLORS = ['#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
+
 export default function AnalyticsPage() {
     const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
     const [plans, setPlans] = useState<PlanRow[]>([]);
@@ -52,37 +55,25 @@ export default function AnalyticsPage() {
                     api.get('/planning')
                 ]);
 
-                setEmployees(emps);
+                // Filter out Dismissed employees
+                const activeEmps = (emps as EmployeeRecord[]).filter(e => e.status !== 'Dismissed');
+                setEmployees(activeEmps);
                 setStructure(structResponse);
 
-                // Filter plans: 
-                // 1. Backend filters by Branch Scope.
-                // 2. Frontend refines by Department Scope logic (handling "General" vs "Dept-specific" visibility).
+                // Filter plans (reuse logic)
                 const rawPlans: PlanRow[] = plansResponse;
-
                 const structMap = new Map(structResponse.map((b: any) => [b.id.toString(), b]));
 
                 const filteredPlans = rawPlans.filter(p => {
                     if (!p.branch_id) return false;
                     const branch = structMap.get(p.branch_id.toString());
-                    if (!branch) return false; // Branch not in user's scope (should be handled by backend, but safe double-check)
-
-                    // If plan is assigned to a specific department, verify user can see that department
+                    if (!branch) return false;
                     const visibleDepts = branch.departments || [];
-
                     if (p.department_id) {
                         return visibleDepts.some((d: any) => d.id.toString() === p.department_id?.toString());
                     }
-
-                    // If plan has NO department (Branch General):
-                    // If the user sees specific departments (visibleDepts > 0), they are restricted.
-                    // In this case, "Branch General" plans MUST be HIDDEN.
-                    if (visibleDepts.length > 0) {
-                        return false;
-                    }
-
-                    // If visibleDepts is empty, it means "No Depts in Branch" or "User sees Branch but it has no depts defined".
-                    // In this case, show the General plan.
+                    // Hide general plans if restricted to specific depts
+                    if (visibleDepts.length > 0) return false;
                     return true;
                 });
 
@@ -103,12 +94,10 @@ export default function AnalyticsPage() {
 
     // 1. PLAN Totals
     const planTotalNet = plans.reduce((acc, p) => acc + ((p.base_net + p.kpi_net + p.bonus_net) * p.count), 0);
-    const planTotalGross = plans.reduce((acc, p) => acc + ((p.base_gross + p.kpi_gross + p.bonus_gross) * p.count), 0);
     const planEmployeesCount = plans.reduce((acc, p) => acc + p.count, 0);
 
     // 2. FACT Totals
     const factTotalNet = employees.reduce((acc, e) => acc + e.total.net, 0);
-    const factTotalGross = employees.reduce((acc, e) => acc + e.total.gross, 0);
     const factEmployeesCount = employees.length;
 
     // 3. Diff Logic
@@ -116,23 +105,20 @@ export default function AnalyticsPage() {
     const isOverBudget = diffNet > 0;
     const executionPercent = planTotalNet > 0 ? (factTotalNet / planTotalNet) * 100 : 0;
 
-    // 4. Branch Comparison
-    // We match by ID if possible, but employees have only Name.
-    // Assuming structure defines the canonical names.
-    const comparisonData = structure.map(b => {
-        // Plan for this branch (Filtered by visible departments)
-        const visibleDeptIds = new Set(b.departments?.map((d: any) => d.id.toString()) || []);
+    // Headcount logic
+    const headcountDiff = factEmployeesCount - planEmployeesCount;
+    // const headcountPercent = planEmployeesCount > 0 ? (factEmployeesCount / planEmployeesCount) * 100 : 0;
 
+    // 4. Branch Comparison (Bar Chart)
+    const comparisonData = structure.map(b => {
+        const visibleDeptIds = new Set(b.departments?.map((d: any) => d.id.toString()) || []);
         const bPlans = plans.filter(p => {
             const isBranchMatch = p.branch_id?.toString() === b.id.toString();
-            // If plan has dept_id, check if it's visible. If no dept_id, assume branch-wide (or handle as overhead)
             const isDeptMatch = !p.department_id || visibleDeptIds.has(p.department_id.toString());
             return isBranchMatch && isDeptMatch;
         });
 
         const planVal = bPlans.reduce((acc, p) => acc + ((p.base_net + p.kpi_net + p.bonus_net) * p.count), 0);
-
-        // Fact: employees are already filtered by API
         const bFacts = employees.filter(e => e.branch === b.name);
         const factVal = bFacts.reduce((acc, e) => acc + e.total.net, 0);
 
@@ -144,146 +130,226 @@ export default function AnalyticsPage() {
         };
     }).filter(d => d.plan > 0 || d.fact > 0).sort((a, b) => b.fact - a.fact);
 
+    // 5. Cost Distribution (Pie Chart)
+    const distributionData = comparisonData.map(d => ({
+        name: d.name,
+        value: d.fact
+    })).filter(d => d.value > 0);
+
+    // 6. Top Spenders / Analysis
+    const topPositions = [...employees]
+        .sort((a, b) => b.total.net - a.total.net)
+        .slice(0, 5);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
             {/* Page Header */}
             <div>
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900">Аналитика ФОТ</h1>
-                <p className="text-slate-500 mt-2 text-lg">Сравнение плановых показателей и фактических расходов</p>
+                <p className="text-slate-500 mt-2 text-lg">Комплексный обзор расходов и показателей эффективности</p>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-                {/* PLAN Card */}
-                <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-100 group hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute right-0 top-0 w-32 h-32 bg-slate-50 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-slate-100"></div>
-                    <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
-                                <Target className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">План (Net)</p>
-                                <p className="text-xs text-slate-400">{planEmployeesCount} позиций</p>
-                            </div>
-                        </div>
-                        <div className="text-3xl font-bold text-slate-900 mb-1">{formatMoney(planTotalNet)}</div>
-                    </div>
-                </div>
-
-                {/* FACT Card */}
-                <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-100 group hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-emerald-100"></div>
-                    <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-3 bg-emerald-100 rounded-xl text-emerald-600">
-                                <Wallet className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Факт (Net)</p>
-                                <p className="text-xs text-slate-400">{factEmployeesCount} сотрудников</p>
-                            </div>
-                        </div>
-                        <div className="text-3xl font-bold text-slate-900 mb-1">{formatMoney(factTotalNet)}</div>
-                    </div>
-                </div>
-
-                {/* Deviation Card */}
-                <div className={`relative overflow-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-100 group hover:-translate-y-1 transition-all duration-300`}>
-                    <div className={`absolute right-0 top-0 w-32 h-32 rounded-full blur-3xl -mr-16 -mt-16 transition-all ${isOverBudget ? 'bg-red-50 group-hover:bg-red-100' : 'bg-green-50 group-hover:bg-green-100'}`}></div>
-                    <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className={`p-3 rounded-xl ${isOverBudget ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                <TrendingUp className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Отклонение</p>
-                                <p className={`text-xs font-bold ${isOverBudget ? 'text-red-500' : 'text-emerald-500'}`}>
-                                    {isOverBudget ? 'Перерасход' : 'Экономия'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className={`text-3xl font-bold mb-1 ${isOverBudget ? 'text-red-600' : 'text-emerald-600'}`}>
-                            {isOverBudget ? '+' : ''}{formatMoney(diffNet)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Execution Percent */}
-                <div className="relative overflow-hidden bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-900/20 group hover:-translate-y-1 transition-all duration-300 text-white">
+                {/* 1. Budget Execution */}
+                <div className="relative overflow-hidden bg-slate-900 p-6 rounded-2xl shadow-xl shadow-slate-900/20 group hover:-translate-y-1 transition-all duration-300">
                     <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                    <div className="relative">
+                    <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-3 bg-white/10 rounded-xl text-slate-300">
                                 <AlertCircle className="w-6 h-6" />
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Исполнение</p>
-                                <p className="text-xs text-slate-400">бюджета</p>
+                            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Исполнение бюджета</p>
+                        </div>
+                        <div className="text-4xl font-bold text-white mb-2">{executionPercent.toFixed(1)}%</div>
+                        <div className="text-xs text-slate-400 flex items-center justify-between">
+                            <span>План: {formatMoney(planTotalNet)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. Fact Total */}
+                <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-100 group hover:-translate-y-1 transition-all duration-300">
+                    <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-emerald-100"></div>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-emerald-100 rounded-xl text-emerald-600">
+                                <Wallet className="w-6 h-6" />
                             </div>
+                            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Фактический ФОТ</p>
                         </div>
-                        <div className="text-3xl font-bold text-white mb-1">
-                            {executionPercent.toFixed(1)}%
+                        <div className="text-3xl font-bold text-slate-900 mb-1">{formatMoney(factTotalNet)}</div>
+                        <p className={`text-xs font-semibold mt-2 ${isOverBudget ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {isOverBudget ? `Перерасход ${formatMoney(Math.abs(diffNet))}` : `Экономия ${formatMoney(Math.abs(diffNet))}`}
+                        </p>
+                    </div>
+                </div>
+
+                {/* 3. Headcount */}
+                <div className="relative overflow-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-100 group hover:-translate-y-1 transition-all duration-300">
+                    <div className="absolute right-0 top-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-blue-100"></div>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 bg-blue-100 rounded-xl text-blue-600">
+                                <Users className="w-6 h-6" />
+                            </div>
+                            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Штат</p>
                         </div>
+                        <div className="flex items-end gap-2 mb-1">
+                            <div className="text-3xl font-bold text-slate-900">{factEmployeesCount}</div>
+                            <div className="text-sm text-slate-400 mb-1.5 font-medium">/ {planEmployeesCount} план</div>
+                        </div>
+                        <p className={`text-xs font-semibold mt-2 ${headcountDiff > 0 ? 'text-red-500' : 'text-slate-500'}`}>
+                            {headcountDiff > 0 ? `+${headcountDiff} сверх плана` : `${headcountDiff} вакансий`}
+                        </p>
+                    </div>
+                </div>
+
+                {/* 4. Deviation Status */}
+                <div className={`relative overflow-hidden p-6 rounded-2xl shadow-lg border group hover:-translate-y-1 transition-all duration-300 ${isOverBudget ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className={`p-3 rounded-xl ${isOverBudget ? 'bg-red-200 text-red-700' : 'bg-green-200 text-green-700'}`}>
+                                <TrendingUp className="w-6 h-6" />
+                            </div>
+                            <p className={`text-sm font-bold uppercase tracking-wider ${isOverBudget ? 'text-red-400' : 'text-green-600/70'}`}>Статус</p>
+                        </div>
+                        <div className={`text-2xl font-bold ${isOverBudget ? 'text-red-700' : 'text-green-700'}`}>
+                            {isOverBudget ? 'Требует внимания' : 'В рамках бюджета'}
+                        </div>
+                        <p className={`text-xs mt-2 ${isOverBudget ? 'text-red-500' : 'text-green-600'}`}>
+                            {isOverBudget ? 'Расходы превышают плановые показатели' : 'Оптимальное расходование средств'}
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Charts Section */}
+            {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Comparison Chart */}
+
+                {/* Main Bar Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-                    <div className="mb-6">
-                        <h3 className="text-lg font-bold text-slate-900">План vs Факт по филиалам</h3>
-                        <p className="text-slate-500 text-sm">Сравнение чистого оклада (Net) в разрезе филиалов</p>
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <Target className="w-5 h-5 text-slate-400" />
+                                План-Факт анализ
+                            </h3>
+                            <p className="text-slate-500 text-sm mt-1">Сравнение ФОТ по филиалам</p>
+                        </div>
                     </div>
-                    <div className="h-[350px] w-full">
+                    <div className="h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={comparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(val) => `₸${val / 1000}k`} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(val) => `${val / 1000}k`} />
                                 <Tooltip
                                     cursor={{ fill: '#f1f5f9' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: number) => formatMoney(value)}
                                 />
                                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                <Bar dataKey="plan" name="План" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={20} />
-                                <Bar dataKey="fact" name="Факт" fill="#0f172a" radius={[4, 4, 0, 0]} barSize={20} />
+                                <Bar dataKey="plan" name="План" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={32} />
+                                <Bar dataKey="fact" name="Факт" fill="#0f172a" radius={[6, 6, 0, 0]} barSize={32} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Detailed Table / Breakdown */}
+                {/* Distribution Pie Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col">
                     <div className="mb-6">
-                        <h3 className="text-lg font-bold text-slate-900">Детализация</h3>
-                        <p className="text-slate-500 text-sm">Отклонения по филиалам</p>
+                        <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <PieIcon className="w-5 h-5 text-slate-400" />
+                            Структура расходов
+                        </h3>
+                        <p className="text-slate-500 text-sm mt-1">Доля филиалов в общем ФОТ</p>
                     </div>
-                    <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
-                        <div className="space-y-4">
-                            {comparisonData.map((item, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-slate-700 truncate" title={item.name}>{item.name}</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">Исп: {item.plan > 0 ? ((item.fact / item.plan) * 100).toFixed(0) : 0}%</div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className={`font-bold text-sm ${item.diff > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                            {item.diff > 0 ? '+' : ''}{formatMoney(item.diff)}
-                                        </div>
-                                        <div className="text-xs text-slate-400">
-                                            {formatMoney(item.fact)}
-                                        </div>
-                                    </div>
+                    <div className="flex-1 min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={distributionData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {distributionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(value: number) => formatMoney(value)} contentStyle={{ borderRadius: '12px' }} />
+                                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Section: Top Spenders & Detailed Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Top Spenders */}
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-slate-400" />
+                        Топ 5 Выплат
+                    </h3>
+                    <div className="space-y-4">
+                        {topPositions.map((emp, i) => (
+                            <div key={emp.id} className="flex items-center gap-4 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors p-2 rounded-lg">
+                                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-xs">#{i + 1}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-slate-800 truncate">{emp.full_name}</div>
+                                    <div className="text-xs text-slate-500 truncate">{emp.position}</div>
                                 </div>
-                            ))}
-                            {comparisonData.length === 0 && <div className="text-center text-slate-400 py-10">Нет данных для сравнения</div>}
-                        </div>
+                                <div className="text-right font-bold text-slate-900">
+                                    {formatMoney(emp.total.net)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Detailed Breakdown Table */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-900 mb-6">Детализация отклонений</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200">
+                                    <th className="pb-3 text-slate-400 font-medium pl-4">Филиал</th>
+                                    <th className="pb-3 text-right text-slate-400 font-medium">План</th>
+                                    <th className="pb-3 text-right text-slate-400 font-medium">Факт</th>
+                                    <th className="pb-3 text-right text-slate-400 font-medium">Отклонение</th>
+                                    <th className="pb-3 text-right text-slate-400 font-medium pr-4">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {comparisonData.map((item, idx) => {
+                                    const percent = item.plan > 0 ? ((item.fact / item.plan) * 100).toFixed(0) : 0;
+                                    return (
+                                        <tr key={idx} className="group hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+                                            <td className="py-4 pl-4 font-semibold text-slate-700">{item.name}</td>
+                                            <td className="py-4 text-right text-slate-500">{formatMoney(item.plan)}</td>
+                                            <td className="py-4 text-right text-slate-900 font-bold">{formatMoney(item.fact)}</td>
+                                            <td className={`py-4 text-right font-bold ${item.diff > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                {item.diff > 0 ? '+' : ''}{formatMoney(item.diff)}
+                                            </td>
+                                            <td className="py-4 text-right pr-4">
+                                                <span className={`px-2 py-1 rounded-md text-xs font-bold ${Number(percent) > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {percent}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

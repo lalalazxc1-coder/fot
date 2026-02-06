@@ -49,6 +49,7 @@ class Employee(Base):
     org_unit_id = Column(Integer, ForeignKey("organization_units.id"))
     status = Column(String)
     schedule = Column(String)
+    hire_date = Column(String, nullable=True) # New field
     
     position = relationship("Position")
     org_unit = relationship("OrganizationUnit")
@@ -117,3 +118,33 @@ class PlanningPosition(Base):
     kpi_gross = Column(Integer, default=0)
     bonus_net = Column(Integer, default=0)
     bonus_gross = Column(Integer, default=0)
+
+class SalaryRequest(Base):
+    __tablename__ = "salary_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.id"))
+    employee_id = Column(Integer, ForeignKey("employees.id"))
+    type = Column(String) # 'raise', 'bonus'
+    current_value = Column(Integer)
+    requested_value = Column(Integer)
+    reason = Column(String)
+    status = Column(String, default="pending") # pending, approved, rejected
+    created_at = Column(String)
+    
+    requester = relationship("User", foreign_keys=[requester_id])
+    employee = relationship("Employee")
+    
+    # Approval info
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_at = Column(String, nullable=True)
+    approver = relationship("User", foreign_keys=[approver_id])
+
+class MarketData(Base):
+    __tablename__ = "market_data"
+    id = Column(Integer, primary_key=True, index=True)
+    position_title = Column(String, unique=True)
+    min_salary = Column(Integer)
+    max_salary = Column(Integer)
+    median_salary = Column(Integer)
+    source = Column(String)
+    updated_at = Column(String)

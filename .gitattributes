@@ -1,0 +1,46 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.py text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Config files
+*.conf text eol=lf
+*.config text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+
+# Web
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.svg text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.pdf binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
