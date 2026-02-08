@@ -5,12 +5,14 @@ import {
     flexRender,
     ColumnDef,
 } from '@tanstack/react-table';
-import { Plus, Edit2, Trash2, Search, History, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, History, Loader2, Settings, HelpCircle } from 'lucide-react';
 import { Card, Button, Input } from './ui-mocks';
 import Modal from './Modal';
 import { api } from '../lib/api';
 import { formatMoney } from '../utils';
 import { MoneyInput } from './shared';
+import { calculateTaxes, solveGrossFromNet, DEFAULT_CONFIG, SalaryConfig } from '../utils/salary';
+import SalarySettingsModal from './SalarySettingsModal';
 
 type PlanRow = {
     id: number;
@@ -47,6 +49,12 @@ export default function PlanningTable({ user }: { user: any }) {
     const [editingRow, setEditingRow] = useState<PlanRow | null>(null);
     const [historyLogs, setHistoryLogs] = useState<AuditLog[]>([]);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+    // Calc State
+    const [salaryConfig, setSalaryConfig] = useState<SalaryConfig>(DEFAULT_CONFIG);
+    const [useAutoCalc, setUseAutoCalc] = useState(true);
+    const [applyDeduction, setApplyDeduction] = useState(true);
 
     // Filter States
     const [searchQuery, setSearchQuery] = useState('');
@@ -83,7 +91,7 @@ export default function PlanningTable({ user }: { user: any }) {
     const fetchData = async () => {
         try {
             const res = await api.get('/planning');
-            setData(res);
+            setData(res.data);
         } catch (e) { console.error(e); }
     };
 
@@ -92,11 +100,16 @@ export default function PlanningTable({ user }: { user: any }) {
         const load = async () => {
             try {
                 const s = await api.get('/structure');
-                setStructure(s);
+                setStructure(s.data);
             } catch (e) { console.error(e); }
             fetchData();
         };
         load();
+    }, []);
+
+    // Load Salary Config
+    useEffect(() => {
+        api.get('/salary-config').then(res => setSalaryConfig(res.data)).catch(console.error);
     }, []);
 
 
@@ -119,9 +132,49 @@ export default function PlanningTable({ user }: { user: any }) {
         });
     }, [data, searchQuery, branchFilter, departmentFilter, structure]);
 
+    const handleMoneyChange = (field: string, val: number, otherField: string) => {
+        if (!editingRow) return;
+
+        const updates: any = { [field]: val };
+
+        if (useAutoCalc) {
+            // Determine direction
+            const isNet = field.includes('_net');
+
+            if (isNet) {
+                // Net -> Gross
+                const gross = solveGrossFromNet(val, salaryConfig, applyDeduction);
+                updates[otherField] = gross;
+            } else {
+                // Gross -> Net
+                const res = calculateTaxes(val, salaryConfig, applyDeduction);
+                updates[otherField] = res.net;
+            }
+        }
+
+        setEditingRow(prev => prev ? ({ ...prev, ...updates }) : null);
+    };
+
     const handleEditSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingRow) return;
+
+        // Validation
+        if (!editingRow.position?.trim()) return alert("Укажите должность");
+        if (!editingRow.count || editingRow.count < 1) return alert("Неверное количество");
+        if (!editingRow.branch_id) return alert("Выберите филиал");
+
+        // Check if branch has departments and department is selected
+        const branch = structure.find(b => b.id.toString() == editingRow.branch_id?.toString());
+        if (branch && branch.departments.length > 0 && !editingRow.department_id) {
+            return alert("Выберите отдел");
+        }
+
+        if (!editingRow.schedule?.trim()) return alert("Укажите график");
+
+        if ((!editingRow.base_net || editingRow.base_net <= 0) && (!editingRow.base_gross || editingRow.base_gross <= 0)) {
+            return alert("Укажите оклад (Net или Gross)");
+        }
 
         // Prepare payload: convert empty strings to null/int
         const payload = {
@@ -166,7 +219,7 @@ export default function PlanningTable({ user }: { user: any }) {
     const handleViewHistory = async (id: number) => {
         try {
             const logs = await api.get(`/planning/${id}/history`);
-            setHistoryLogs(logs);
+            setHistoryLogs(logs.data);
             setIsHistoryOpen(true);
         } catch (e) { console.error(e); }
     };
@@ -358,16 +411,23 @@ export default function PlanningTable({ user }: { user: any }) {
                         {selectedFilterBranch?.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </div>
-                <div className="ml-auto">
+                <div className="ml-auto flex gap-2">
                     {canManage && (
-                        <Button onClick={() => setEditingRow({
-                            id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: ''
-                        })} className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold">
-                            <Plus className="w-4 h-4 mr-2" /> Добавить
-                        </Button>
+                        <>
+                            <Button onClick={() => setIsSettingsOpen(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 border border-transparent active:scale-[0.98] transition-all rounded-xl py-2.5 px-4 font-semibold" title="Настройки расчета зарплаты">
+                                <Settings className="w-4 h-4" />
+                            </Button>
+                            <Button onClick={() => setEditingRow({
+                                id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: ''
+                            })} className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold">
+                                <Plus className="w-4 h-4 mr-2" /> Добавить
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
+
+            <SalarySettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
                 <div className="overflow-x-auto">
@@ -434,13 +494,14 @@ export default function PlanningTable({ user }: { user: any }) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className="text-sm font-bold text-slate-700">Филиал</label>
-                                <select className="input-base w-full h-10 rounded-lg border-slate-200" value={editingRow.branch_id || ''} onChange={e => setEditingRow({ ...editingRow, branch_id: e.target.value, department_id: '' })}>
+                                <select required className="input-base w-full h-10 rounded-lg border-slate-200" value={editingRow.branch_id || ''} onChange={e => setEditingRow({ ...editingRow, branch_id: e.target.value, department_id: '' })}>
                                     <option value="">Не выбран</option>
                                     {structure.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                 </select>
                             </div>
                             <div><label className="text-sm font-bold text-slate-700">Отдел</label>
                                 <select
+                                    required={(selectedModalBranch?.departments?.length || 0) > 0}
                                     className="input-base w-full h-10 rounded-lg border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                                     value={editingRow.department_id || ''}
                                     onChange={e => setEditingRow({ ...editingRow, department_id: e.target.value })}
@@ -452,21 +513,64 @@ export default function PlanningTable({ user }: { user: any }) {
                             </div>
                         </div>
                         <div><label className="text-sm font-bold text-slate-700">График</label>
-                            <Input value={editingRow.schedule || ''} onChange={e => setEditingRow({ ...editingRow, schedule: e.target.value })} placeholder="5/2" /></div>
+                            <Input required value={editingRow.schedule || ''} onChange={e => setEditingRow({ ...editingRow, schedule: e.target.value })} placeholder="5/2" /></div>
 
                         <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
+                            <div className="flex justify-between items-center px-1">
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={useAutoCalc}
+                                        onChange={e => setUseAutoCalc(e.target.checked)}
+                                        className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                                    />
+                                    <span className="text-xs font-bold text-slate-500 group-hover:text-slate-700 transition-colors">Авто-расчет (Net ↔ Gross)</span>
+                                </label>
+
+                                {useAutoCalc && (
+                                    <div className="group relative flex items-center gap-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={applyDeduction}
+                                                onChange={e => setApplyDeduction(e.target.checked)}
+                                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer"
+                                            />
+                                            <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+                                                Вычет (14 МРП)
+                                                <HelpCircle className="w-3 h-3 text-slate-300" />
+                                            </span>
+                                        </label>
+                                        <div className="absolute bottom-full right-0 mb-2 w-64 p-3 bg-slate-800 text-white text-[11px] rounded-lg shadow-xl hidden group-hover:block z-50 font-normal leading-normal animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+                                            Это стандартный налоговый вычет (14 × МРП). <br />
+                                            Уменьшает облагаемый доход при расчете ИПН. <br />
+                                            <span className="opacity-50 mt-1 block">Применяется только по одному месту работы (обычно основному).</span>
+                                            <div className="absolute -bottom-1 right-10 w-2 h-2 bg-slate-800 rotate-45 transform"></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-slate-400 text-center tracking-wider">
                                 <div></div><div>Net</div><div>Gross</div>
                             </div>
                             {[
-                                { label: 'Оклад', fields: ['base_net', 'base_gross'] },
-                                { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] },
-                                { label: 'Доплаты', fields: ['bonus_net', 'bonus_gross'] }
+                                { label: 'Оклад', net: 'base_net', gross: 'base_gross' },
+                                { label: 'KPI', net: 'kpi_net', gross: 'kpi_gross' },
+                                { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross' }
                             ].map((group, i) => (
                                 <div key={i} className="grid grid-cols-3 gap-2 items-center">
                                     <div className="text-sm font-bold text-slate-700">{group.label}</div>
-                                    <MoneyInput className="bg-white" value={(editingRow as any)[group.fields[0]]} onChange={val => setEditingRow({ ...editingRow, [group.fields[0]]: val })} />
-                                    <MoneyInput className="bg-white" value={(editingRow as any)[group.fields[1]]} onChange={val => setEditingRow({ ...editingRow, [group.fields[1]]: val })} />
+                                    <MoneyInput
+                                        className="bg-white"
+                                        value={(editingRow as any)[group.net]}
+                                        onChange={val => handleMoneyChange(group.net, val, group.gross)}
+                                    />
+                                    <MoneyInput
+                                        className="bg-white"
+                                        value={(editingRow as any)[group.gross]}
+                                        onChange={val => handleMoneyChange(group.gross, val, group.net)}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -495,11 +599,35 @@ export default function PlanningTable({ user }: { user: any }) {
                                 const fieldLabels: any = {
                                     base_net: "Оклад (Net)", base_gross: "Оклад (Gross)",
                                     kpi_net: "KPI (Net)", kpi_gross: "KPI (Gross)",
-                                    bonus_net: "Бонусы (Net)", bonus_gross: "Бонусы (Gross)",
+                                    bonus_net: "Доплаты (Net)", bonus_gross: "Доплаты (Gross)",
+                                    "Бонусы (Net)": "Доплаты (Net)", "Бонусы (Gross)": "Доплаты (Gross)", // Legacy support
                                     position_title: "Должность", count: "Количество",
                                     branch_id: "Филиал (ID)", department_id: "Отдел (ID)",
                                     schedule: "График"
                                 };
+
+                                const fieldOrder = [
+                                    "Событие",
+                                    "Должность", "position_title",
+                                    "Филиал (ID)", "branch_id",
+                                    "Отдел (ID)", "department_id",
+                                    "График", "schedule",
+                                    "Количество", "count",
+                                    "Оклад (Net)", "base_net",
+                                    "Оклад (Gross)", "base_gross",
+                                    "KPI (Net)", "kpi_net",
+                                    "KPI (Gross)", "kpi_gross",
+                                    "Доплаты (Net)", "bonus_net", "Бонусы (Net)",
+                                    "Доплаты (Gross)", "bonus_gross", "Бонусы (Gross)"
+                                ];
+
+                                const sortedChanges = [...group.changes].sort((a, b) => {
+                                    let idxA = fieldOrder.indexOf(a.field);
+                                    let idxB = fieldOrder.indexOf(b.field);
+                                    if (idxA === -1) idxA = 999;
+                                    if (idxB === -1) idxB = 999;
+                                    return idxA - idxB;
+                                });
 
                                 return (
                                     <div key={i} className="flex gap-4 text-sm relative">
@@ -514,7 +642,7 @@ export default function PlanningTable({ user }: { user: any }) {
                                             </div>
 
                                             <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
-                                                {group.changes.map((log: any, j: number) => {
+                                                {sortedChanges.map((log: any, j: number) => {
                                                     const label = fieldLabels[log.field] || log.field;
                                                     return (
                                                         <div key={j} className="px-4 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 hover:bg-white transition-colors">

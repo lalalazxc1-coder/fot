@@ -96,6 +96,8 @@ class AuditLog(Base):
     timestamp = Column(String) 
     old_values = Column(JSON)
     new_values = Column(JSON)
+    
+    user = relationship("User")
 
 # NEW: Planning Table Model
 class PlanningPosition(Base):
@@ -148,3 +150,31 @@ class MarketData(Base):
     median_salary = Column(Integer)
     source = Column(String)
     updated_at = Column(String)
+
+class SalaryConfiguration(Base):
+    __tablename__ = "salary_config_2026"
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Constants
+    mrp = Column(Integer, default=4615)      # 2026 Projection
+    mzp = Column(Integer, default=100000)    # 2026 Projection
+    
+    # Rates (percentages as decimals)
+    opv_rate = Column(JSON, default=0.1)     # Pension
+    opvr_rate = Column(JSON, default=0.025)  # Employer Pension (2026: 2.5%)
+    vosms_rate = Column(JSON, default=0.02)  # Health (Employee)
+    vosms_employer_rate = Column(JSON, default=0.03) # Health (Employer)
+    so_rate = Column(JSON, default=0.035)    # Social Insurance
+    sn_rate = Column(JSON, default=0.095)    # Social Tax
+    ipn_rate = Column(JSON, default=0.1)     # Income Tax
+    
+    # Limits (multipliers of MZP usually)
+    opv_limit_mzp = Column(Integer, default=50) 
+    opvr_limit_mzp = Column(Integer, default=50) # Same cap for OPVR
+    vosms_limit_mzp = Column(Integer, default=10)
+    
+    # Deduction
+    ipn_deduction_mrp = Column(Integer, default=14)
+    
+    updated_at = Column(String)
+    updated_by = Column(Integer, nullable=True)

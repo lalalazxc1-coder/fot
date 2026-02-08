@@ -59,14 +59,14 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [empJson, structJson, planJson] = await Promise.all([
+      const [empRes, structRes, planRes] = await Promise.all([
         api.get('/employees'),
         api.get('/structure'),
         api.get('/planning')
       ]);
-      setData(empJson);
-      setStructure(structJson);
-      setPlanningData(planJson);
+      setData(empRes.data);
+      setStructure(structRes.data);
+      setPlanningData(planRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -85,7 +85,7 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
       // In real backend, endpoint might differ, e.g. /audit-logs/:id
       // Keeping original fetchHistory logic flavor but renamed
       const logs = await api.get(`/audit-logs/${emp.id}`);
-      setAuditLogs(logs);
+      setAuditLogs(logs.data);
       setIsHistoryOpen(true);
     } catch (e) { alert('Failed to load history'); }
   };

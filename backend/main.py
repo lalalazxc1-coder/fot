@@ -16,9 +16,20 @@ from database import models # Ensure models are loaded
 Base.metadata.create_all(bind=engine)
 
 # 4. Import Routers
-from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics
+from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics, salary
 
 app = FastAPI(title="FOT System MVP")
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Global Exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error", "detail": str(exc)},
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,16 +40,19 @@ app.add_middleware(
 )
 
 # 5. Connect Routers
-app.include_router(auth.router)
-app.include_router(roles.router)
-app.include_router(users.router)
-app.include_router(structure.router)
-app.include_router(employees.router)
-app.include_router(admin.router)
-app.include_router(planning.router)
-app.include_router(requests.router)
-app.include_router(market.router)
-app.include_router(analytics.router)
+routers = [
+    auth.router, roles.router, users.router, structure.router, 
+    employees.router, admin.router, planning.router, 
+    requests.router, market.router, analytics.router,
+    salary.router
+]
+
+for router in routers:
+    app.include_router(router)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    print("Starting FOT System MVP Backend...")
+    try:
+        uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    except Exception as e:
+        print(f"Failed to start server: {e}")

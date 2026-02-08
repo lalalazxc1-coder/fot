@@ -32,7 +32,7 @@ export default function MarketPage() {
     const loadData = async () => {
         try {
             const res = await api.get('/market');
-            setData(res);
+            setData(res.data);
         } catch (e) {
             console.error(e);
         } finally {

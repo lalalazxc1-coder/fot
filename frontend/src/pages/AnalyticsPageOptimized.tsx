@@ -144,14 +144,22 @@ export default function AnalyticsPageOptimized() {
                 api.get('/analytics/cost-distribution')
             ]);
 
-            setSummary(summaryRes);
+            setSummary(summaryRes.data);
+
+            // Helper to safely extract arrays
+            const getArray = (res: any) => {
+                if (Array.isArray(res.data)) return res.data;
+                if (res.data && Array.isArray(res.data.data)) return res.data.data;
+                return [];
+            };
 
             // Sort comparison by Fact descending for better visual coherence
-            const sortedComparison = (comparisonRes.data || []).sort((a: BranchComparison, b: BranchComparison) => b.fact - a.fact);
+            const comparisonData = getArray(comparisonRes);
+            const sortedComparison = comparisonData.sort((a: BranchComparison, b: BranchComparison) => b.fact - a.fact);
             setBranchComparison(sortedComparison);
 
-            setTopEmployees(topRes.data);
-            setCostDistribution(distributionRes.data);
+            setTopEmployees(getArray(topRes));
+            setCostDistribution(getArray(distributionRes));
 
             // Smoothly reveal charts after layout settlement
             setTimeout(() => setChartsReady(true), 100);

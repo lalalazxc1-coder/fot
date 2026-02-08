@@ -97,3 +97,52 @@ class MarketDataUpdate(BaseModel):
     max_salary: int | None = None
     median_salary: int | None = None
     source: str | None = None
+
+# Analytics
+class AnalyticsFactPlan(BaseModel):
+    total_net: float
+    count: int
+
+class AnalyticsMetrics(BaseModel):
+    diff_net: float
+    execution_percent: float
+    headcount_diff: int
+    is_over_budget: bool
+
+class AnalyticsSummaryResponse(BaseModel):
+    fact: AnalyticsFactPlan
+    plan: AnalyticsFactPlan
+    metrics: AnalyticsMetrics
+    cached_at: str
+
+class BranchComparisonItem(BaseModel):
+    id: int
+    name: str
+    plan: float
+    fact: float
+    diff: float
+    percent: float
+
+class BranchComparisonResponse(BaseModel):
+    data: List[BranchComparisonItem]
+    total: int
+    cached_at: str
+
+class TopEmployeeItem(BaseModel):
+    id: int
+    full_name: str
+    position: str
+    branch: str
+    total_net: float
+
+class TopEmployeesResponse(BaseModel):
+    data: List[TopEmployeeItem]
+    cached_at: str
+
+class CostDistributionItem(BaseModel):
+    name: str
+    value: float
+
+class CostDistributionResponse(BaseModel):
+    data: List[CostDistributionItem]
+    cached_at: str

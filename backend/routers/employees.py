@@ -83,8 +83,23 @@ def get_employees(db: Session = Depends(get_db), current_user: User = Depends(ge
         total_n = base_n + kpi_n + bonus_n
         total_g = base_g + kpi_g + bonus_g
 
+        org_unit_id = emp.org_unit_id
+        branch_id = None
+        department_id = None
+        
+        if org:
+            if org.type == 'branch':
+                branch_id = org.id
+                department_id = None
+            elif org.type == 'department':
+                department_id = org.id
+                branch_id = org.parent_id
+
         results.append({
             "id": emp.id,
+            "org_unit_id": org_unit_id,
+            "branch_id": branch_id,
+            "department_id": department_id,
             "full_name": emp.full_name,
             "position": pos_name,
             "branch": branch_name,
@@ -291,6 +306,151 @@ class EmpDetailsUpdate(BaseModel):
     position_title: str
     branch_id: int | None = None
     department_id: int | None = None
+
+class EmployeeUpdate(BaseModel):
+    full_name: str
+    branch_id: int
+    department_id: int | None = None
+    position_title: str
+    base_net: int = 0
+    base_gross: int = 0
+    kpi_net: int = 0
+    kpi_gross: int = 0
+    bonus_net: int = 0
+    bonus_gross: int = 0
+
+@router.put("/employees/{emp_id}")
+def update_employee(emp_id: int, data: EmployeeUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    """Combined endpoint to update employee details and financials"""
+    # Check permissions
+    has_perm = False
+    if current_user.role_rel:
+         perms = current_user.role_rel.permissions or {}
+         if perms.get('admin_access') or perms.get('add_employees') or perms.get('edit_financials'):
+             has_perm = True
+         if current_user.role_rel.name == 'Administrator': has_perm = True
+
+    if not has_perm: raise HTTPException(403, "Permission required")
+
+    emp = db.query(Employee).get(emp_id)
+    if not emp: raise HTTPException(404, "Employee not found")
+    
+    # Scope check
+    is_super = False
+    if current_user.role_rel:
+        if current_user.role_rel.permissions.get('admin_access'): is_super = True
+        if current_user.role_rel.name == 'Administrator': is_super = True
+
+    if not is_super and current_user.scope_branches:
+        allowed_ids = []
+        user_dept_ids = set()
+        if current_user.scope_departments:
+             user_dept_ids = {int(x) for x in current_user.scope_departments}
+
+        for bid_raw in current_user.scope_branches:
+            bid = int(bid_raw)
+            depts = db.query(OrganizationUnit).filter_by(parent_id=bid, type="department").all()
+            dept_ids = {d.id for d in depts}
+            intersection = user_dept_ids.intersection(dept_ids)
+            if intersection:
+                allowed_ids.extend(list(intersection))
+            else:
+                allowed_ids.append(bid)
+                allowed_ids.extend(list(dept_ids))
+        
+        if emp.org_unit_id not in allowed_ids:
+            raise HTTPException(403, "Out of scope")
+    
+    changes = {}
+    ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    # Update basic details
+    if data.full_name != emp.full_name:
+        changes['ФИО'] = {'old': emp.full_name, 'new': data.full_name}
+        emp.full_name = data.full_name
+
+    current_pos_title = emp.position.title if emp.position else ""
+    if data.position_title != current_pos_title:
+        pos = db.query(Position).filter_by(title=data.position_title).first()
+        if not pos:
+            pos = Position(title=data.position_title)
+            db.add(pos)
+            db.flush()
+        changes['Должность'] = {'old': current_pos_title, 'new': data.position_title}
+        emp.position_id = pos.id
+        
+    new_org_id = data.department_id if data.department_id else data.branch_id
+    if new_org_id and new_org_id != emp.org_unit_id:
+        changes['Подрезделение (ID)'] = {'old': emp.org_unit_id, 'new': new_org_id}
+        emp.org_unit_id = new_org_id
+
+    # Update financials
+    fin = db.query(FinancialRecord).filter_by(employee_id=emp_id).order_by(desc(FinancialRecord.id)).first()
+    if not fin:
+        # Create new financial record if doesn't exist
+        total_n = data.base_net + data.kpi_net + data.bonus_net
+        total_g = data.base_gross + data.kpi_gross + data.bonus_gross
+        fin = FinancialRecord(
+            employee_id=emp_id,
+            month=datetime.now().strftime("%Y-%m"),
+            base_net=data.base_net,
+            base_gross=data.base_gross,
+            kpi_net=data.kpi_net,
+            kpi_gross=data.kpi_gross,
+            bonus_net=data.bonus_net,
+            bonus_gross=data.bonus_gross,
+            total_net=total_n,
+            total_gross=total_g,
+            base_salary=data.base_net,
+            kpi_amount=data.kpi_net,
+            total_payment=total_n
+        )
+        db.add(fin)
+        changes['Оклад (Net)'] = {'old': 0, 'new': data.base_net}
+        changes['Оклад (Gross)'] = {'old': 0, 'new': data.base_gross}
+    else:
+        # Update existing financial record
+        if data.base_net != fin.base_net:
+            changes['Оклад (Net)'] = {'old': fin.base_net, 'new': data.base_net}
+            fin.base_net = data.base_net
+        if data.base_gross != fin.base_gross:
+            changes['Оклад (Gross)'] = {'old': fin.base_gross, 'new': data.base_gross}
+            fin.base_gross = data.base_gross
+        if data.kpi_net != fin.kpi_net:
+            changes['KPI (Net)'] = {'old': fin.kpi_net, 'new': data.kpi_net}
+            fin.kpi_net = data.kpi_net
+        if data.kpi_gross != fin.kpi_gross:
+            changes['KPI (Gross)'] = {'old': fin.kpi_gross, 'new': data.kpi_gross}
+            fin.kpi_gross = data.kpi_gross
+        if data.bonus_net != fin.bonus_net:
+            changes['Доплаты (Net)'] = {'old': fin.bonus_net, 'new': data.bonus_net}
+            fin.bonus_net = data.bonus_net
+        if data.bonus_gross != fin.bonus_gross:
+            changes['Доплаты (Gross)'] = {'old': fin.bonus_gross, 'new': data.bonus_gross}
+            fin.bonus_gross = data.bonus_gross
+        
+        # Recalculate totals
+        fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
+        fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
+        fin.base_salary = fin.base_net
+        fin.kpi_amount = fin.kpi_net
+        fin.total_payment = fin.total_net
+
+    # Log all changes
+    if changes:
+        for field, vals in changes.items():
+            audit = AuditLog(
+                user_id=current_user.id,
+                target_entity="employee",
+                target_entity_id=emp_id,
+                timestamp=ts,
+                old_values={field: vals['old']},
+                new_values={field: vals['new']}
+            )
+            db.add(audit)
+        db.commit()
+
+    return {"status": "updated"}
 
 @router.patch("/employees/{emp_id}/details")
 def update_employee_details(emp_id: int, data: EmpDetailsUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):

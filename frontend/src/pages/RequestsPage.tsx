@@ -57,11 +57,11 @@ export default function RequestsPage() {
     const loadData = async () => {
         try {
             const res = await api.get('/requests');
-            setRequests(res);
+            setRequests(res.data);
 
             // Load employees for dropdown
             const emps = await api.get('/employees');
-            setAvailableEmployees(emps.filter((e: any) => e.status !== 'Dismissed'));
+            setAvailableEmployees(emps.data.filter((e: any) => e.status !== 'Dismissed'));
         } catch (e) {
             console.error(e);
         } finally {

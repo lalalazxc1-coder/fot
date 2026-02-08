@@ -12,6 +12,13 @@ from dependencies import get_db, get_current_active_user
 from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position
 from sqlalchemy import func, and_, or_, desc
 
+from schemas import (
+    AnalyticsSummaryResponse, 
+    BranchComparisonResponse, 
+    TopEmployeesResponse, 
+    CostDistributionResponse
+)
+
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 # Simple cache for heavy computations (5 minutes TTL)
@@ -33,7 +40,7 @@ def get_cached_or_compute(key: str, compute_fn):
     return result
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=AnalyticsSummaryResponse)
 def get_analytics_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -107,7 +114,7 @@ def get_analytics_summary(
     return get_cached_or_compute('summary', compute)
 
 
-@router.get("/branch-comparison")
+@router.get("/branch-comparison", response_model=BranchComparisonResponse)
 def get_branch_comparison(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -198,7 +205,7 @@ def get_branch_comparison(
     return get_cached_or_compute(cache_key, compute)
 
 
-@router.get("/top-employees")
+@router.get("/top-employees", response_model=TopEmployeesResponse)
 def get_top_employees(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -264,7 +271,7 @@ def get_top_employees(
     return get_cached_or_compute(cache_key, compute)
 
 
-@router.get("/cost-distribution")
+@router.get("/cost-distribution", response_model=CostDistributionResponse)
 def get_cost_distribution(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)

@@ -31,7 +31,8 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any) => void })
                 full_name: data.full_name,
                 role: data.role,
                 permissions: data.permissions || {},
-                scope_unit_id: data.scope_unit_id,
+                scope_branches: data.scope_branches,
+                scope_departments: data.scope_departments,
                 access_token: data.access_token
             };
 

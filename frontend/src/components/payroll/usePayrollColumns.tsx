@@ -86,14 +86,20 @@ export const usePayrollColumns = ({
                     {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
                         <>
                             <button
-                                onClick={() => onEdit(row.original)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEdit(row.original);
+                                }}
                                 className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-emerald-600 transition-colors"
                                 title="Редактировать"
                             >
                                 <Edit2 className="w-4 h-4" />
                             </button>
                             <button
-                                onClick={() => onDismiss(row.original.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDismiss(row.original.id);
+                                }}
                                 className="p-1.5 hover:bg-red-50 rounded-md text-red-300 hover:text-red-600 transition-colors"
                                 title="Уволить"
                             >

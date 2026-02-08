@@ -28,7 +28,7 @@ type AuthUser = {
 
 // Security Wrapper
 const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions.admin_access;
+    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
     if (!hasAdminAccess) {
         return <Navigate to="/" replace />;
     }
@@ -55,7 +55,8 @@ function App() {
                     try {
                         // We need to import api first. I will add the import in a separate block or ensure it's there.
                         // Assuming api is imported from './lib/api'
-                        const freshUser = await api.get('/auth/me');
+                        const response = await api.get('/auth/me');
+                        const freshUser = response.data;
 
                         // Merge fresh data with existing token
                         const updatedUser = { ...freshUser, access_token: storedUser.access_token };

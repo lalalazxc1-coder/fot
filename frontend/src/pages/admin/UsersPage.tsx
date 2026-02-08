@@ -49,9 +49,9 @@ export default function UsersPage() {
                 api.get('/roles'),
                 api.get('/structure')
             ]);
-            setUsers(usersData);
-            setRoles(rolesData);
-            setStructure(structData);
+            setUsers(usersData.data);
+            setRoles(rolesData.data);
+            setStructure(structData.data);
         } catch (e) {
             console.error(e);
         }

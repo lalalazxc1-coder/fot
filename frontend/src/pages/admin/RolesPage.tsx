@@ -35,7 +35,7 @@ export default function RolesPage() {
     const fetchRoles = async () => {
         try {
             const data = await api.get('/roles');
-            setRoles(data);
+            setRoles(data.data);
         } catch (e) {
             console.error(e);
         }

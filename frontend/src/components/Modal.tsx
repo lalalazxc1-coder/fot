@@ -1,4 +1,5 @@
-import React, { Fragment } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 type ModalProps = {
@@ -6,19 +7,30 @@ type ModalProps = {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    maxWidth?: string;
 };
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
-    if (!isOpen) return null;
+export default function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }: ModalProps) {
+    const [mounted, setMounted] = useState(false);
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!isOpen || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            {/* Backdrop click handler */}
+            <div className="absolute inset-0" onClick={onClose}></div>
+
             <div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
+                className={`bg-white rounded-xl shadow-2xl w-full ${maxWidth} relative animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col z-10`}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex justify-between items-center p-5 border-b border-slate-100">
+                <div className="flex justify-between items-center p-5 border-b border-slate-100 flex-shrink-0">
                     <h3 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h3>
                     <button
                         onClick={onClose}
@@ -33,6 +45,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
                     {children}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

@@ -29,9 +29,8 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
             setEditDetails({
                 id: employee.id,
                 full_name: employee.full_name,
-                branch_id: structure.find(b => b.name === employee.branch)?.id.toString(),
-                department_id: '', // Need search logic if needed, but simplified for now: user selects
-                // Real implementation would look up department ID from name
+                branch_id: employee.branch_id?.toString() || '',
+                department_id: employee.department_id?.toString() || '',
                 position_title: employee.position,
                 base_net: employee.base.net,
                 base_gross: employee.base.gross,
@@ -152,7 +151,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                     {[
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
                         { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] },
-                        { label: 'Бонусы', fields: ['bonus_net', 'bonus_gross'] },
+                        { label: 'Доплаты', fields: ['bonus_net', 'bonus_gross'] },
                     ].map((group, i) => (
                         <div key={i} className="grid grid-cols-3 gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>

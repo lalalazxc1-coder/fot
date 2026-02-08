@@ -35,7 +35,7 @@ const PasswordInput = ({ value, onChange, label, error, minLength }: any) => {
 
 export default function DashboardLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
     const navigate = useNavigate();
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions.admin_access;
+    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
 
     const [isPassOpen, setIsPassOpen] = useState(false);
     const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });

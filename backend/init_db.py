@@ -50,7 +50,8 @@ def init_db():
                 full_name="System Administrator", 
                 hashed_password=get_password_hash(admin_pass), 
                 role_id=admin_role.id,
-                scope_unit_id=None # Full access (no scope restriction)
+                scope_branches=[],
+                scope_departments=[]
             )
             db.add(admin_user)
             db.commit()
@@ -63,7 +64,8 @@ def init_db():
 
             # Ensure properties
             admin_user.role_id = admin_role.id
-            admin_user.scope_unit_id = None 
+            admin_user.scope_branches = []
+            admin_user.scope_departments = [] 
             db.commit()
             print("Admin user updated.")
             

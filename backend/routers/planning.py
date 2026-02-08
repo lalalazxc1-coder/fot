@@ -106,6 +106,13 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
         if str(plan.branch_id) not in [str(b) for b in current_user.scope_branches]:
              raise HTTPException(403, "Cannot create plan for this branch (Out of scope)")
 
+    # Validation
+    if not plan.schedule:
+        raise HTTPException(400, "Необходимо указать график работы")
+        
+    if plan.base_net <= 0 and plan.base_gross <= 0:
+        raise HTTPException(400, "Необходимо указать оклад (Net или Gross)")
+
     new_plan = PlanningPosition(
         position_title=plan.position,
         branch_id=plan.branch_id,
@@ -121,6 +128,10 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
     )
     db.add(new_plan)
     db.commit()
+    db.refresh(new_plan)
+    
+    # CLEANUP: Remove old logs if ID was reused (SQLite quirk)
+    db.query(AuditLog).filter_by(target_entity="planning", target_entity_id=new_plan.id).delete()
     
     # Audit
     ts = datetime.now().strftime("%d.%m.%Y %H:%M")
@@ -130,12 +141,106 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
         target_entity_id=new_plan.id,
         timestamp=ts,
         old_values=None,
-        new_values=plan.dict()
+        new_values={
+            "Событие": "Создана позиция",
+            "Должность": plan.position,
+            "Филиал (ID)": plan.branch_id,
+            "Отдел (ID)": plan.department_id,
+            "График": plan.schedule,
+            "Количество": plan.count,
+            "Оклад (Net)": plan.base_net,
+            "Оклад (Gross)": plan.base_gross,
+            "KPI (Net)": plan.kpi_net,
+            "KPI (Gross)": plan.kpi_gross,
+            "Доплаты (Net)": plan.bonus_net,
+            "Доплаты (Gross)": plan.bonus_gross
+        }
     )
     db.add(audit)
     db.commit()
     
     return {"status": "success", "id": new_plan.id}
+
+# --- Private Helpers ---
+
+def _sync_employee_financials(db: Session, plan: PlanningPosition, changes: dict, user: User, audit_ts: str):
+    """
+    Synchronizes financial changes from a Plan to all relevant Employees.
+    Only triggered if financial fields are modified.
+    """
+    fin_fields = {'base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross'}
+    changed_fin_fields = set(changes.keys()).intersection(fin_fields)
+    
+    if not changed_fin_fields:
+        return 0
+        
+    # Find matching employees
+    from database.models import Position, Employee, FinancialRecord
+    pos = db.query(Position).filter_by(title=plan.position_title).first()
+    
+    # Resolve OrgUnit ID (Dept if exists, else Branch)
+    target_org_id = plan.department_id if plan.department_id else plan.branch_id
+    
+    if not pos or not target_org_id:
+        return 0
+        
+    # Find active employees in this position & unit
+    employees = db.query(Employee).filter(
+        Employee.position_id == pos.id,
+        Employee.org_unit_id == target_org_id,
+        Employee.status != 'Dismissed'
+    ).all()
+    
+    sync_count = 0
+    for emp in employees:
+        # Get latest financial record
+        fin = db.query(FinancialRecord).filter_by(employee_id=emp.id).order_by(desc(FinancialRecord.id)).first()
+        if fin:
+            emp_audit_changes = {}
+
+            def apply_chamge_val(field, new_val):
+                old_val = getattr(fin, field)
+                if old_val != new_val:
+                    setattr(fin, field, new_val)
+                    emp_audit_changes[field] = {'old': old_val, 'new': new_val}
+
+            # Apply updates
+            if 'base_net' in changes: apply_chamge_val('base_net', plan.base_net)
+            if 'base_gross' in changes: apply_chamge_val('base_gross', plan.base_gross)
+            
+            if 'kpi_net' in changes: apply_chamge_val('kpi_net', plan.kpi_net)
+            if 'kpi_gross' in changes: apply_chamge_val('kpi_gross', plan.kpi_gross)
+            
+            if 'bonus_net' in changes: apply_chamge_val('bonus_net', plan.bonus_net)
+            if 'bonus_gross' in changes: apply_chamge_val('bonus_gross', plan.bonus_gross)
+            
+            if emp_audit_changes:
+                # Recalc totals
+                fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
+                fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
+                
+                # Legacy Sync (for backward compatibility)
+                fin.base_salary = fin.base_net
+                fin.kpi_amount = fin.kpi_net
+                fin.total_payment = fin.total_net
+
+                sync_count += 1
+                
+                # Add metadata
+                emp_audit_changes['sync_source'] = {'old': '', 'new': f'План (ID: {plan.id})'}
+
+                # Create Audit Log for Employee update
+                db.add(AuditLog(
+                    user_id=user.id,
+                    target_entity="employee",
+                    target_entity_id=emp.id,
+                    timestamp=audit_ts,
+                    old_values={k: v['old'] for k,v in emp_audit_changes.items()},
+                    new_values={k: v['new'] for k,v in emp_audit_changes.items()}
+                ))
+    
+    return sync_count
+
 
 @router.patch("/planning/{plan_id}")
 def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
@@ -151,14 +256,11 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
              raise HTTPException(403, "Out of scope")
 
     changes = {}
-    
     update_data = plan.dict(exclude_unset=True)
-    
-    # Map pydantic fields to DB fields if names differ
-    # Here names are mostly same, except 'position' -> 'position_title'
     
     for key, val in update_data.items():
         db_key = key
+        # Handle field mapping
         if key == 'position': db_key = 'position_title'
         
         old_val = getattr(db_plan, db_key)
@@ -178,79 +280,10 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
         )
         db.add(audit)
         
-        # --- AUTO-SYNC TO EMPLOYEES ---
-        # Check if financial fields were changed
-        fin_fields = {'base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross'}
-        changed_fin_fields = set(changes.keys()).intersection(fin_fields)
-        
-        if changed_fin_fields:
-            # Find matching employees
-            # 1. Resolve Position ID
-            from database.models import Position, Employee, FinancialRecord
-            pos = db.query(Position).filter_by(title=db_plan.position_title).first()
-            
-            # 2. Resolve OrgUnit ID (Dept if exists, else Branch)
-            target_org_id = db_plan.department_id if db_plan.department_id else db_plan.branch_id
-            
-            if pos and target_org_id:
-                # Query using SQLAlchemy expression for status to be safe
-                # Assuming status is 'Active' or 'Dismissed'
-                employees = db.query(Employee).filter(
-                    Employee.position_id == pos.id,
-                    Employee.org_unit_id == target_org_id,
-                    Employee.status != 'Dismissed'
-                ).all()
-                
-                sync_count = 0
-                for emp in employees:
-                    # Find latest financial record
-                    fin = db.query(FinancialRecord).filter_by(employee_id=emp.id).order_by(desc(FinancialRecord.id)).first()
-                    if fin:
-                        # Track changes for Audit Log
-                        emp_audit_changes = {}
-
-                        def apply_change(field, new_value):
-                            old_val = getattr(fin, field)
-                            if old_val != new_value:
-                                setattr(fin, field, new_value)
-                                emp_audit_changes[field] = {'old': old_val, 'new': new_value}
-
-                        # Apply updates if they were changed in Plan
-                        if 'base_net' in changes: apply_change('base_net', db_plan.base_net)
-                        if 'base_gross' in changes: apply_change('base_gross', db_plan.base_gross)
-                        
-                        if 'kpi_net' in changes: apply_change('kpi_net', db_plan.kpi_net)
-                        if 'kpi_gross' in changes: apply_change('kpi_gross', db_plan.kpi_gross)
-                        
-                        if 'bonus_net' in changes: apply_change('bonus_net', db_plan.bonus_net)
-                        if 'bonus_gross' in changes: apply_change('bonus_gross', db_plan.bonus_gross)
-                        
-                        if emp_audit_changes:
-                            # Recalc totals
-                            fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
-                            fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
-                            
-                            # Legacy Sync
-                            fin.base_salary = fin.base_net
-                            fin.kpi_amount = fin.kpi_net
-                            fin.total_payment = fin.total_net
-
-                            sync_count += 1
-                            
-                            # Add metadata about source
-                            emp_audit_changes['sync_source'] = {'old': '', 'new': f'План (ID: {plan_id})'}
-
-                            # Audit for Employee
-                            db.add(AuditLog(
-                                user_id=current_user.id,
-                                target_entity="employee",
-                                target_entity_id=emp.id,
-                                timestamp=ts,
-                                old_values={k: v['old'] for k,v in emp_audit_changes.items()},
-                                new_values={k: v['new'] for k,v in emp_audit_changes.items()}
-                            ))
-                
-                print(f"Auto-synced {sync_count} employees for plan {plan_id}")
+        # Auto-sync logic moved to helper
+        synced = _sync_employee_financials(db, db_plan, changes, current_user, ts)
+        if synced > 0:
+            print(f"Auto-synced {synced} employees for plan {plan_id}")
 
         db.commit()
         
@@ -269,17 +302,8 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db), current_user: User 
         if str(db_plan.branch_id) not in [str(b) for b in current_user.scope_branches]:
              raise HTTPException(403, "Out of scope")
              
-    # Audit Deletion
-    ts = datetime.now().strftime("%d.%m.%Y %H:%M")
-    audit = AuditLog(
-        user_id=current_user.id,
-        target_entity="planning",
-        target_entity_id=plan_id,
-        timestamp=ts,
-        old_values={"deleted": True, "position": db_plan.position_title},
-        new_values=None
-    )
-    db.add(audit)
+    # Delete associated history
+    db.query(AuditLog).filter_by(target_entity="planning", target_entity_id=plan_id).delete()
     
     db.delete(db_plan)
     db.commit()

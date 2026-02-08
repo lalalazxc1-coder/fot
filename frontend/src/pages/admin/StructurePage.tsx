@@ -30,7 +30,7 @@ export default function StructurePage() {
     const fetchStructure = async () => {
         try {
             const data = await api.get('/structure');
-            setBranches(data);
+            setBranches(data.data);
         } catch (e) {
             console.error(e);
         }
