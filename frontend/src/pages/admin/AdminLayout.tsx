@@ -1,5 +1,4 @@
-import React from 'react';
-import { Outlet, NavLink, Navigate } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 
 export default function AdminLayout() {
     return (

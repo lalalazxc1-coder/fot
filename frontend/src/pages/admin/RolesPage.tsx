@@ -1,14 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Trash2, Edit2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Trash2, Edit2, Loader2 } from 'lucide-react';
 import Modal from '../../components/Modal';
-
-import { api } from '../../lib/api';
-
-type Role = {
-    id: number;
-    name: string;
-    permissions: Record<string, boolean>;
-};
+import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, Role } from '../../hooks/useAdmin';
 
 const PERMISSIONS_LIST = [
     { key: 'add_employees', label: 'Добавление и редактирование сотрудников' },
@@ -18,7 +11,13 @@ const PERMISSIONS_LIST = [
 ];
 
 export default function RolesPage() {
-    const [roles, setRoles] = useState<Role[]>([]);
+    const { data: roles = [], isLoading } = useRoles();
+
+    const createRoleMutation = useCreateRole();
+    const updateRoleMutation = useUpdateRole();
+    const deleteRoleMutation = useDeleteRole();
+
+    const isSubmitting = createRoleMutation.isPending || updateRoleMutation.isPending || deleteRoleMutation.isPending;
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,19 +26,6 @@ export default function RolesPage() {
     // Form State
     const [formName, setFormName] = useState('');
     const [formPerms, setFormPerms] = useState<Record<string, boolean>>({});
-
-    useEffect(() => {
-        fetchRoles();
-    }, []);
-
-    const fetchRoles = async () => {
-        try {
-            const data = await api.get('/roles');
-            setRoles(data.data);
-        } catch (e) {
-            console.error(e);
-        }
-    }
 
     const openCreateModal = () => {
         setEditingRole(null);
@@ -60,23 +46,17 @@ export default function RolesPage() {
 
         if (editingRole) {
             // Update
-            await api.put(`/roles/${editingRole.id}`, { name: formName, permissions: formPerms });
+            await updateRoleMutation.mutateAsync({ id: editingRole.id, data: { name: formName, permissions: formPerms } });
         } else {
             // Create
-            await api.post('/roles', { name: formName, permissions: formPerms });
+            await createRoleMutation.mutateAsync({ name: formName, permissions: formPerms });
         }
         setIsModalOpen(false);
-        fetchRoles();
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Вы уверены? Это действие необратимо.")) return;
-        try {
-            await api.delete(`/roles/${id}`);
-            fetchRoles();
-        } catch (err: any) {
-            alert(err.message);
-        }
+        await deleteRoleMutation.mutateAsync(id);
     };
 
     const togglePerm = (key: string) => {
@@ -100,8 +80,13 @@ export default function RolesPage() {
 
             {/* List */}
             <div className="grid gap-4 md:grid-cols-2">
-                {roles.length === 0 && <p className="text-sm text-slate-400 col-span-2 text-center py-10">Ролей пока нет. Создайте первую.</p>}
-                {roles.map(role => (
+                {isLoading && (
+                    <div className="col-span-2 flex justify-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                    </div>
+                )}
+                {!isLoading && roles.length === 0 && <p className="text-sm text-slate-400 col-span-2 text-center py-10">Ролей пока нет. Создайте первую.</p>}
+                {!isLoading && roles.map(role => (
                     <div key={role.id} className="border border-slate-200 p-4 rounded-xl hover:shadow-md transition-shadow group relative bg-white">
                         <div className="flex justify-between items-start mb-3">
                             <span className="font-bold text-slate-800 text-lg group-hover:text-slate-900 transition-colors">{role.name}</span>
@@ -156,8 +141,8 @@ export default function RolesPage() {
                         </div>
                     </div>
 
-                    <button className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">
-                        {editingRole ? 'Сохранить изменения' : 'Создать роль'}
+                    <button disabled={isSubmitting} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50">
+                        {isSubmitting ? 'Сохранение...' : (editingRole ? 'Сохранить изменения' : 'Создать роль')}
                     </button>
                 </form>
             </Modal>

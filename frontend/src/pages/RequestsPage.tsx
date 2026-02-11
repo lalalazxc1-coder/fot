@@ -1,52 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { api } from '../lib/api';
-import { Plus, Check, X, Clock, ArrowUpRight } from 'lucide-react';
+import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-
-// --- Types ---
-type Details = {
-    name: string;
-    position: string;
-    branch: string;
-    department: string;
-    date?: string; // For approver
-};
-
-type RequestRow = {
-    id: number;
-    employee_id: number;
-    employee_details: Details;
-    requester_details: Details;
-    approver_details?: Details; // Helper from API
-    type: 'raise' | 'bonus';
-    current_value: number;
-    requested_value: number;
-    reason: string;
-    status: 'pending' | 'approved' | 'rejected';
-    created_at: string;
-};
-
-type EmployeeSimple = {
-    id: number;
-    full_name: string;
-    position: string;
-    total: { net: number };
-};
-
-const formatMoney = (val: number) =>
-    new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'KZT', maximumFractionDigits: 0 }).format(val);
+import { Plus, Check, X, Clock, ArrowUpRight } from 'lucide-react';
+import { useRequests, useCreateRequest, useUpdateRequestStatus } from '../hooks/useRequests';
+import { useEmployees } from '../hooks/useEmployees';
+import { formatMoney } from '../utils';
 
 export default function RequestsPage() {
     const { user } = useOutletContext<{ user: any }>();
-    const [requests, setRequests] = useState<RequestRow[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // For specific viewing
+    // Hooks
+    const { data: requests = [], isLoading: isRequestsLoading } = useRequests();
+    const { data: employees = [], isLoading: isEmployeesLoading } = useEmployees();
+
+    const createMutation = useCreateRequest();
+    const statusMutation = useUpdateRequestStatus();
+
+    const loading = isRequestsLoading || isEmployeesLoading;
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'pending' | 'history'>('pending');
 
+    // Available employees for dropdown (Active only)
+    const availableEmployees = employees.filter(e => e.status !== 'Dismissed');
+
     // Form State
-    const [availableEmployees, setAvailableEmployees] = useState<EmployeeSimple[]>([]);
     const [formData, setFormData] = useState({
         employee_id: '',
         type: 'raise',
@@ -54,59 +31,31 @@ export default function RequestsPage() {
         reason: ''
     });
 
-    const loadData = async () => {
-        try {
-            const res = await api.get('/requests');
-            setRequests(res.data);
-
-            // Load employees for dropdown
-            const emps = await api.get('/employees');
-            setAvailableEmployees(emps.data.filter((e: any) => e.status !== 'Dismissed'));
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            const emp = availableEmployees.find(e => e.id === Number(formData.employee_id));
-            if (!emp) return;
+        const emp = availableEmployees.find(e => e.id === Number(formData.employee_id));
+        if (!emp) return;
 
-            // Calculate total requested value (Current + Increase)
-            const current = emp.total.net || 0;
-            const increase = Number(formData.increase_amount);
-            const requested = current + increase;
+        // Calculate total requested value
+        const current = emp.total.net || 0;
+        const increase = Number(formData.increase_amount);
+        const requested = current + increase;
 
-            await api.post('/requests', {
-                employee_id: Number(formData.employee_id),
-                type: formData.type,
-                current_value: current,
-                requested_value: requested,
-                reason: formData.reason
-            });
-            setIsModalOpen(false);
-            setFormData({ employee_id: '', type: 'raise', increase_amount: '', reason: '' });
-            loadData();
-        } catch (e) {
-            alert('Failed to create request');
-        }
+        await createMutation.mutateAsync({
+            employee_id: Number(formData.employee_id),
+            type: formData.type,
+            current_value: current,
+            requested_value: requested,
+            reason: formData.reason
+        });
+
+        setIsModalOpen(false);
+        setFormData({ employee_id: '', type: 'raise', increase_amount: '', reason: '' });
     };
 
     const handleStatus = async (id: number, status: 'approved' | 'rejected') => {
         if (!confirm(`Вы уверены, что хотите ${status === 'approved' ? 'одобрить' : 'отклонить'} заявку?`)) return;
-        try {
-            await api.patch(`/requests/${id}/status`, { status });
-            loadData();
-        } catch (e) {
-            alert('Error updating status');
-        }
+        await statusMutation.mutateAsync({ id, status });
     };
 
     const filteredRequests = requests.filter(r => {

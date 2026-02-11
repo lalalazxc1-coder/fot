@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Building, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Building, Plus, Trash2, Loader2 } from 'lucide-react';
 import Modal from '../../components/Modal';
-
-import { api } from '../../lib/api';
-
-type Branch = {
-    id: number;
-    name: string;
-    departments: { id: number; name: string }[];
-};
+import { useStructure, useCreateBranch, useCreateDepartment, useDeleteStructure } from '../../hooks/useStructure';
 
 export default function StructurePage() {
-    const [branches, setBranches] = useState<Branch[]>([]);
+    const { data: branches = [], isLoading } = useStructure();
+
+    const createBranchMutation = useCreateBranch();
+    const createDeptMutation = useCreateDepartment();
+    const deleteMutation = useDeleteStructure();
 
     // Modal State
     const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
@@ -21,20 +18,7 @@ export default function StructurePage() {
     const [newItemName, setNewItemName] = useState('');
     const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
 
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        fetchStructure();
-    }, []);
-
-    const fetchStructure = async () => {
-        try {
-            const data = await api.get('/structure');
-            setBranches(data.data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    const isSubmitting = createBranchMutation.isPending || createDeptMutation.isPending || deleteMutation.isPending;
 
     const openBranchModal = () => {
         setNewItemName('');
@@ -49,48 +33,30 @@ export default function StructurePage() {
 
     const handleAddBranch = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        try {
-            await api.post('/structure/branch', { name: newItemName, type: 'branch' });
-            setNewItemName('');
-            setIsBranchModalOpen(false);
-            fetchStructure();
-        } catch (e: any) {
-            alert(e.message);
-        } finally {
-            setLoading(false);
-        }
+        await createBranchMutation.mutateAsync(newItemName);
+        setNewItemName('');
+        setIsBranchModalOpen(false);
     };
 
     const handleAddDept = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedBranchId) return;
-        setLoading(true);
-        try {
-            await api.post('/structure/department', {
-                name: newItemName,
-                type: 'department',
-                parent_id: selectedBranchId
-            });
-            setNewItemName('');
-            setIsDeptModalOpen(false);
-            fetchStructure();
-        } catch (e: any) {
-            alert(e.message);
-        } finally {
-            setLoading(false);
-        }
+
+        await createDeptMutation.mutateAsync({ name: newItemName, parent_id: selectedBranchId });
+        setNewItemName('');
+        setIsDeptModalOpen(false);
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Удалить подразделение?")) return;
-        try {
-            await api.delete(`/structure/${id}`);
-            fetchStructure();
-        } catch (e: any) {
-            alert(e.message);
-        }
+        await deleteMutation.mutateAsync(id);
     };
+
+    if (isLoading) return (
+        <div className="h-64 flex justify-center items-center">
+            <Loader2 className="animate-spin w-8 h-8 text-slate-400" />
+        </div>
+    );
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-300">
@@ -157,8 +123,8 @@ export default function StructurePage() {
                         required
                         autoFocus
                     />
-                    <button disabled={loading} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        {loading ? 'Создание...' : 'Создать'}
+                    <button disabled={isSubmitting} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Создание...' : 'Создать'}
                     </button>
                 </form>
             </Modal>
@@ -176,8 +142,8 @@ export default function StructurePage() {
                         required
                         autoFocus
                     />
-                    <button disabled={loading} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        {loading ? 'Добавление...' : 'Добавить отдел'}
+                    <button disabled={isSubmitting} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Добавление...' : 'Добавить отдел'}
                     </button>
                 </form>
             </Modal>

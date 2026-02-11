@@ -2,12 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Button, Input } from '../ui-mocks';
 import Modal from '../Modal';
 import { MoneyInput } from '../shared';
-import { api } from '../../lib/api';
+import { useCreateEmployee } from '../../hooks/useEmployees';
 
 interface AddEmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: (newEmployee: any) => void;
     structure: any[];
     planningData: any[];
 }
@@ -15,10 +14,11 @@ interface AddEmployeeModalProps {
 export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     isOpen,
     onClose,
-    onSuccess,
     structure,
     planningData
 }) => {
+    const createMutation = useCreateEmployee();
+
     const [newEmployee, setNewEmployee] = useState({
         full_name: '',
         hire_date: new Date().toISOString().split('T')[0],
@@ -61,8 +61,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await api.post('/employees', newEmployee);
-            onSuccess(res);
+            await createMutation.mutateAsync(newEmployee);
             onClose();
             // Reset form
             setNewEmployee({
@@ -80,7 +79,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             });
         } catch (error) {
             console.error(error);
-            alert('Ошибка при создании сотрудника');
+            // Toast is handled in hook
         }
     };
 

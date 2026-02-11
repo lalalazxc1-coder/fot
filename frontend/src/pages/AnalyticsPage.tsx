@@ -1,39 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { Users, TrendingUp, Wallet, Target, AlertCircle, PieChart as PieIcon, Briefcase, RefreshCw } from 'lucide-react';
-import { api } from '../lib/api';
 import { formatMoney } from '../utils';
+import { useAnalytics, useRefreshAnalytics, BranchComparison } from '../hooks/useAnalytics';
 
-// --- Types ---
-type SummaryData = {
-    fact: { total_net: number; count: number };
-    plan: { total_net: number; count: number };
-    metrics: {
-        diff_net: number;
-        execution_percent: number;
-        headcount_diff: number;
-        is_over_budget: boolean;
-    };
-    cached_at: string;
-};
-
-type BranchComparison = {
-    id: number;
-    name: string;
-    plan: number;
-    fact: number;
-    diff: number;
-    percent: number;
-};
-
-type TopEmployee = {
-    id: number;
-    full_name: string;
-    position: string;
-    branch: string;
-    total_net: number;
-};
-
+// --- Colors ---
 const COLORS = [
     '#0f172a', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', // Slate
     '#0891b2', '#06b6d4', '#22d3ee', // Cyan
@@ -41,7 +12,7 @@ const COLORS = [
     '#7c3aed', '#8b5cf6', '#a78bfa', // Violet
 ];
 
-// --- Simple Table Component with Data Bars ---
+// --- Simple Table Component ---
 const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data }) => {
     const maxFact = Math.max(...data.map(d => d.fact), 1); // Avoid div by zero
 
@@ -129,77 +100,32 @@ const DashboardSkeleton = () => (
 
 // --- Main Component ---
 export default function AnalyticsPageOptimized() {
-    const [summary, setSummary] = useState<SummaryData | null>(null);
-    const [branchComparison, setBranchComparison] = useState<BranchComparison[]>([]);
-    const [topEmployees, setTopEmployees] = useState<TopEmployee[]>([]);
-    const [costDistribution, setCostDistribution] = useState<{ name: string; value: number }[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+    // Hooks
+    const {
+        summary: { data: summary, isLoading: isSummaryLoading },
+        branchComparison: { data: branchComparison = [] },
+        topEmployees: { data: topEmployees = [] },
+        costDistribution: { data: costDistribution = [] },
+        isLoading
+    } = useAnalytics();
+
+    const refreshMutation = useRefreshAnalytics();
+
+    // Chart animation state
     const [chartsReady, setChartsReady] = useState(false);
 
-    const loadData = useCallback(async () => {
-        try {
-            setLoading(true);
+    // Fake ease-in for charts
+    useState(() => {
+        setTimeout(() => setChartsReady(true), 100);
+    });
 
-            // Parallel loading of optimized endpoints
-            const [summaryRes, comparisonRes, topRes, distributionRes] = await Promise.all([
-                api.get('/analytics/summary'),
-                api.get('/analytics/branch-comparison'),
-                api.get('/analytics/top-employees?limit=5'),
-                api.get('/analytics/cost-distribution')
-            ]);
+    const handleRefresh = async () => {
+        await refreshMutation.mutateAsync();
+    };
 
-            setSummary(summaryRes.data);
-
-            // Helper to safely extract arrays
-            const getArray = (res: any) => {
-                if (Array.isArray(res.data)) return res.data;
-                if (res.data && Array.isArray(res.data.data)) return res.data.data;
-                return [];
-            };
-
-            // Sort comparison by Fact descending for better visual coherence
-            const comparisonData = getArray(comparisonRes);
-            const sortedComparison = comparisonData.sort((a: BranchComparison, b: BranchComparison) => b.fact - a.fact);
-            setBranchComparison(sortedComparison);
-
-            setTopEmployees(getArray(topRes));
-            setCostDistribution(getArray(distributionRes));
-
-            // Smoothly reveal charts after layout settlement
-            setTimeout(() => setChartsReady(true), 100);
-
-        } catch (e) {
-            console.error("Analytics fetch error:", e);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-
-    const handleRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await api.post('/analytics/clear-cache');
-        await loadData();
-    }, [loadData]);
-
-    // --- Optimization: Removed grouping to show all branches ---
-    const processedPieData = useMemo(() => {
-        if (!costDistribution || costDistribution.length === 0) return [];
-
-        // Sort by value descending and return all
-        return [...costDistribution].sort((a, b) => b.value - a.value);
-    }, [costDistribution]);
-
-    if (loading && !summary) {
+    if (isLoading || isSummaryLoading || !summary) {
         return <DashboardSkeleton />;
     }
-
-    if (!summary) return null;
 
     const { fact, plan, metrics } = summary;
 
@@ -218,10 +144,10 @@ export default function AnalyticsPageOptimized() {
                 </div>
                 <button
                     onClick={handleRefresh}
-                    disabled={refreshing}
+                    disabled={refreshMutation.isPending}
                     className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
-                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
                     Обновить
                 </button>
             </div>
@@ -357,7 +283,7 @@ export default function AnalyticsPageOptimized() {
                         <ResponsiveContainer width="99%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={processedPieData}
+                                    data={costDistribution}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
@@ -367,7 +293,7 @@ export default function AnalyticsPageOptimized() {
                                     animationDuration={1500}
                                     animationBegin={200}
                                 >
-                                    {processedPieData.map((_, index) => (
+                                    {costDistribution.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>

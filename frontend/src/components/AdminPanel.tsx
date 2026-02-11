@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Input, Select } from './ui-mocks';
-import { Trash2, Plus, Users, Building, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Building, Shield } from 'lucide-react';
 
 const API_URL = 'http://localhost:8000/api';
 

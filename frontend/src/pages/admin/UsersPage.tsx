@@ -1,28 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Trash2, Edit2, User as UserIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Trash2, Edit2, User as UserIcon, Loader2 } from 'lucide-react';
 import Modal from '../../components/Modal';
-
-import { api } from '../../lib/api';
-
-type User = {
-    id: number;
-    email: string;
-    role_name: string;
-    full_name: string;
-    role_id: number;
-    scope_branches?: number[];
-    scope_departments?: number[];
-    scope_unit_name?: string;
-};
-
-type Role = { id: number; name: string };
-type Department = { id: number; name: string };
-type Branch = { id: number; name: string; departments: Department[] };
+import { useUsers, useRoles, useCreateUser, useUpdateUser, useDeleteUser, User } from '../../hooks/useAdmin';
+import { useStructure } from '../../hooks/useStructure';
 
 export default function UsersPage() {
-    const [users, setUsers] = useState<User[]>([]);
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [structure, setStructure] = useState<Branch[]>([]);
+    const { data: users = [], isLoading: isUsersLoading } = useUsers();
+    const { data: roles = [], isLoading: isRolesLoading } = useRoles();
+    const { data: structure = [], isLoading: isStructureLoading } = useStructure();
+
+    const createUserMutation = useCreateUser();
+    const updateUserMutation = useUpdateUser();
+    const deleteUserMutation = useDeleteUser();
+
+    const isSubmitting = createUserMutation.isPending || updateUserMutation.isPending || deleteUserMutation.isPending;
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,25 +28,6 @@ export default function UsersPage() {
         scope_branches: [] as number[],
         scope_departments: [] as number[]
     });
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
-        try {
-            const [usersData, rolesData, structData] = await Promise.all([
-                api.get('/users'),
-                api.get('/roles'),
-                api.get('/structure')
-            ]);
-            setUsers(usersData.data);
-            setRoles(rolesData.data);
-            setStructure(structData.data);
-        } catch (e) {
-            console.error(e);
-        }
-    };
 
     const openCreateModal = () => {
         setEditingUser(null);
@@ -88,28 +60,18 @@ export default function UsersPage() {
             password: formData.password || undefined
         };
 
-        try {
-            if (editingUser) {
-                await api.put(`/users/${editingUser.id}`, payload);
-            } else {
-                if (!formData.password) return alert("Пароль обязателен");
-                await api.post('/users', payload);
-            }
-            setIsModalOpen(false);
-            fetchData();
-        } catch (e: any) {
-            alert(e.message);
+        if (editingUser) {
+            await updateUserMutation.mutateAsync({ id: editingUser.id, data: payload });
+        } else {
+            if (!formData.password) return alert("Пароль обязателен");
+            await createUserMutation.mutateAsync(payload);
         }
+        setIsModalOpen(false);
     };
 
     const handleDelete = async (id: number) => {
         if (!confirm("Удалить пользователя?")) return;
-        try {
-            await api.delete(`/users/${id}`);
-            fetchData();
-        } catch (e: any) {
-            alert(e.message);
-        }
+        await deleteUserMutation.mutateAsync(id);
     };
 
     const toggleBranch = (id: number) => {
@@ -143,54 +105,61 @@ export default function UsersPage() {
                     <p className="text-slate-500 text-sm mt-1 ml-14">Управление учетными записями</p>
                 </div>
                 <button
+                    disabled={isUsersLoading || isRolesLoading || isStructureLoading}
                     onClick={openCreateModal}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98]"
+                    className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50"
                 >
                     + Добавить пользователя
                 </button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-slate-200/60 shadow-sm">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50/80 border-b border-slate-100">
-                        <tr>
-                            <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Пользователь</th>
-                            <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider hidden sm:table-cell">Email</th>
-                            <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Роль</th>
-                            <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Доступ</th>
-                            <th className="px-6 py-4 text-right"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {users.map(u => (
-                            <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shadow-slate-900/10">
-                                            <UserIcon className="w-5 h-5" />
-                                        </div>
-                                        <span className="font-bold text-slate-900">{u.full_name}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-slate-600 hidden sm:table-cell font-medium">{u.email}</td>
-                                <td className="px-6 py-4">
-                                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">{u.role_name}</span>
-                                </td>
-                                <td className="px-6 py-4 text-slate-500 text-xs font-medium max-w-xs truncate" title={u.scope_unit_name}>
-                                    {u.scope_unit_name}
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => openEditModal(u)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
-                                        <button onClick={() => handleDelete(u.id)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
-                                    </div>
-                                </td>
+            {isUsersLoading ? (
+                <div className="flex justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+                </div>
+            ) : (
+                <div className="overflow-hidden rounded-2xl border border-slate-200/60 shadow-sm">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50/80 border-b border-slate-100">
+                            <tr>
+                                <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Пользователь</th>
+                                <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider hidden sm:table-cell">Email</th>
+                                <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Роль</th>
+                                <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Доступ</th>
+                                <th className="px-6 py-4 text-right"></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {users.length === 0 && <p className="text-center text-slate-400 py-10 font-medium">Нет пользователей</p>}
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {users.map(u => (
+                                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shadow-slate-900/10">
+                                                <UserIcon className="w-5 h-5" />
+                                            </div>
+                                            <span className="font-bold text-slate-900">{u.full_name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-600 hidden sm:table-cell font-medium">{u.email}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">{u.role_name}</span>
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-500 text-xs font-medium max-w-xs truncate" title={u.scope_unit_name}>
+                                        {u.scope_unit_name}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button onClick={() => openEditModal(u)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDelete(u.id)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {users.length === 0 && <p className="text-center text-slate-400 py-10 font-medium">Нет пользователей</p>}
+                </div>
+            )}
 
             {/* Modal */}
             <Modal
@@ -296,8 +265,8 @@ export default function UsersPage() {
                         )}
                     </div>
 
-                    <button className="w-full mt-6 bg-slate-900 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98]">
-                        {editingUser ? 'Сохранить изменения' : 'Создать пользователя'}
+                    <button disabled={isSubmitting} className="w-full mt-6 bg-slate-900 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Сохранение...' : (editingUser ? 'Сохранить изменения' : 'Создать пользователя')}
                     </button>
                 </form>
             </Modal>

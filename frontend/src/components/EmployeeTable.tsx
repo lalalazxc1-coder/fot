@@ -21,21 +21,26 @@ import {
   HistoryModal,
   usePayrollColumns,
   EmployeeRecord,
-  BranchStructure,
-  PlanRow,
   AuditLog
 } from './payroll';
 
 
 
-export default function PayrollTable({ user }: { onLogout: () => void, user: any }) {
-  const [data, setData] = useState<EmployeeRecord[]>([]);
-  const [structure, setStructure] = useState<BranchStructure[]>([]);
-  const [planningData, setPlanningData] = useState<PlanRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sorting, setSorting] = useState<SortingState>([]);
+import { useEmployees, useDismissEmployee } from '../hooks/useEmployees';
+import { useStructure } from '../hooks/useStructure';
+import { usePlanningData } from '../hooks/usePlanning';
 
-  // Tabs
+export default function EmployeeTable({ user }: { onLogout: () => void, user: any }) {
+  // Config
+  const { data: data = [], isLoading: isEmployeesLoading } = useEmployees();
+  const { data: structure = [] } = useStructure();
+  const { data: planningData = [] } = usePlanningData();
+
+  const dismissMutation = useDismissEmployee();
+
+  const loading = isEmployeesLoading;
+
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [activeTab, setActiveTab] = useState<'active' | 'dismissed'>('active');
 
   // Filters
@@ -47,36 +52,12 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
   const [visibleRows, setVisibleRows] = useState(20);
   const observerTarget = React.useRef<HTMLDivElement>(null);
 
-
   // Modal States
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRecord | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [empRes, structRes, planRes] = await Promise.all([
-        api.get('/employees'),
-        api.get('/structure'),
-        api.get('/planning')
-      ]);
-      setData(empRes.data);
-      setStructure(structRes.data);
-      setPlanningData(planRes.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const handleHistoryClick = async (e: React.MouseEvent, emp: EmployeeRecord) => {
     e.stopPropagation();
@@ -97,10 +78,7 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
 
   const handleDismiss = async (id: number) => {
     if (!confirm("Вы действительно хотите уволить этого сотрудника?")) return;
-    try {
-      await api.post(`/employees/${id}/dismiss`, {});
-      fetchData();
-    } catch (e: any) { alert(e.message); }
+    await dismissMutation.mutateAsync(id);
   };
 
   // --- Filtering Logic ---
@@ -172,7 +150,7 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
     activeTab: activeTab as 'active' | 'dismissed'
   });
 
-  const table = useReactTable({
+  const table = useReactTable<EmployeeRecord>({
     data: filteredData,
     columns,
     state: { sorting },
@@ -284,7 +262,6 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
       <AddEmployeeModal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        onSuccess={() => { fetchData(); }}
         structure={structure}
         planningData={planningData}
       />
@@ -293,7 +270,6 @@ export default function PayrollTable({ user }: { onLogout: () => void, user: any
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         employee={selectedEmployee}
-        onSuccess={() => { fetchData(); }}
         structure={structure}
         planningData={planningData}
       />

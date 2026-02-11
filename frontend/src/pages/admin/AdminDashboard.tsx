@@ -1,35 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
-import { Users, Building, Briefcase, Wallet } from 'lucide-react';
-
-type Stats = {
-    employees: number;
-    users: number;
-    branches: number;
-    budget: number;
-};
+import { useAdminStats } from '../../hooks/useAdmin';
+import { Users, Building, Briefcase, Wallet, Loader2 } from 'lucide-react';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { data: stats, isLoading, error } = useAdminStats();
 
-    useEffect(() => {
-        loadStats();
-    }, []);
+    if (isLoading) return (
+        <div className="h-64 flex justify-center items-center">
+            <Loader2 className="animate-spin w-8 h-8 text-slate-400" />
+        </div>
+    );
 
-    const loadStats = async () => {
-        try {
-            const data = await api.get('/admin/stats');
-            setStats(data.data);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading) return <div className="p-10 text-center text-slate-400">Загрузка статистики...</div>;
-    if (!stats) return <div className="p-10 text-center text-red-400">Ошибка загрузки данных</div>;
+    if (error || !stats) return <div className="p-10 text-center text-red-400">Ошибка загрузки данных</div>;
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

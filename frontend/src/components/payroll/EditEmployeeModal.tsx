@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Button, Input } from '../ui-mocks';
 import Modal from '../Modal';
 import { MoneyInput } from '../shared';
-import { api } from '../../lib/api';
+import { useUpdateEmployee } from '../../hooks/useEmployees';
 
 interface EditEmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
     employee: any;
-    onSuccess: (updatedEmployee: any) => void;
     structure: any[];
     planningData: any[];
 }
@@ -17,10 +16,10 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     isOpen,
     onClose,
     employee,
-    onSuccess,
     structure,
     planningData
 }) => {
+    const updateMutation = useUpdateEmployee();
     const [editDetails, setEditDetails] = useState<any>(null);
 
     // Initialize state when employee changes
@@ -73,14 +72,11 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.put(`/employees/${editDetails.id}`, editDetails);
-            // In real app, you might want to refetch or update optimistic
-            // Here we assume success and parent refetches or we pass back updated data
-            onSuccess(editDetails); // This might be raw data, parent might need to format
+            await updateMutation.mutateAsync({ id: editDetails.id, data: editDetails });
             onClose();
         } catch (error) {
             console.error(error);
-            alert('Ошибка при сохранении');
+            // Toast in hook
         }
     };
 

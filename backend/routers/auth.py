@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 from database.models import User
 from schemas import LoginRequest, LoginResponse
+from services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -11,49 +12,22 @@ from datetime import timedelta
 
 @router.post("/login", response_model=LoginResponse)
 def login(creds: LoginRequest, db: Session = Depends(get_db)):
-    # 1. Fetch User
-    user = db.query(User).filter_by(email=creds.username).first()
-    
-    if not user:
-        raise HTTPException(status_code=400, detail="User not found")
-        
-    # 2. Verify Password (supports both plaintext (legacy) and bcrypt hash)
-    is_valid = False
+    """
+    Login endpoint. Returns JWT token and user info.
+    """
+    # 1. Delegate Logic to Service
     try:
-        if verify_password(creds.password, user.hashed_password):
-            is_valid = True
-    except Exception:
-        # Fallback for legacy plain text passwords during migration
-        if user.hashed_password == creds.password:
-            is_valid = True
-
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Incorrect password")
-        
-    role_name = user.role_rel.name if user.role_rel else "No Role"
-    perms = user.role_rel.permissions if user.role_rel else {}
-    
-    # 3. Create Token
-    access_token_expires = timedelta(minutes=60*24) # 24 hours
-    access_token = create_access_token(
-        data={"sub": str(user.id)}, expires_delta=access_token_expires
-    )
-    
-    return {
-        "status": "ok", 
-        "user_id": user.id, 
-        "full_name": user.full_name, 
-        "role": role_name,
-        "permissions": perms,
-        "scope_branches": user.scope_branches or [],
-        "scope_departments": user.scope_departments or [],
-        "access_token": access_token
-    }
+        response = AuthService.login(db, creds.username, creds.password)
+        return response
+    except Exception as e:
+        # Re-raise HTTPException as is, or wrap generic
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=400, detail=str(e))
 
 # New endpoint for password change
 from schemas import ChangePasswordRequest
-from security import get_password_hash
 from dependencies import get_current_active_user
+from security import get_password_hash
 
 @router.post("/change-password")
 def change_password(
@@ -61,24 +35,11 @@ def change_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # 1. Verify old password
-    is_valid = False
-    try:
-        if verify_password(data.old_password, current_user.hashed_password):
-            is_valid = True
-    except Exception:
-        # Fallback for plain text
-        if current_user.hashed_password == data.old_password:
-            is_valid = True
-            
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Неверный старый пароль")
-
-    # 2. Update to new hash
-    current_user.hashed_password = get_password_hash(data.new_password)
-    db.commit()
-    
-    return {"status": "success", "message": "Пароль успешно изменен"}
+    """
+    Change password for the current user.
+    """
+    # Delegate logic to Service
+    return AuthService.change_password(db, current_user, data.old_password, data.new_password)
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_active_user)):

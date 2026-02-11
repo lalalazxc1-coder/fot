@@ -131,7 +131,7 @@ export const retryWithBackoff = async <T>(
             lastError = error;
 
             // Don't retry on client errors (4xx)
-            const status = error?.response?.status || 0;
+            const status = (error as any)?.response?.status || 0;
             if (status >= 400 && status < 500) {
                 throw error;
             }

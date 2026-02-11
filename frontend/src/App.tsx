@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import PayrollTable from './components/PayrollTable';
+import EmployeeTable from './components/EmployeeTable';
 import PlanningTable from './components/PlanningTable';
 import DashboardLayout from './components/DashboardLayout';
 import LoginPage from './pages/LoginPage';
@@ -113,7 +113,7 @@ function App() {
                     <Route path="/" element={<Navigate to="/analytics" replace />} />
                     <Route path="/analytics" element={<AnalyticsPage />} />
                     <Route path="/payroll" element={<PlanningTable user={user} />} />
-                    <Route path="/employees" element={<PayrollTable user={user} onLogout={handleLogout} />} />
+                    <Route path="/employees" element={<EmployeeTable user={user} onLogout={handleLogout} />} />
                     <Route path="/requests" element={<RequestsPage />} />
                     <Route path="/market" element={<MarketPage />} />
 

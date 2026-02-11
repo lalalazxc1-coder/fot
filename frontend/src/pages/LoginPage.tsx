@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Briefcase } from 'lucide-react';
-import { useLocation, Navigate } from 'react-router-dom';
 
 const API_URL = 'http://localhost:8000/api';
 

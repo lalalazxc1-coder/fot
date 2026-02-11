@@ -25,6 +25,7 @@ class UserCreate(BaseModel):
     full_name: str
     password: str
     role_id: int
+    # Optional scopes
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
 
@@ -70,6 +71,24 @@ class FinancialUpdate(BaseModel):
     
     bonus_net: Optional[float] = None
     bonus_gross: Optional[float] = None
+    
+class EmpDetailsUpdate(BaseModel):
+    full_name: str
+    position_title: str
+    branch_id: int | None = None
+    department_id: int | None = None
+
+class EmployeeUpdate(BaseModel):
+    full_name: str
+    branch_id: int
+    department_id: int | None = None
+    position_title: str
+    base_net: int = 0
+    base_gross: int = 0
+    kpi_net: int = 0
+    kpi_gross: int = 0
+    bonus_net: int = 0
+    bonus_gross: int = 0
     
 class ChangePasswordRequest(BaseModel):
     old_password: str
