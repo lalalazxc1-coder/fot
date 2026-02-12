@@ -4,10 +4,16 @@ import Modal from '../../components/Modal';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, Role } from '../../hooks/useAdmin';
 
 const PERMISSIONS_LIST = [
+    { key: 'admin_access', label: 'Полные административные права' },
     { key: 'add_employees', label: 'Добавление и редактирование сотрудников' },
     { key: 'manage_planning', label: 'Управление ФОТ (Планирование)' },
     { key: 'edit_financials', label: 'Редактирование финансовых данных (ЗП/KPI)' },
-    { key: 'admin_access', label: 'Полные административные права' },
+    { key: 'view_structure', label: 'Просмотр структуры компании' },
+    { key: 'edit_structure', label: 'Редактирование структуры (Филиалы/Отделы)' },
+    { key: 'view_positions', label: 'Просмотр справочника должностей' },
+    { key: 'edit_positions', label: 'Редактирование справочника должностей' },
+    { key: 'view_market', label: 'Просмотр аналитики рынка (HeadHunter)' },
+    { key: 'edit_market', label: 'Редактирование аналитики рынка (Добавление/Удаление)' },
 ];
 
 export default function RolesPage() {

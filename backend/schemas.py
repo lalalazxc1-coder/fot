@@ -104,14 +104,29 @@ class SalaryRequestCreate(BaseModel):
 class SalaryRequestUpdate(BaseModel):
     status: str # 'approved', 'rejected'
 
+class MarketEntryCreate(BaseModel):
+    market_id: int
+    company_name: str
+    salary: int
+
+class MarketEntryResponse(BaseModel):
+    id: int
+    market_id: int
+    company_name: str
+    salary: int
+    created_at: str
+
 class MarketDataCreate(BaseModel):
     position_title: str
-    min_salary: int
-    max_salary: int
-    median_salary: int
+    branch_id: int | None = None
+    # Optional initial value, but mostly 0 if using entries
+    min_salary: int = 0
+    max_salary: int = 0
+    median_salary: int = 0
     source: str | None = None
 
 class MarketDataUpdate(BaseModel):
+    branch_id: int | None = None
     min_salary: int | None = None
     max_salary: int | None = None
     median_salary: int | None = None
@@ -165,3 +180,50 @@ class CostDistributionItem(BaseModel):
 class CostDistributionResponse(BaseModel):
     data: List[CostDistributionItem]
     cached_at: str
+
+class PositionBase(BaseModel):
+    title: str
+    grade: int = 1
+
+class PositionCreate(PositionBase):
+    pass
+
+class PositionUpdate(PositionBase):
+    pass
+
+class PositionResponse(PositionBase):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+class ApprovalStepBase(BaseModel):
+    step_order: int
+    role_id: Optional[int] = None
+    user_id: Optional[int] = None # New!
+    label: str
+    is_final: bool = False
+    step_type: str = "approval" # 'approval', 'notification'
+    notify_on_completion: bool = False
+
+class ApprovalStepCreate(ApprovalStepBase):
+    pass
+
+class ApprovalStepResponse(ApprovalStepBase):
+    id: int
+    role_name: Optional[str] = None
+    user_name: Optional[str] = None # New!
+    
+    class Config:
+        from_attributes = True
+
+class RequestHistoryResponse(BaseModel):
+    id: int
+    step_label: Optional[str]
+    actor_name: str
+    action: str
+    comment: Optional[str]
+    created_at: str
+    
+    class Config:
+        from_attributes = True

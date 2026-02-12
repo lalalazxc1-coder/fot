@@ -1,4 +1,5 @@
 import sys
+# Trigger reload due to DB schema update
 import os
 
 # 1. Add current directory to path so python sees 'routers', 'database', etc.
@@ -16,7 +17,7 @@ from database import models # Ensure models are loaded
 Base.metadata.create_all(bind=engine)
 
 # 4. Import Routers
-from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics, salary
+from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics, salary, positions, workflow
 
 app = FastAPI(title="FOT System MVP")
 
@@ -49,7 +50,7 @@ routers = [
     auth.router, roles.router, users.router, structure.router, 
     employees.router, admin.router, planning.router, 
     requests.router, market.router, analytics.router,
-    salary.router
+    salary.router, positions.router, workflow.router
 ]
 
 for router in routers:

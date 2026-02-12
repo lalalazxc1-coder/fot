@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -137,19 +137,83 @@ class SalaryRequest(Base):
     employee = relationship("Employee")
     
     # Approval info
-    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Last approver or deprecated if using history
     approved_at = Column(String, nullable=True)
     approver = relationship("User", foreign_keys=[approver_id])
+    
+    # NEW: Workflow state
+    current_step_id = Column(Integer, ForeignKey("approval_steps.id"), nullable=True)
+    current_step = relationship("ApprovalStep")
+    history = relationship("RequestHistory", back_populates="request", order_by="RequestHistory.created_at")
+
+class ApprovalStep(Base):
+    __tablename__ = "approval_steps"
+    id = Column(Integer, primary_key=True, index=True)
+    step_order = Column(Integer, nullable=False) # 1, 2, 3...
+    role_id = Column(Integer, ForeignKey("roles.id"))
+    label = Column(String) # e.g. "HR Manager", "CEO"
+    is_final = Column(Boolean, default=False)
+    
+    # New fields for nuanced workflow
+    # is_approver removed in favor of step_type
+    
+    step_type = Column(String, default="approval") # 'approval', 'notification'
+    notify_on_completion = Column(Boolean, default=False) # If true, this role gets a notification when request is fully approved
+    
+    role = relationship("Role")
+    
+    # New: Bind to specific user instead of role
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) 
+    user = relationship("User")
+
+class RequestHistory(Base):
+    __tablename__ = "request_history"
+    id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Integer, ForeignKey("salary_requests.id"))
+    step_id = Column(Integer, ForeignKey("approval_steps.id"), nullable=True)
+    actor_id = Column(Integer, ForeignKey("users.id"))
+    action = Column(String) # 'created', 'approved', 'rejected'
+    comment = Column(String)
+    created_at = Column(String)
+    
+    request = relationship("SalaryRequest", back_populates="history")
+    actor = relationship("User")
+    step = relationship("ApprovalStep")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(String)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(String)
+    link = Column(String, nullable=True)
+    
+    user = relationship("User")
 
 class MarketData(Base):
     __tablename__ = "market_data"
     id = Column(Integer, primary_key=True, index=True)
-    position_title = Column(String, unique=True)
-    min_salary = Column(Integer)
-    max_salary = Column(Integer)
-    median_salary = Column(Integer)
-    source = Column(String)
+    position_title = Column(String) # Removed unique=True to allow same title in different branches
+    branch_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True) # New: Specific branch
+    min_salary = Column(Integer, default=0)
+    max_salary = Column(Integer, default=0)
+    median_salary = Column(Integer, default=0)
+    source = Column(String) # Generic source name or kept for legacy
     updated_at = Column(String)
+
+    branch = relationship("OrganizationUnit")
+    entries = relationship("MarketEntry", back_populates="market_data", cascade="all, delete-orphan")
+
+class MarketEntry(Base):
+    __tablename__ = "market_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    market_id = Column(Integer, ForeignKey("market_data.id"))
+    company_name = Column(String)
+    salary = Column(Integer)
+    created_at = Column(String)
+
+    market_data = relationship("MarketData", back_populates="entries")
 
 class SalaryConfiguration(Base):
     __tablename__ = "salary_config_2026"

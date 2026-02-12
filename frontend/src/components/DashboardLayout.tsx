@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Briefcase, Settings, LogOut, Key, Eye, EyeOff, User as UserIcon } from 'lucide-react';
+import { Briefcase, Settings, LogOut, Key, Eye, EyeOff, User as UserIcon, Shield, Bell } from 'lucide-react';
+import { useNotifications, useMarkNotificationRead } from '../hooks/useAdmin';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
 import { api } from '../lib/api';
@@ -36,6 +37,13 @@ const PasswordInput = ({ value, onChange, label, error, minLength }: any) => {
 export default function DashboardLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
     const navigate = useNavigate();
     const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
+    const canViewMarket = hasAdminAccess || user.permissions?.view_market;
+
+    const hasSettingsAccess = hasAdminAccess ||
+        user.permissions?.view_structure ||
+        user.permissions?.edit_structure ||
+        user.permissions?.view_positions ||
+        user.permissions?.edit_positions;
 
     const [isPassOpen, setIsPassOpen] = useState(false);
     const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });
@@ -47,6 +55,19 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         setError('');
         setSuccess('');
         setPassData({ old: '', new: '', confirm: '' });
+    };
+
+    // Notifications
+    const { data: notifications = [] } = useNotifications();
+    const markRead = useMarkNotificationRead();
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+    const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
+    const handleNotifClick = (n: any) => {
+        if (!n.is_read) markRead.mutate(n.id);
+        if (n.link) navigate(n.link);
+        setIsNotifOpen(false);
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
@@ -135,24 +156,78 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                             >
                                 Заявки
                             </NavLink>
-                            <NavLink
-                                to="/market"
-                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                Рынок
-                            </NavLink>
+                            {canViewMarket && (
+                                <NavLink
+                                    to="/market"
+                                    className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                                >
+                                    Рынок
+                                </NavLink>
+                            )}
                         </nav>
                     </div>
 
                     {/* Right: User Profile */}
                     <div className="flex items-center gap-4">
-                        {hasAdminAccess && (
+
+                        {/* Notify Bell */}
+                        <div className="relative">
                             <button
-                                onClick={() => navigate('/admin')}
-                                title="Панель администратора"
+                                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                className="p-2 text-slate-400 hover:text-slate-900 rounded-lg relative"
+                            >
+                                <Bell className="w-5 h-5" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                                )}
+                            </button>
+
+                            {isNotifOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                                        <span className="font-bold text-sm text-slate-700">Уведомления</span>
+                                        {unreadCount > 0 && <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md">{unreadCount} новых</span>}
+                                    </div>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                        {notifications.length === 0 ? (
+                                            <div className="p-8 text-center text-slate-400 text-sm">Нет уведомлений</div>
+                                        ) : (
+                                            notifications.map((n: any) => (
+                                                <div
+                                                    key={n.id}
+                                                    onClick={() => handleNotifClick(n)}
+                                                    className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
+                                                >
+                                                    <div className="text-sm text-slate-800">{n.message}</div>
+                                                    <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
+                                                        <span>{n.created_at}</span>
+                                                        {!n.is_read && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {hasSettingsAccess && (
+                            <button
+                                onClick={() => navigate('/settings')}
+                                title="Настройки компании"
                                 className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
                             >
                                 <Settings className="w-5 h-5" />
+                            </button>
+                        )}
+
+                        {hasAdminAccess && (
+                            <button
+                                onClick={() => navigate('/admin')}
+                                title="Панель администратора (Пользователи/Роли)"
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                                <Shield className="w-5 h-5" />
                             </button>
                         )}
 

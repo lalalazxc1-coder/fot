@@ -15,6 +15,9 @@ import RolesPage from './pages/admin/RolesPage';
 import UsersPage from './pages/admin/UsersPage';
 import StructurePage from './pages/admin/StructurePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import WorkflowPage from './pages/admin/WorkflowPage';
+import SettingsLayout from './pages/settings/SettingsLayout';
+import PositionsPage from './pages/settings/PositionsPage';
 
 type AuthUser = {
     id: number;
@@ -26,10 +29,32 @@ type AuthUser = {
     access_token?: string;
 };
 
-// Security Wrapper
+// Security Wrappers
 const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
     const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
     if (!hasAdminAccess) {
+        return <Navigate to="/" replace />;
+    }
+    return children;
+};
+
+const ProtectedSettingsRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' ||
+        user.permissions?.admin_access ||
+        user.permissions?.view_structure ||
+        user.permissions?.edit_structure ||
+        user.permissions?.view_positions ||
+        user.permissions?.edit_positions;
+
+    if (!hasAccess) {
+        return <Navigate to="/" replace />;
+    }
+    return children;
+};
+
+const ProtectedMarketRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_market;
+    if (!hasAccess) {
         return <Navigate to="/" replace />;
     }
     return children;
@@ -53,11 +78,8 @@ function App() {
 
                     // Fetch fresh data from server
                     try {
-                        // We need to import api first. I will add the import in a separate block or ensure it's there.
-                        // Assuming api is imported from './lib/api'
                         const response = await api.get('/auth/me');
                         const freshUser = response.data;
-
                         // Merge fresh data with existing token
                         const updatedUser = { ...freshUser, access_token: storedUser.access_token };
 
@@ -65,7 +87,6 @@ function App() {
                         localStorage.setItem('fot_user', JSON.stringify(updatedUser));
                     } catch (err) {
                         console.error("Failed to refresh user data from server", err);
-                        // Optional: if 401, logout? api.ts handles redirects usually.
                     }
 
                 } catch (e) {
@@ -115,9 +136,25 @@ function App() {
                     <Route path="/payroll" element={<PlanningTable user={user} />} />
                     <Route path="/employees" element={<EmployeeTable user={user} onLogout={handleLogout} />} />
                     <Route path="/requests" element={<RequestsPage />} />
-                    <Route path="/market" element={<MarketPage />} />
 
-                    {/* Nested Admin Routes - SECURED */}
+                    <Route path="/market" element={
+                        <ProtectedMarketRoute user={user}>
+                            <MarketPage />
+                        </ProtectedMarketRoute>
+                    } />
+
+                    {/* Settings Routes - Company config */}
+                    <Route path="/settings" element={
+                        <ProtectedSettingsRoute user={user}>
+                            <SettingsLayout />
+                        </ProtectedSettingsRoute>
+                    }>
+                        <Route index element={<Navigate to="structure" replace />} />
+                        <Route path="structure" element={<StructurePage />} />
+                        <Route path="positions" element={<PositionsPage />} />
+                    </Route>
+
+                    {/* Admin Routes - System config */}
                     <Route path="/admin" element={
                         <ProtectedAdminRoute user={user}>
                             <AdminLayout />
@@ -126,7 +163,7 @@ function App() {
                         <Route index element={<AdminDashboard />} />
                         <Route path="roles" element={<RolesPage />} />
                         <Route path="users" element={<UsersPage />} />
-                        <Route path="structure" element={<StructurePage />} />
+                        <Route path="workflow" element={<WorkflowPage />} />
                     </Route>
                 </Route>
             ) : (

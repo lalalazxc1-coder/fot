@@ -56,6 +56,7 @@ export default function PlanningTable({ user }: { user: any }) {
 
     // Permissions
     const canManage = user.role === 'Administrator' || user.permissions?.manage_planning || user.permissions?.admin_access;
+    const canEditFinancials = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.edit_financials;
 
     // Filter Logic
     const filteredData = useMemo(() => {
@@ -208,6 +209,7 @@ export default function PlanningTable({ user }: { user: any }) {
                 initialData={editingRow}
                 onSave={handleSave}
                 structure={structure}
+                canEditFinancials={canEditFinancials}
             />
 
             <PlanningHistory

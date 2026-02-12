@@ -25,16 +25,16 @@ export default function AdminLayout() {
                         Роли
                     </NavLink>
                     <NavLink
-                        to="/admin/structure"
-                        className={({ isActive }) => `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'}`}
-                    >
-                        Структура / Филиалы
-                    </NavLink>
-                    <NavLink
                         to="/admin/users"
                         className={({ isActive }) => `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'}`}
                     >
                         Пользователи
+                    </NavLink>
+                    <NavLink
+                        to="/admin/workflow"
+                        className={({ isActive }) => `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+                    >
+                        Цепочка согласования
                     </NavLink>
                 </div>
             </div>

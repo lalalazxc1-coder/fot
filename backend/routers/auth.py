@@ -55,3 +55,21 @@ def get_me(current_user: User = Depends(get_current_active_user)):
         "scope_branches": current_user.scope_branches or [],
         "scope_departments": current_user.scope_departments or []
     }
+
+@router.get("/notifications")
+def get_notifications(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    from database.models import Notification
+    # Get all unread + last 5 read
+    unread = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read == False).order_by(Notification.id.desc()).all()
+    read = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read == True).order_by(Notification.id.desc()).limit(5).all()
+    return unread + read
+
+@router.patch("/notifications/{id}/read")
+def mark_read(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    from database.models import Notification
+    note = db.query(Notification).get(id)
+    if not note or note.user_id != current_user.id:
+        raise HTTPException(404, "Notification not found")
+    note.is_read = True
+    db.commit()
+    return {"status": "ok"}

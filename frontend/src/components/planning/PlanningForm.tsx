@@ -8,6 +8,7 @@ import { MoneyInput } from '../shared';
 import { calculateTaxes, solveGrossFromNet, DEFAULT_CONFIG, SalaryConfig } from '../../utils/salary';
 import { PlanRow } from '../../hooks/usePlanning';
 import { StructureItem } from '../../hooks/useStructure';
+import { usePositions } from '../../hooks/usePositions';
 import { api } from '../../lib/api';
 
 type PlanningFormProps = {
@@ -16,9 +17,12 @@ type PlanningFormProps = {
     initialData: PlanRow | null;
     onSave: (data: any) => Promise<void>;
     structure: StructureItem[];
+    canEditFinancials?: boolean;
 };
 
-export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, initialData, onSave, structure }) => {
+export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, initialData, onSave, structure, canEditFinancials = false }) => {
+    const { data: positions = [] } = usePositions();
+
     const [editingRow, setEditingRow] = useState<PlanRow | null>(null);
     const [useAutoCalc, setUseAutoCalc] = useState(true);
     const [applyDeduction, setApplyDeduction] = useState(true);
@@ -78,8 +82,24 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
         <Modal isOpen={isOpen} onClose={onClose} title={editingRow.id === 0 ? "Новая позиция" : "Редактирование позиции"}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-sm font-bold text-slate-700">Должность</label>
-                        <Input required value={editingRow.position} onChange={e => setEditingRow({ ...editingRow, position: e.target.value })} /></div>
+                    <div>
+                        <label className="text-sm font-bold text-slate-700">Должность</label>
+                        <select
+                            required
+                            className="input-base w-full h-10 rounded-lg border-slate-200 bg-white"
+                            value={editingRow.position}
+                            onChange={e => setEditingRow({ ...editingRow, position: e.target.value })}
+                        >
+                            <option value="">Выберите должность</option>
+                            {positions.map(p => (
+                                <option key={p.id} value={p.title}>{p.title}</option>
+                            ))}
+                            {/* If current position is not in list (legacy data), show it */}
+                            {editingRow.position && !positions.find(p => p.title === editingRow.position) && (
+                                <option value={editingRow.position}>{editingRow.position}</option>
+                            )}
+                        </select>
+                    </div>
                     <div><label className="text-sm font-bold text-slate-700">Кол-во</label>
                         <Input required type="number" min="1" value={editingRow.count} onChange={e => setEditingRow({ ...editingRow, count: parseInt(e.target.value) || 0 })} /></div>
                 </div>
@@ -106,7 +126,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                 <div><label className="text-sm font-bold text-slate-700">График</label>
                     <Input required value={editingRow.schedule || ''} onChange={e => setEditingRow({ ...editingRow, schedule: e.target.value })} placeholder="5/2" /></div>
 
-                <div className="bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100">
+                <div className={`bg-slate-50 p-4 rounded-xl space-y-4 border border-slate-100 ${!canEditFinancials ? 'opacity-75 pointer-events-none grayscale' : ''}`}>
                     <div className="flex justify-between items-center px-1">
                         <label className="flex items-center gap-2 cursor-pointer group">
                             <input
@@ -114,6 +134,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                                 checked={useAutoCalc}
                                 onChange={e => setUseAutoCalc(e.target.checked)}
                                 className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                                disabled={!canEditFinancials}
                             />
                             <span className="text-xs font-bold text-slate-500 group-hover:text-slate-700 transition-colors">Авто-расчет (Net ↔ Gross)</span>
                         </label>
@@ -126,6 +147,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                                         checked={applyDeduction}
                                         onChange={e => setApplyDeduction(e.target.checked)}
                                         className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer"
+                                        disabled={!canEditFinancials}
                                     />
                                     <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
                                         Вычет (14 МРП)
@@ -150,11 +172,13 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                                 className="bg-white"
                                 value={(editingRow as any)[group.net]}
                                 onChange={val => handleMoneyChange(group.net, val, group.gross)}
+                                disabled={!canEditFinancials}
                             />
                             <MoneyInput
                                 className="bg-white"
                                 value={(editingRow as any)[group.gross]}
                                 onChange={val => handleMoneyChange(group.gross, val, group.net)}
+                                disabled={!canEditFinancials}
                             />
                         </div>
                     ))}

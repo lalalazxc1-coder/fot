@@ -82,3 +82,51 @@ export function useBulkCreateMarketEntry() {
         }
     });
 }
+
+// Entries hooks
+export function useMarketEntries(marketId: number) {
+    return useQuery({
+        queryKey: ['market-entries', marketId],
+        queryFn: async () => {
+            if (!marketId) return [];
+            const res = await api.get(`/market/${marketId}/entries`);
+            return res.data;
+        },
+        enabled: !!marketId
+    });
+}
+
+export function useCreateMarketEntryPoint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: { market_id: number, company_name: string, salary: number }) => {
+            const res = await api.post('/market/entries', data);
+            return res.data;
+        },
+        onSuccess: (_data, variables) => {
+            toast.success("Запись добавлена");
+            queryClient.invalidateQueries({ queryKey: ['market-entries', variables.market_id] });
+            queryClient.invalidateQueries({ queryKey: ['market'] }); // Update main stats
+        },
+        onError: (err: any) => {
+            toast.error("Ошибка добавления: " + (err.response?.data?.detail || err.message));
+        }
+    });
+}
+
+export function useDeleteMarketEntryPoint() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id }: { id: number, marketId: number }) => {
+            await api.delete(`/market/entries/${id}`);
+        },
+        onSuccess: (_data, variables) => {
+            toast.success("Запись удалена");
+            queryClient.invalidateQueries({ queryKey: ['market-entries', variables.marketId] });
+            queryClient.invalidateQueries({ queryKey: ['market'] }); // Update main stats
+        },
+        onError: (err: any) => {
+            toast.error("Ошибка удаления: " + (err.response?.data?.detail || err.message));
+        }
+    });
+}

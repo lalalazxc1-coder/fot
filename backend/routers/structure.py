@@ -4,34 +4,40 @@ from database.database import get_db
 from database.models import OrganizationUnit, Employee, User
 from schemas import OrgUnitCreate
 
-from dependencies import require_admin, get_current_active_user
+from dependencies import get_current_active_user, PermissionChecker
 
 router = APIRouter(prefix="/api/structure", tags=["structure"])
 
 @router.get("")
 def get_structure(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    # Check permission (view_structure OR admin_access)
+    is_admin = False
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    
+    if current_user.role_rel and current_user.role_rel.name == 'Administrator': is_admin = True
+    if perms.get('admin_access'): is_admin = True
+    if perms.get('view_structure'): is_admin = True # Allow view access
+    
+    # If no view permission at all, return empty or error?
+    # Let's assume basic employees can SEE structure (it's often public info).
+    # But if we want restriction, uncomment below:
+    # if not is_admin and not perms.get('view_structure'): raise HTTPException(403, "Access Denied")
+
     branches = db.query(OrganizationUnit).filter_by(type="branch").all()
     
-    # 1. No Restrictions if Admin or no scope
-    is_admin = False
-    if current_user.role_rel:
-        if current_user.role_rel.name == 'Administrator': is_admin = True
-        if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+    # ... (rest of logic for scope filtering remains same) ...
+    # Simplified for brevity in this replace, keeping Logic from lines 21-64
     
     if is_admin or not current_user.scope_branches:
         pass 
     else:
-        # Filter Branches (safe cast)
         allowed_bids = set()
         for x in current_user.scope_branches:
             try: allowed_bids.add(int(x))
             except: pass
-            
         branches = [b for b in branches if b.id in allowed_bids]
         
     result = []
-    
-    # Pre-fetch user department scope for faster lookup
     user_dept_ids = set()
     if current_user.scope_departments:
          for x in current_user.scope_departments:
@@ -40,11 +46,6 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
 
     for b in branches:
         all_depts = db.query(OrganizationUnit).filter_by(parent_id=b.id, type="department").all()
-        
-        # Determine which departments to show
-        # Logic: If user has specific departments for THIS branch in scope, show only them. 
-        # If no departments for this branch in scope, show ALL (assuming "Branch Access" implies full access unless refined).
-        
         dept_ids_in_branch = {d.id for d in all_depts}
         intersection = user_dept_ids.intersection(dept_ids_in_branch)
         
@@ -53,7 +54,7 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
         elif intersection:
             visible_depts = [d for d in all_depts if d.id in intersection]
         else:
-            visible_depts = all_depts # Show all if none specifically restricted
+            visible_depts = all_depts
             
         result.append({
             "id": b.id,
@@ -63,30 +64,29 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
             
     return result
 
-@router.post("/branch")
-def create_branch(item: OrgUnitCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+@router.post("/branch", dependencies=[Depends(PermissionChecker('edit_structure'))])
+def create_branch(item: OrgUnitCreate, db: Session = Depends(get_db)):
     org = OrganizationUnit(name=item.name, type="branch")
     db.add(org)
     db.commit()
+    db.refresh(org)
     return {"status": "ok", "id": org.id}
 
-@router.post("/department")
-def create_department(item: OrgUnitCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+@router.post("/department", dependencies=[Depends(PermissionChecker('edit_structure'))])
+def create_department(item: OrgUnitCreate, db: Session = Depends(get_db)):
     org = OrganizationUnit(name=item.name, type="department", parent_id=item.parent_id)
     db.add(org)
     db.commit()
     return {"status": "ok", "id": org.id}
 
-@router.delete("/{id}")
-def delete_unit(id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+@router.delete("/{id}", dependencies=[Depends(PermissionChecker('edit_structure'))])
+def delete_unit(id: int, db: Session = Depends(get_db)):
     unit = db.query(OrganizationUnit).get(id)
     if not unit: raise HTTPException(404, "Unit not found")
     
-    # Check if has children (for branches)
     children = db.query(OrganizationUnit).filter_by(parent_id=id).first()
     if children: raise HTTPException(400, "Cannot delete branch with departments")
 
-    # Check if employees assigned
     emps = db.query(Employee).filter_by(org_unit_id=id).first()
     if emps: raise HTTPException(400, "Cannot delete unit with assigned employees")
 

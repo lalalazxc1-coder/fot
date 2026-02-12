@@ -11,6 +11,15 @@ export type Details = {
     date?: string; // For approver
 };
 
+export type HistoryItem = {
+    id: number;
+    step_label: string | null;
+    actor_name: string;
+    action: string;
+    comment: string | null;
+    created_at: string;
+};
+
 export type RequestRow = {
     id: number;
     employee_id: number;
@@ -23,6 +32,12 @@ export type RequestRow = {
     reason: string;
     status: 'pending' | 'approved' | 'rejected';
     created_at: string;
+
+    // Workflow
+    current_step_label: string;
+    current_step_type: 'approval' | 'notification';
+    can_approve: boolean;
+    history: HistoryItem[];
 };
 
 // --- Hooks ---

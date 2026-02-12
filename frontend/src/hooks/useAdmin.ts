@@ -27,6 +27,15 @@ export type AdminStats = {
     budget: number;
 };
 
+export type Notification = {
+    id: number;
+    user_id: number;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+    link?: string;
+};
+
 // --- Hooks ---
 
 export function useAdminStats() {
@@ -157,6 +166,30 @@ export function useDeleteRole() {
         },
         onError: (err: any) => {
             toast.error("Ошибка при удалении роли: " + (err.response?.data?.detail || err.message));
+        }
+    });
+}
+
+// Notifications
+export function useNotifications() {
+    return useQuery({
+        queryKey: ['notifications'],
+        queryFn: async () => {
+            const res = await api.get('/auth/notifications');
+            return res.data as Notification[];
+        },
+        refetchInterval: 30000 // Poll every 30s
+    });
+}
+
+export function useMarkNotificationRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            await api.patch(`/auth/notifications/${id}/read`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         }
     });
 }
