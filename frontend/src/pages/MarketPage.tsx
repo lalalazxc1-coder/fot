@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { PageHeader } from '../components/shared';
 import { useOutletContext } from 'react-router-dom';
 import { Plus, Trash2, Search, TrendingUp, BarChart2, Globe, Users, Loader2, UploadCloud, Building2, Calculator, X, HelpCircle } from 'lucide-react';
 import {
@@ -343,19 +344,19 @@ export default function MarketPage() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-            <div>
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Анализ рынка</h1>
+            <PageHeader
+                title="Анализ рынка"
+                subtitle="Сравнение зарплатных предложений с рыночными показателями"
+                extra={
                     <button
                         onClick={() => setIsInfoOpen(true)}
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                        title="Как это работает?"
+                        className="mt-2 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
                     >
-                        <HelpCircle className="w-6 h-6" />
+                        <HelpCircle className="w-5 h-5" />
+                        Как это работает?
                     </button>
-                </div>
-                <p className="text-slate-500 mt-2 text-lg">Сравнение зарплатных предложений с рыночными показателями</p>
-            </div>
+                }
+            />
 
             {/* Stats / Intro */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

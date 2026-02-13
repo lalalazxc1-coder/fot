@@ -1,15 +1,13 @@
 import { Outlet, NavLink } from 'react-router-dom';
+import { PageHeader } from '../../components/shared';
 
 export default function AdminLayout() {
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Административная панель</h1>
-                    <p className="text-slate-500">Настройки системы и доступов</p>
-                </div>
-
-                {/* Tabs */}
+            <PageHeader
+                title="Административная панель"
+                subtitle="Настройки системы и доступов"
+            >
                 <div className="flex p-1 bg-slate-200/50 rounded-xl overflow-x-auto">
                     <NavLink
                         to="/admin"
@@ -37,7 +35,7 @@ export default function AdminLayout() {
                         Цепочка согласования
                     </NavLink>
                 </div>
-            </div>
+            </PageHeader>
 
             <div className="mt-6">
                 <Outlet />

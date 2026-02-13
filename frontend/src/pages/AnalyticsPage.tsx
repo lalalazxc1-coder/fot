@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { Users, TrendingUp, Wallet, Target, AlertCircle, PieChart as PieIcon, Briefcase, RefreshCw } from 'lucide-react';
+import { PageHeader } from '../components/shared';
 import { formatMoney } from '../utils';
 import { useAnalytics, useRefreshAnalytics, BranchComparison } from '../hooks/useAnalytics';
 
@@ -127,30 +128,29 @@ export default function AnalyticsPageOptimized() {
         return <DashboardSkeleton />;
     }
 
+
     const { fact, plan, metrics } = summary;
 
     return (
         <div className="space-y-8 pb-10">
-            {/* Page Header */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Аналитика ФОТ</h1>
-                    <p className="text-slate-500 mt-2 text-lg">Комплексный обзор расходов и показателей эффективности</p>
-                    {summary.cached_at && (
-                        <p className="text-xs text-slate-400 mt-1">
-                            Обновлено: {new Date(summary.cached_at).toLocaleString('ru-RU')}
-                        </p>
-                    )}
-                </div>
+            <PageHeader
+                title="Аналитика ФОТ"
+                subtitle="Комплексный обзор расходов и показателей эффективности"
+                extra={summary.cached_at && (
+                    <p className="text-xs text-slate-400 mt-2 italic shadow-sm bg-slate-50 inline-block px-2 py-1 rounded">
+                        Обновлено: {new Date(summary.cached_at).toLocaleString('ru-RU')}
+                    </p>
+                )}
+            >
                 <button
                     onClick={handleRefresh}
                     disabled={refreshMutation.isPending}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 whitespace-nowrap shadow-lg shadow-slate-900/10"
                 >
                     <RefreshCw className={`w-4 h-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
                     Обновить
                 </button>
-            </div>
+            </PageHeader>
 
             {/* KPI Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

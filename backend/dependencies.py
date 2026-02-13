@@ -37,10 +37,6 @@ def require_admin(user: User = Depends(get_current_active_user)):
     # Check for Administrator role OR 'admin_access' permission
     is_admin = False
     
-    # Check Role Name
-    if user.role_rel and user.role_rel.name == "Administrator":
-        is_admin = True
-        
     # Check Permission key
     if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
         is_admin = True
@@ -54,10 +50,6 @@ class PermissionChecker:
         self.permission_key = permission_key
 
     def __call__(self, user: User = Depends(get_current_active_user)):
-        # Check for Administrator role
-        if user.role_rel and user.role_rel.name == "Administrator":
-            return True
-            
         # Check for 'admin_access' (Super Admin)
         perms = user.role_rel.permissions if user.role_rel else {}
         if perms.get('admin_access'):
@@ -76,9 +68,8 @@ def get_user_scope(db: Session = Depends(get_db), user: User = Depends(get_curre
     """
     # 1. Check Admin / Super Admin
     is_super = False
-    if user.role_rel:
-        if user.role_rel.name == 'Administrator': is_super = True
-        if user.role_rel.permissions.get('admin_access'): is_super = True
+    if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
+        is_super = True
     
     if is_super:
         return None # All access
@@ -86,9 +77,10 @@ def get_user_scope(db: Session = Depends(get_db), user: User = Depends(get_curre
     # 2. Calculate Scope
     allowed_ids = []
     
-    # If no scope defined, return empty list (No access)
+    # If no scope defined, return None (Full access)
+    # Logic: No restriction = access to everything
     if not user.scope_branches and not user.scope_departments:
-        return []
+        return None
 
     # Ensure we have a set of ints for departments
     user_dept_ids = set()

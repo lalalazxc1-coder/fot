@@ -14,7 +14,6 @@ def get_positions(db: Session = Depends(get_db), current_user: User = Depends(ge
     # Check view permission
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     has_access = (
-        current_user.role_rel.name == 'Administrator' or 
         perms.get('admin_access') or 
         perms.get('view_positions') or
         perms.get('edit_positions') # Edit implies view

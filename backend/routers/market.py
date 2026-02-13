@@ -52,7 +52,6 @@ def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(
     # Check View Permission
     has_perm = False
     if current_user.role_rel:
-        if current_user.role_rel.name == 'Administrator': has_perm = True
         permissions = current_user.role_rel.permissions or {}
         if permissions.get('admin_access') or permissions.get('view_market') or permissions.get('edit_market'): has_perm = True
     

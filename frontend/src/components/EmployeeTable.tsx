@@ -8,9 +8,11 @@ import {
   getSortedRowModel,
   SortingState,
 } from '@tanstack/react-table';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Download, HelpCircle } from 'lucide-react';
+import { PageHeader } from './shared';
 import { Button } from './ui-mocks';
 import { api } from '../lib/api';
+import Modal from './Modal';
 
 import {
   EmployeeStats,
@@ -58,6 +60,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const handleHistoryClick = async (e: React.MouseEvent, emp: EmployeeRecord) => {
     e.stopPropagation();
@@ -164,19 +167,24 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
 
   return (
     <div className="space-y-6">
-      {/* Header and Filters */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Список сотрудников</h1>
-          <p className="text-slate-500 mt-1">Реестр сотрудников и начислений</p>
-        </div>
-        <div className="flex gap-4">
-          <EmployeeStats
-            totalNet={filteredData.reduce((acc, curr) => acc + curr.total.net, 0)}
-            totalGross={filteredData.reduce((acc, curr) => acc + curr.total.gross, 0)}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title="Список сотрудников"
+        subtitle="Реестр сотрудников и начислений"
+        extra={
+          <button
+            onClick={() => setIsHelpOpen(true)}
+            className="mt-2 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
+          >
+            <HelpCircle className="w-5 h-5" />
+            Как это работает?
+          </button>
+        }
+      >
+        <EmployeeStats
+          totalNet={filteredData.reduce((acc, curr) => acc + curr.total.net, 0)}
+          totalGross={filteredData.reduce((acc, curr) => acc + curr.total.gross, 0)}
+        />
+      </PageHeader>
 
       {/* Tabs */}
       <EmployeeTabs
@@ -194,6 +202,45 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         onDepartmentFilterChange={setDepartmentFilter}
         structure={structure}
       >
+        <Button
+          onClick={async () => {
+            try {
+              const userStr = localStorage.getItem('fot_user');
+              if (!userStr) {
+                alert('Не авторизован');
+                return;
+              }
+              const user = JSON.parse(userStr);
+              const token = user.access_token;
+              if (!token) {
+                alert('Токен не найден');
+                return;
+              }
+              const response = await fetch('/api/employees/export', {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              if (!response.ok) throw new Error('Export failed');
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Employees_${new Date().toISOString().slice(0, 10)}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            } catch (error) {
+              alert('Ошибка при экспорте');
+            }
+          }}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 active:scale-[0.98] transition-all rounded-xl py-2.5 px-4 font-semibold mr-2"
+          title="Экспорт в Excel"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Экспорт
+        </Button>
         {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
           <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold" onClick={() => setIsAddOpen(true)}>
             <Plus className="w-4 h-4 mr-2" /> Добавить сотрудника
@@ -279,6 +326,68 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         onClose={() => setIsHistoryOpen(false)}
         logs={auditLogs}
       />
+
+      {/* Help Modal */}
+      <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работает управление сотрудниками?">
+        <div className="space-y-6 text-sm text-slate-600">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <p className="mb-2">
+              <span className="font-bold text-slate-900">Реестр сотрудников</span> — это центральная база данных о всех сотрудниках компании.
+            </p>
+            <p>
+              Здесь вы фиксируете фактически нанятых людей и отслеживаете их финансовые условия.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-bold text-slate-900">Основные функции</h4>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>
+                <span className="font-medium text-slate-900">Добавление сотрудников:</span> При добавлении вы можете выбрать позицию из плана ФОТ, и зарплатные данные заполнятся автоматически.
+              </li>
+              <li>
+                <span className="font-medium text-slate-900">Просмотр данных:</span> Здесь отображаются текущие финансовые условия всех сотрудников.
+              </li>
+              <li>
+                <span className="font-medium text-slate-900">История изменений:</span> Нажмите на иконку истории, чтобы увидеть все изменения зарплаты и статуса.
+              </li>
+              <li>
+                <span className="font-medium text-slate-900">Увольнение:</span> При увольнении сотрудник не удаляется, а переходит в статус "Уволен" и доступен на соответствующей вкладке.
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+            <div className="font-bold text-amber-900 mb-1 flex items-center gap-2">
+              ⚠️ Важно
+            </div>
+            <div className="text-amber-800 text-xs space-y-2">
+              <p>
+                Изменения условий оплаты происходят только через вкладку <span className="font-bold">"Фонд оплаты труда"</span>.
+              </p>
+              <p>
+                Изменения автоматически применяются к связанным сотрудникам. Если по какой-то причине данные не обновились, вы можете вручную подтянуть актуальную информацию в настройках сотрудника.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-bold text-slate-900">Фильтры и поиск</h4>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>Используйте поиск по имени или должности</li>
+              <li>Фильтруйте по филиалу и отделу</li>
+              <li>Переключайтесь между активными и уволенными сотрудниками</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
+            <div className="font-bold mb-1">Совет:</div>
+            <div>
+              Для контроля бюджета сравнивайте общий ФОТ сотрудников с плановым ФОТ на странице Аналитики.
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

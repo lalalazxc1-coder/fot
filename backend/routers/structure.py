@@ -14,7 +14,6 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
     is_admin = False
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     
-    if current_user.role_rel and current_user.role_rel.name == 'Administrator': is_admin = True
     if perms.get('admin_access'): is_admin = True
     if perms.get('view_structure'): is_admin = True # Allow view access
     

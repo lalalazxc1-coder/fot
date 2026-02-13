@@ -21,10 +21,27 @@ export type Role = {
 };
 
 export type AdminStats = {
-    employees: number;
-    users: number;
-    branches: number;
-    budget: number;
+    counts: {
+        employees: number;
+        users: number;
+        branches: number;
+        pending_requests: number;
+    };
+    budget: {
+        total: number;
+        avg: number;
+    };
+    activity: {
+        id: number;
+        user: string;
+        action: string;
+        entity: string;
+        time: string;
+    }[];
+    charts: {
+        requests: { labels: string[]; data: number[] };
+        roles: { labels: string[]; data: number[] };
+    };
 };
 
 export type Notification = {
@@ -178,7 +195,7 @@ export function useNotifications() {
             const res = await api.get('/auth/notifications');
             return res.data as Notification[];
         },
-        refetchInterval: 30000 // Poll every 30s
+        refetchInterval: 5000 // Poll every 5s for better responsiveness
     });
 }
 
@@ -187,6 +204,30 @@ export function useMarkNotificationRead() {
     return useMutation({
         mutationFn: async (id: number) => {
             await api.patch(`/auth/notifications/${id}/read`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        }
+    });
+}
+
+export function useMarkAllNotificationsRead() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            await api.post('/auth/notifications/read-all');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        }
+    });
+}
+
+export function useDeleteAllNotifications() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async () => {
+            await api.delete('/auth/notifications');
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });

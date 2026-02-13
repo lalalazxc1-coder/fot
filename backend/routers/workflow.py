@@ -19,7 +19,8 @@ def get_approval_steps(db: Session = Depends(get_db)):
 @router.post("/steps")
 def create_approval_step(step: ApprovalStepCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # Check admin
-    if current_user.role_rel.name != "Administrator":
+    # Check admin
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"):
         raise HTTPException(403, "Only Admin")
     
     # Validate either role or user
@@ -42,7 +43,7 @@ def create_approval_step(step: ApprovalStepCreate, db: Session = Depends(get_db)
 
 @router.put("/steps/{id}")
 def update_approval_step(id: int, step: ApprovalStepCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    if current_user.role_rel.name != "Administrator": raise HTTPException(403, "Only Admin")
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): raise HTTPException(403, "Only Admin")
     
     existing = db.query(ApprovalStep).get(id)
     if not existing: raise HTTPException(404, "Step not found")
@@ -60,7 +61,7 @@ def update_approval_step(id: int, step: ApprovalStepCreate, db: Session = Depend
 
 @router.delete("/steps/{id}")
 def delete_approval_step(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    if current_user.role_rel.name != "Administrator": raise HTTPException(403, "Only Admin")
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): raise HTTPException(403, "Only Admin")
     
     existing = db.query(ApprovalStep).get(id)
     if not existing: raise HTTPException(404, "Step not found")

@@ -73,3 +73,17 @@ def mark_read(id: int, db: Session = Depends(get_db), current_user: User = Depen
     note.is_read = True
     db.commit()
     return {"status": "ok"}
+
+@router.post("/notifications/read-all")
+def mark_all_read(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    from database.models import Notification
+    db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read == False).update({Notification.is_read: True})
+    db.commit()
+    return {"status": "ok"}
+
+@router.delete("/notifications")
+def delete_all_notifications(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    from database.models import Notification
+    db.query(Notification).filter(Notification.user_id == current_user.id).delete()
+    db.commit()
+    return {"status": "ok"}

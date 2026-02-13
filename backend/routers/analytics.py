@@ -40,6 +40,39 @@ def get_cached_or_compute(key: str, compute_fn):
     return result
 
 
+def get_allowed_unit_ids(db: Session, user: User):
+    """
+    Get list of OrganizationUnit IDs visible to the user.
+    Returns None if user has full access (Admin).
+    """
+    # Admin check
+    # Admin check
+    if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
+        return None
+        
+    allowed_ids = set()
+    
+    # If no scope defined, return None (Full access)
+    if not user.scope_branches and not user.scope_departments:
+        return None
+    
+    # 1. Branches scope
+    if user.scope_branches:
+        for b_id in user.scope_branches:
+            allowed_ids.add(b_id)
+            # Add all child departments
+            children = db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == b_id).all()
+            for child in children:
+                allowed_ids.add(child.id)
+                
+    # 2. Departments scope
+    if user.scope_departments:
+        for d_id in user.scope_departments:
+            allowed_ids.add(d_id)
+            
+    return list(allowed_ids)
+
+
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
 def get_analytics_summary(
     db: Session = Depends(get_db),
@@ -49,6 +82,8 @@ def get_analytics_summary(
     Optimized summary endpoint - returns pre-aggregated KPIs
     Uses database-level aggregation instead of fetching all records
     """
+    
+    allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
         # 1. Fact totals (use DB aggregation from FinancialRecords)
@@ -72,6 +107,9 @@ def get_analytics_summary(
             Employee.id == FinancialRecord.employee_id
         ).filter(Employee.status != 'Dismissed')
         
+        if allowed_ids is not None:
+            fact_query = fact_query.filter(Employee.org_unit_id.in_(allowed_ids))
+        
         fact_result = fact_query.first()
         fact_count = fact_result.count or 0
         fact_total = fact_result.total_net or 0
@@ -83,6 +121,16 @@ def get_analytics_summary(
                 (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
             ).label('total_net')
         )
+        
+        if allowed_ids is not None:
+            # Filter plan by branch_id (assuming planning is done at branch level mostly)
+            # If allowed_ids contains departments, ideally we should check department_id too if set
+            plan_query = plan_query.filter(
+                or_(
+                    PlanningPosition.branch_id.in_(allowed_ids),
+                    PlanningPosition.department_id.in_(allowed_ids)
+                )
+            )
         
         plan_result = plan_query.first()
         plan_count = plan_result.count or 0
@@ -111,7 +159,7 @@ def get_analytics_summary(
             'cached_at': datetime.now().isoformat()
         }
     
-    return get_cached_or_compute('summary', compute)
+    return get_cached_or_compute(f'summary_{current_user.id}', compute)
 
 
 @router.get("/branch-comparison", response_model=BranchComparisonResponse)
@@ -125,9 +173,16 @@ def get_branch_comparison(
     Returns plan vs fact for each branch with pagination support
     """
     
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
     def compute():
         # Get all branches (type='branch')
-        branches = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch').all()
+        query = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch')
+        
+        if allowed_ids is not None:
+            query = query.filter(OrganizationUnit.id.in_(allowed_ids))
+            
+        branches = query.all()
         results = []
         
         for branch in branches:
@@ -201,7 +256,7 @@ def get_branch_comparison(
             'cached_at': datetime.now().isoformat()
         }
     
-    cache_key = f'branch_comparison_{limit}'
+    cache_key = f'branch_comparison_{current_user.id}_{limit}'
     return get_cached_or_compute(cache_key, compute)
 
 
@@ -216,6 +271,8 @@ def get_top_employees(
     Optimized with database-level sorting and limiting
     """
     
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
     def compute():
         # Get latest financial record for each employee
         fact_subquery = db.query(
@@ -224,7 +281,7 @@ def get_top_employees(
         ).group_by(FinancialRecord.employee_id).subquery()
         
         # Join and get top employees
-        employees = db.query(
+        query = db.query(
             Employee.id,
             Employee.full_name,
             Position.title.label('position'),
@@ -249,7 +306,12 @@ def get_top_employees(
                 FinancialRecord.id == fact_subquery.c.max_id,
                 Employee.status != 'Dismissed'
             )
-        ).order_by(
+        )
+        
+        if allowed_ids is not None:
+             query = query.filter(Employee.org_unit_id.in_(allowed_ids))
+
+        employees = query.order_by(
             FinancialRecord.total_net.desc()
         ).limit(limit).all()
         
@@ -267,7 +329,7 @@ def get_top_employees(
             'cached_at': datetime.now().isoformat()
         }
     
-    cache_key = f'top_employees_{limit}'
+    cache_key = f'top_employees_{current_user.id}_{limit}'
     return get_cached_or_compute(cache_key, compute)
 
 
@@ -281,9 +343,15 @@ def get_cost_distribution(
     Server-side aggregation
     """
     
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
     def compute():
         # Get all branches
-        branches = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch').all()
+        query = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch')
+        if allowed_ids is not None:
+            query = query.filter(OrganizationUnit.id.in_(allowed_ids))
+            
+        branches = query.all()
         
         # Get latest financial record for each employee
         fact_subquery = db.query(
@@ -335,7 +403,7 @@ def get_cost_distribution(
             'cached_at': datetime.now().isoformat()
         }
     
-    return get_cached_or_compute('cost_distribution', compute)
+    return get_cached_or_compute(f'cost_distribution_{current_user.id}', compute)
 
 
 @router.post("/clear-cache")

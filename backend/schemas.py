@@ -103,6 +103,7 @@ class SalaryRequestCreate(BaseModel):
 
 class SalaryRequestUpdate(BaseModel):
     status: str # 'approved', 'rejected'
+    comment: Optional[str] = None
 
 class MarketEntryCreate(BaseModel):
     market_id: int
@@ -221,9 +222,18 @@ class RequestHistoryResponse(BaseModel):
     id: int
     step_label: Optional[str]
     actor_name: str
+    actor_role: Optional[str] = None
+    actor_branch: Optional[str] = None
     action: str
     comment: Optional[str]
     created_at: str
     
     class Config:
         from_attributes = True
+
+class PaginatedRequestsResponse(BaseModel):
+    items: List[Dict]
+    total: int
+    page: int
+    size: int
+    total_pages: int

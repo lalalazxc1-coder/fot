@@ -15,6 +15,8 @@ export type HistoryItem = {
     id: number;
     step_label: string | null;
     actor_name: string;
+    actor_role?: string;
+    actor_branch?: string;
     action: string;
     comment: string | null;
     created_at: string;
@@ -37,18 +39,48 @@ export type RequestRow = {
     current_step_label: string;
     current_step_type: 'approval' | 'notification';
     can_approve: boolean;
+    analytics_context: {
+        market: { min: number; max: number; median: number } | null;
+        internal: { avg_total_net: number; count: number } | null;
+        budget: { plan: number; fact: number; balance: number } | null;
+    } | null;
     history: HistoryItem[];
 };
 
 // --- Hooks ---
 
-export function useRequests() {
+export type PaginatedResponse = {
+    items: RequestRow[];
+    total: number;
+    page: number;
+    size: number;
+    total_pages: number;
+};
+
+export function useRequests(page: number = 1, size: number = 20, status?: 'pending' | 'history') {
     return useQuery({
-        queryKey: ['requests'],
+        queryKey: ['requests', page, size, status],
         queryFn: async () => {
-            const res = await api.get('/requests');
-            return res.data as RequestRow[];
+            const res = await api.get('/requests', { params: { page, size, status } });
+            return res.data as PaginatedResponse;
         },
+    });
+}
+
+export type AnalyticsData = {
+    market: { min: number; max: number; median: number } | null;
+    internal: { avg_total_net: number; count: number } | null;
+    budget: { plan: number; fact: number; balance: number } | null;
+};
+
+export function useRequestAnalytics(reqId: number, enabled: boolean = false) {
+    return useQuery({
+        queryKey: ['request-analytics', reqId],
+        queryFn: async () => {
+            const res = await api.get(`/requests/${reqId}/analytics`);
+            return res.data as AnalyticsData | null;
+        },
+        enabled: enabled
     });
 }
 
@@ -78,8 +110,8 @@ export function useCreateRequest() {
 export function useUpdateRequestStatus() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, status }: { id: number; status: 'approved' | 'rejected' }) => {
-            const res = await api.patch(`/requests/${id}/status`, { status });
+        mutationFn: async ({ id, status, comment }: { id: number; status: 'approved' | 'rejected', comment?: string }) => {
+            const res = await api.patch(`/requests/${id}/status`, { status, comment });
             return res.data;
         },
         onSuccess: (_, variables) => {

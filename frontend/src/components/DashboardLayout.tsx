@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Briefcase, Settings, LogOut, Key, Eye, EyeOff, User as UserIcon, Shield, Bell } from 'lucide-react';
-import { useNotifications, useMarkNotificationRead } from '../hooks/useAdmin';
+import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteAllNotifications } from '../hooks/useAdmin';
+import { Trash2, CheckCircle, Bell, Briefcase, Settings, LogOut, Key, Eye, EyeOff, User as UserIcon, Shield } from 'lucide-react';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
 import { api } from '../lib/api';
@@ -60,6 +60,8 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
     // Notifications
     const { data: notifications = [] } = useNotifications();
     const markRead = useMarkNotificationRead();
+    const markAllRead = useMarkAllNotificationsRead();
+    const deleteAll = useDeleteAllNotifications();
     const [isNotifOpen, setIsNotifOpen] = useState(false);
 
     const unreadCount = notifications.filter((n: any) => !n.is_read).length;
@@ -183,10 +185,31 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                             </button>
 
                             {isNotifOpen && (
-                                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                <div
+                                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
+                                    onMouseLeave={() => setIsNotifOpen(false)}
+                                >
                                     <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                                        <span className="font-bold text-sm text-slate-700">Уведомления</span>
-                                        {unreadCount > 0 && <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md">{unreadCount} новых</span>}
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-sm text-slate-700">Уведомления</span>
+                                            {unreadCount > 0 && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">{unreadCount}</span>}
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => markAllRead.mutate()}
+                                                className="p-1 text-slate-400 hover:text-emerald-600 rounded hover:bg-emerald-50"
+                                                title="Прочитать все"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => deleteAll.mutate()}
+                                                className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50"
+                                                title="Удалить все"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="max-h-[300px] overflow-y-auto">
                                         {notifications.length === 0 ? (

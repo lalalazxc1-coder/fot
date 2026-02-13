@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkflow, useCreateStep, useUpdateStep, useDeleteStep } from '../../hooks/useWorkflow';
 import { useRoles, useUsers } from '../../hooks/useAdmin';
-import { Plus, Trash2, Edit2, ArrowDown, ShieldCheck, CheckCircle, User } from 'lucide-react';
+import { Trash2, Edit2, ArrowDown, ShieldCheck, CheckCircle, User, HelpCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 
 export default function WorkflowPage() {
@@ -15,6 +15,7 @@ export default function WorkflowPage() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStep, setEditingStep] = useState<any | null>(null);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     const [form, setForm] = useState({
         step_order: 1,
@@ -90,21 +91,30 @@ export default function WorkflowPage() {
     if (isLoading) return <div>Loading...</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Цепочка согласования (Workflow)</h1>
-                    <p className="text-slate-500">Настройка этапов утверждения заявок на изменение ЗП.</p>
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">Цепочка согласования</h2>
+                    <p className="text-slate-500 text-sm mt-1">Настройка этапов утверждения заявок на изменение зарплаты</p>
                 </div>
-                <button
-                    onClick={handleOpenCreate}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-800 transition-colors"
-                >
-                    <Plus className="w-4 h-4" /> Добавить этап
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsHelpOpen(true)}
+                        className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
+                    >
+                        <HelpCircle className="w-5 h-5" />
+                        Как это работает?
+                    </button>
+                    <button
+                        onClick={handleOpenCreate}
+                        className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+                    >
+                        + Добавить этап
+                    </button>
+                </div>
             </div>
 
-            <div className="max-w-3xl mx-auto space-y-4 relative">
+            <div className="max-w-3xl mx-auto space-y-4 relative pt-4">
                 <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-slate-200 -z-10"></div>
 
                 {steps.sort((a: any, b: any) => a.step_order - b.step_order).map((step: any, index: number) => (
@@ -280,6 +290,85 @@ export default function WorkflowPage() {
                         Сохранить
                     </button>
                 </form>
+            </Modal>
+
+            {/* Help Modal */}
+            <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работает цепочка согласования?">
+                <div className="space-y-6 text-sm text-slate-600">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p className="mb-2">
+                            <span className="font-bold text-slate-900">Цепочка согласования (Workflow)</span> — это последовательность этапов, через которые проходит каждая заявка на изменение зарплаты.
+                        </p>
+                        <p>
+                            Вы можете настроить несколько уровней утверждения с назначением ответственных лиц или ролей для каждого этапа.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-slate-900">Основные понятия</h4>
+                        <ul className="list-disc pl-5 space-y-2">
+                            <li>
+                                <span className="font-medium text-slate-900">Этап:</span> Отдельный шаг согласования (например, "Руководитель филиала", "HR", "Директор").
+                            </li>
+                            <li>
+                                <span className="font-medium text-slate-900">Порядковый номер:</span> Определяет очередность этапов. Заявка проходит этапы по возрастанию номера.
+                            </li>
+                            <li>
+                                <span className="font-medium text-slate-900">Роль vs Конкретный пользователь:</span> Вы можете назначить этап на роль (например, "HR Manager") или на конкретного сотрудника.
+                            </li>
+                            <li>
+                                <span className="font-medium text-slate-900">Финальный этап:</span> Если отмечен, то при одобрении на этом этапе изменения автоматически применятся к финансовым данным сотрудника.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-slate-900">Как это работает</h4>
+                        <div className="space-y-3">
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">1</div>
+                                <div>
+                                    <div className="font-medium text-slate-900">Создание заявки</div>
+                                    <div className="text-xs text-slate-500">Менеджер создает заявку на повышение или бонус</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">2</div>
+                                <div>
+                                    <div className="font-medium text-slate-900">Согласование</div>
+                                    <div className="text-xs text-slate-500">Заявка последовательно проходит все настроенные этапы</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">✓</div>
+                                <div>
+                                    <div className="font-medium text-slate-900">Финальное утверждение</div>
+                                    <div className="text-xs text-slate-500">При одобрении на финальном этапе изменения применяются автоматически</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                        <div className="font-bold text-amber-900 mb-1 flex items-center gap-2">
+                            ⚠️ Важно
+                        </div>
+                        <div className="text-amber-800 text-xs space-y-1">
+                            <p>• Удаление или изменение этапов может повлиять на заявки, находящиеся в процессе согласования</p>
+                            <p>• Хотя бы один этап должен быть отмечен как "Финальный"</p>
+                            <p>• Заявки проходят этапы строго по порядку номеров</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
+                        <div className="font-bold mb-1">Пример типичной цепочки:</div>
+                        <div className="space-y-1 mt-2">
+                            <div>1. Руководитель отдела (роль: Manager)</div>
+                            <div>2. HR отдел (роль: HR)</div>
+                            <div>3. Финансовый директор (пользователь: Иванов И.И.) ✓ Финал</div>
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

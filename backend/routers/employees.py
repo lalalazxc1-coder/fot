@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from database.database import get_db
-from database.models import User, AuditLog
+from database.models import User, AuditLog, Employee, OrganizationUnit, Position
 from schemas import EmployeeCreate, FinancialUpdate, EmployeeUpdate, EmpDetailsUpdate
 from dependencies import get_current_active_user, get_user_scope, PermissionChecker
 from services.employee_service import EmployeeService
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from io import BytesIO
 
 router = APIRouter(prefix="/api", tags=["employees"])
 
@@ -54,7 +59,6 @@ def update_employee(
     
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     has_perm = (
-        current_user.role_rel.name == 'Administrator' or 
         perms.get('admin_access') or 
         perms.get('add_employees') or 
         perms.get('edit_financials')
@@ -115,3 +119,93 @@ def get_audit_logs(emp_id: int, db: Session = Depends(get_db)):
                 "newVal": str(log.new_values.get(k, '') if log.new_values else '')
             })
     return formatted_logs
+
+@router.get("/employees/export")
+def export_employees_excel(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user),
+    scope: Optional[List[int]] = Depends(get_user_scope)
+):
+    # Get employees data using service
+    employees_data = EmployeeService.get_employees(db, current_user, scope)
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Сотрудники"
+    
+    # Header styling
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    
+    # Headers
+    headers = [
+        "ФИО", "Должность", "Филиал", "Отдел", "Статус",
+        "Оклад (Нет)", "Оклад (Брут)", "KPI (Нет)", "KPI (Брут)",
+        "Бонус (Нет)", "Бонус (Брут)", "Всего (Нет)", "Всего (Брут)"
+    ]
+    
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Data rows
+    for row_num, emp in enumerate(employees_data, 2):
+        # position is returned as a string directly
+        position_title = emp.get("position", "-")
+        
+        # branch and department are returned directly, not nested
+        branch = emp.get("branch", "-")
+        department = emp.get("department", "-")
+        
+        # Handle financials - these are dictionaries
+        base = emp.get("base", {})
+        kpi = emp.get("kpi", {})
+        bonus = emp.get("bonus", {})
+        total = emp.get("total", {})
+        
+        data = [
+            emp.get("full_name", "-"),
+            position_title,
+            branch,
+            department,
+            emp.get("status", "-"),
+            base.get("net", 0) if isinstance(base, dict) else 0,
+            base.get("gross", 0) if isinstance(base, dict) else 0,
+            kpi.get("net", 0) if isinstance(kpi, dict) else 0,
+            kpi.get("gross", 0) if isinstance(kpi, dict) else 0,
+            bonus.get("net", 0) if isinstance(bonus, dict) else 0,
+            bonus.get("gross", 0) if isinstance(bonus, dict) else 0,
+            total.get("net", 0) if isinstance(total, dict) else 0,
+            total.get("gross", 0) if isinstance(total, dict) else 0
+        ]
+        
+        for col_num, value in enumerate(data, 1):
+            cell = ws.cell(row=row_num, column=col_num, value=value)
+            if col_num >= 6:  # Number columns
+                cell.number_format = '#,##0'
+            cell.alignment = Alignment(horizontal="left" if col_num <= 5 else "right")
+    
+    # Column widths
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 12
+    for col in ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']:
+        ws.column_dimensions[col].width = 14
+    
+    # Save to BytesIO
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+    
+    filename = f"Employees_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    return Response(
+        content=excel_file.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

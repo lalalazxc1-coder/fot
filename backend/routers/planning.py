@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from datetime import datetime
@@ -6,6 +7,9 @@ from database.database import get_db
 from database.models import PlanningPosition, User, OrganizationUnit, AuditLog
 from routers.auth import get_current_active_user
 from pydantic import BaseModel
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from io import BytesIO
 
 router = APIRouter(prefix="/api", tags=["planning"])
 
@@ -40,13 +44,12 @@ class PlanUpdate(BaseModel):
 
 # --- Helpers ---
 def check_manage_permission(user: User):
-    if user.role_rel.name == 'Administrator': return True
-    return user.role_rel.permissions.get('manage_planning', False)
+    if user.role_rel and user.role_rel.permissions.get('admin_access'): return True
+    return user.role_rel.permissions.get('manage_planning', False) if user.role_rel and user.role_rel.permissions else False
 
 def filter_by_scope(query, user: User, db: Session):
     is_admin = False
     if user.role_rel:
-        if user.role_rel.name == 'Administrator': is_admin = True
         if user.role_rel.permissions.get('admin_access'): is_admin = True
         
     if is_admin: return query
@@ -62,9 +65,9 @@ def filter_by_scope(query, user: User, db: Session):
     if allowed_branch_ids:
         return query.filter(PlanningPosition.branch_id.in_(allowed_branch_ids))
     
-    # If no scope defined but not admin? allow nothing or everything? 
-    # Usually empty scope = nothing.
-    return query.filter(PlanningPosition.id == -1) 
+    # If no scope defined but not admin - allow access to all branches
+    # This is logical: no restriction = access to everything
+    return query 
 
 
 # --- Endpoints ---
@@ -336,3 +339,103 @@ def get_plan_history(plan_id: int, db: Session = Depends(get_db)):
             })
             
     return formatted_logs
+
+@router.get("/planning/export")
+def export_planning_excel(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    try:
+        # Get planning data with scope filtering
+        query = db.query(PlanningPosition)
+        query = filter_by_scope(query, current_user, db)
+        plans = query.all()
+        
+        print(f"Found {len(plans)} planning positions to export")
+        
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "ФОТ Планирование"
+        
+        # Header styling
+        header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=11)
+        
+        # Headers
+        headers = [
+            "Позиция", "Филиал", "Отдел", "График", "Кол-во",
+            "Оклад (Нет)", "Оклад (Брут)", "KPI (Нет)", "KPI (Брут)",
+            "Бонус (Нет)", "Бонус (Брут)", "Всего (Нет)", "Всего (Брут)"
+        ]
+        
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Data rows
+        for row_num, plan in enumerate(plans, 2):
+            branch_name = "-"
+            dept_name = "-"
+            
+            if plan.branch_id:
+                branch = db.query(OrganizationUnit).get(plan.branch_id)
+                if branch:
+                    branch_name = branch.name
+            
+            if plan.department_id:
+                dept = db.query(OrganizationUnit).get(plan.department_id)
+                if dept:
+                    dept_name = dept.name
+            
+            total_net = plan.base_net + plan.kpi_net + plan.bonus_net
+            total_gross = plan.base_gross + plan.kpi_gross + plan.bonus_gross
+            
+            data = [
+                plan.position_title,
+                branch_name,
+                dept_name,
+                plan.schedule or "-",
+                plan.count,
+                plan.base_net,
+                plan.base_gross,
+                plan.kpi_net,
+                plan.kpi_gross,
+                plan.bonus_net,
+                plan.bonus_gross,
+                total_net,
+                total_gross
+            ]
+            
+            for col_num, value in enumerate(data, 1):
+                cell = ws.cell(row=row_num, column=col_num, value=value)
+                if col_num >= 5:  # Number columns
+                    cell.number_format = '#,##0'
+                cell.alignment = Alignment(horizontal="left" if col_num <= 4 else "right")
+        
+        # Column widths
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 20
+        ws.column_dimensions['C'].width = 20
+        ws.column_dimensions['D'].width = 12
+        for col in ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M']:
+            ws.column_dimensions[col].width = 14
+        
+        # Save to BytesIO
+        excel_file = BytesIO()
+        wb.save(excel_file)
+        excel_content = excel_file.getvalue()
+        
+        print(f"Excel file size: {len(excel_content)} bytes")
+        
+        filename = f"FOT_Planning_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return Response(
+            content=excel_content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        print(f"Error exporting planning: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
