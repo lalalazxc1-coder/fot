@@ -1,6 +1,10 @@
 import os
 import secrets
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext

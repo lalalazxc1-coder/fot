@@ -2,6 +2,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import QueuePool
+from dotenv import load_dotenv
+
+# Load .env file if it exists
+load_dotenv()
 
 # --- Database URL ---
 # Priority: DATABASE_URL env var > default SQLite fallback
