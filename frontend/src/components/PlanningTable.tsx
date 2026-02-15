@@ -11,7 +11,7 @@ import SalarySettingsModal from './SalarySettingsModal';
 import Modal from './Modal';
 
 import { usePlanningData, useCreatePlanItem, useUpdatePlanItem, useDeletePlanItem, PlanRow } from '../hooks/usePlanning';
-import { useStructure } from '../hooks/useStructure';
+import { useStructure, useFlatStructure } from '../hooks/useStructure';
 
 import { PlanningStats } from './planning/PlanningStats';
 import { PlanningFilters } from './planning/PlanningFilters';
@@ -23,6 +23,7 @@ export default function PlanningTable({ user }: { user: any }) {
     // Hooks
     const { data: data = [], isLoading: isDataLoading } = usePlanningData();
     const { data: structure = [] } = useStructure();
+    const { data: flatStructure = [], isLoading: isStructureLoading } = useFlatStructure();
 
     const createMutation = useCreatePlanItem();
     const updateMutation = useUpdatePlanItem();
@@ -61,26 +62,10 @@ export default function PlanningTable({ user }: { user: any }) {
     const canManage = user.role === 'Administrator' || user.permissions?.manage_planning || user.permissions?.admin_access;
     const canEditFinancials = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.edit_financials;
 
-    // Filter Logic
-    const filteredData = useMemo(() => {
-        const allowedBranchIds = new Set(structure.map(b => b.id.toString()));
-        const allowedDeptIds = new Set(structure.flatMap(b => b.departments.map(d => d.id.toString())));
-
-        return data.filter(row => {
-            const inScopeBranch = row.branch_id && allowedBranchIds.has(row.branch_id.toString());
-            if (!inScopeBranch) return false;
-
-            if (row.department_id) {
-                if (!allowedDeptIds.has(row.department_id.toString())) return false;
-            }
-
-            const matchesSearch = row.position.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesBranch = !branchFilter || row.branch_id?.toString() === branchFilter;
-            const matchesDept = !departmentFilter || row.department_id?.toString() === departmentFilter;
-            return matchesSearch && matchesBranch && matchesDept;
-        });
-    }, [data, searchQuery, branchFilter, departmentFilter, structure]);
-
+    // Helper to check manage permission
+    const checkManagePermission = (user: any) => {
+        return user.role === 'Administrator' || user.permissions?.manage_planning || user.permissions?.admin_access;
+    };
 
     // Actions
     const handleSave = async (item: any) => {
@@ -110,12 +95,50 @@ export default function PlanningTable({ user }: { user: any }) {
 
     // Columns
     const columns = useMemo(() => createColumns(
-        structure,
-        canManage,
+        flatStructure,
+        checkManagePermission(user),
         (id) => setHistoryId(id),
         (row) => setEditingRow(row),
-        handleDelete
-    ), [structure, canManage]);
+        (id) => handleDelete(id)
+    ), [flatStructure, user]);
+
+    // Filtering logic
+    const filteredData = useMemo(() => {
+        return data.filter(row => {
+            const matchesSearch = row.position.toLowerCase().includes(searchQuery.toLowerCase());
+
+            // Check matches for branch/dept
+            const targetId = (row.department_id || row.branch_id)?.toString();
+            const unit = flatStructure.find(u => u.id.toString() === targetId);
+
+            let matchesBranch = true;
+            if (branchFilter) {
+                // Find top-level unit for this row
+                let currentBranchName = "Unknown";
+                if (unit) {
+                    if (unit.type === 'branch' || unit.type === 'head_office') {
+                        currentBranchName = unit.name;
+                    } else {
+                        // Traverse up
+                        let curr = unit;
+                        while (curr.parent_id) {
+                            const p = flatStructure.find(u => u.id === curr.parent_id);
+                            if (p) {
+                                if (p.type === 'branch' || p.type === 'head_office') {
+                                    currentBranchName = p.name;
+                                    break;
+                                }
+                                curr = p;
+                            } else { break; }
+                        }
+                    }
+                }
+                matchesBranch = currentBranchName === branchFilter;
+            }
+
+            return matchesSearch && matchesBranch;
+        }).slice(0, visibleRows);
+    }, [data, searchQuery, branchFilter, flatStructure, visibleRows]);
 
     const table = useReactTable({
         data: filteredData,
@@ -123,7 +146,7 @@ export default function PlanningTable({ user }: { user: any }) {
         getCoreRowModel: getCoreRowModel(),
     });
 
-    if (isDataLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
+    if (isDataLoading || isStructureLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
         <div className="space-y-6">

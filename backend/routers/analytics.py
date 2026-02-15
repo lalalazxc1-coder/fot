@@ -11,6 +11,14 @@ import json
 from dependencies import get_db, get_current_active_user
 from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position
 from sqlalchemy import func, and_, or_, desc
+from sqlalchemy.orm import joinedload
+from datetime import timedelta
+from dateutil.relativedelta import relativedelta
+from database.models import MarketData
+from schemas import (
+    RetentionRiskItem, RetentionDashboardResponse, 
+    ESGReportResponse, PayEquityItem
+)
 
 from schemas import (
     AnalyticsSummaryResponse, 
@@ -75,6 +83,7 @@ def get_allowed_unit_ids(db: Session, user: User):
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
 def get_analytics_summary(
+    date: Optional[str] = Query(None, description="Time travel date"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -88,10 +97,12 @@ def get_analytics_summary(
     def compute():
         # 1. Fact totals (use DB aggregation from FinancialRecords)
         # Get latest financial record for each active employee
-        fact_subquery = db.query(
+        fact_subquery_base = db.query(
             FinancialRecord.employee_id,
             func.max(FinancialRecord.id).label('max_id')
-        ).group_by(FinancialRecord.employee_id).subquery()
+        )
+        if date: fact_subquery_base = fact_subquery_base.filter(FinancialRecord.created_at <= date)
+        fact_subquery = fact_subquery_base.group_by(FinancialRecord.employee_id).subquery()
         
         fact_query = db.query(
             func.count(Employee.id).label('count'),
@@ -159,14 +170,15 @@ def get_analytics_summary(
             'cached_at': datetime.now().isoformat()
         }
     
-    return get_cached_or_compute(f'summary_{current_user.id}', compute)
+    return get_cached_or_compute(f'summary_{current_user.id}_{date}', compute)
 
 
 @router.get("/branch-comparison", response_model=BranchComparisonResponse)
 def get_branch_comparison(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    limit: Optional[int] = Query(None, description="Limit number of branches")
+    limit: Optional[int] = Query(None, description="Limit number of branches"),
+    date: Optional[str] = Query(None, description="Time travel date")
 ):
     """
     Optimized branch comparison - server-side aggregation
@@ -176,43 +188,61 @@ def get_branch_comparison(
     allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
-        # Get all branches (type='branch')
-        query = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch')
+        # Get ALL organizational units (head_office, branches, departments)
+        query = db.query(OrganizationUnit)
         
         if allowed_ids is not None:
             query = query.filter(OrganizationUnit.id.in_(allowed_ids))
             
-        branches = query.all()
+        all_units = query.all()
         results = []
         
-        for branch in branches:
-            # Get departments for this branch
-            departments = db.query(OrganizationUnit).filter(
-                and_(
-                    OrganizationUnit.parent_id == branch.id,
-                    OrganizationUnit.type == 'department'
-                )
+        for unit in all_units:
+            # Get all child units recursively for this unit
+            children = db.query(OrganizationUnit).filter(
+                OrganizationUnit.parent_id == unit.id
             ).all()
-            dept_ids = [d.id for d in departments]
+            child_ids = [c.id for c in children]
             
-            # All unit IDs (branch + departments)
-            unit_ids = [branch.id] + dept_ids
+            # Recursively get all descendants (for multi-level hierarchy)
+            all_descendant_ids = set(child_ids)
+            to_process = list(child_ids)
             
-            # Plan aggregation for this branch
+            while to_process:
+                current_id = to_process.pop(0)
+                grandchildren = db.query(OrganizationUnit).filter(
+                    OrganizationUnit.parent_id == current_id
+                ).all()
+                for gc in grandchildren:
+                    if gc.id not in all_descendant_ids:
+                        all_descendant_ids.add(gc.id)
+                        to_process.append(gc.id)
+            
+            # All unit IDs (unit itself + all descendants)
+            unit_ids = [unit.id] + list(all_descendant_ids)
+            
+            # Plan aggregation for this unit
             plan_query = db.query(
                 func.sum(
                     (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
                 )
-            ).filter(PlanningPosition.branch_id == branch.id)
+            ).filter(
+                or_(
+                    PlanningPosition.branch_id == unit.id,
+                    PlanningPosition.department_id.in_(unit_ids)
+                )
+            )
             
             plan_total = plan_query.scalar() or 0
             
-            # Fact aggregation for this branch (employees in branch or its departments)
+            # Fact aggregation for this unit (employees in unit or its descendants)
             # Need to join with latest financial records
-            fact_subquery = db.query(
+            fact_sub_base = db.query(
                 FinancialRecord.employee_id,
                 func.max(FinancialRecord.id).label('max_id')
-            ).group_by(FinancialRecord.employee_id).subquery()
+            )
+            if date: fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
+            fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
             
             fact_query = db.query(
                 func.sum(FinancialRecord.total_net)
@@ -234,10 +264,12 @@ def get_branch_comparison(
             
             fact_total = fact_query.scalar() or 0
             
+            # Only include units with actual data
             if plan_total > 0 or fact_total > 0:
                 results.append({
-                    'id': branch.id,
-                    'name': branch.name,
+                    'id': unit.id,
+                    'name': unit.name,
+                    'type': unit.type,  # Include type for frontend
                     'plan': float(plan_total),
                     'fact': float(fact_total),
                     'diff': float(fact_total - plan_total),
@@ -256,7 +288,7 @@ def get_branch_comparison(
             'cached_at': datetime.now().isoformat()
         }
     
-    cache_key = f'branch_comparison_{current_user.id}_{limit}'
+    cache_key = f'branch_comparison_{current_user.id}_{limit}_{date}'
     return get_cached_or_compute(cache_key, compute)
 
 
@@ -264,7 +296,8 @@ def get_branch_comparison(
 def get_top_employees(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    limit: int = Query(5, ge=1, le=100)
+    limit: int = Query(5, ge=1, le=100),
+    date: Optional[str] = Query(None)
 ):
     """
     Get top N employees by total compensation
@@ -275,10 +308,12 @@ def get_top_employees(
     
     def compute():
         # Get latest financial record for each employee
-        fact_subquery = db.query(
+        fact_sub_base = db.query(
             FinancialRecord.employee_id,
             func.max(FinancialRecord.id).label('max_id')
-        ).group_by(FinancialRecord.employee_id).subquery()
+        )
+        if date: fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
+        fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
         
         # Join and get top employees
         query = db.query(
@@ -329,14 +364,15 @@ def get_top_employees(
             'cached_at': datetime.now().isoformat()
         }
     
-    cache_key = f'top_employees_{current_user.id}_{limit}'
+    cache_key = f'top_employees_{current_user.id}_{limit}_{date}'
     return get_cached_or_compute(cache_key, compute)
 
 
 @router.get("/cost-distribution", response_model=CostDistributionResponse)
 def get_cost_distribution(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    date: Optional[str] = Query(None)
 ):
     """
     Get cost distribution by branch for pie chart
@@ -346,34 +382,48 @@ def get_cost_distribution(
     allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
-        # Get all branches
-        query = db.query(OrganizationUnit).filter(OrganizationUnit.type == 'branch')
+        # Get all top-level units (branches and head_office)
+        query = db.query(OrganizationUnit).filter(OrganizationUnit.type.in_(['branch', 'head_office']))
         if allowed_ids is not None:
             query = query.filter(OrganizationUnit.id.in_(allowed_ids))
             
-        branches = query.all()
+        top_units = query.all()
         
         # Get latest financial record for each employee
-        fact_subquery = db.query(
+        fact_sub_base = db.query(
             FinancialRecord.employee_id,
             func.max(FinancialRecord.id).label('max_id')
-        ).group_by(FinancialRecord.employee_id).subquery()
+        )
+        if date: fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
+        fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
         
         results = []
         
-        for branch in branches:
-            # Get all departments for this branch
-            departments = db.query(OrganizationUnit).filter(
-                and_(
-                    OrganizationUnit.parent_id == branch.id,
-                    OrganizationUnit.type == 'department'
-                )
+        for unit in top_units:
+            # Get all child units (recursively)
+            children = db.query(OrganizationUnit).filter(
+                OrganizationUnit.parent_id == unit.id
             ).all()
             
-            dept_ids = [d.id for d in departments]
-            unit_ids = [branch.id] + dept_ids  # Branch + all its departments
+            child_ids = [c.id for c in children]
             
-            # Sum up financial records for employees in this branch or its departments
+            # Recursively get all descendants
+            all_descendant_ids = set(child_ids)
+            to_process = list(child_ids)
+            
+            while to_process:
+                current_id = to_process.pop(0)
+                grandchildren = db.query(OrganizationUnit).filter(
+                    OrganizationUnit.parent_id == current_id
+                ).all()
+                for gc in grandchildren:
+                    if gc.id not in all_descendant_ids:
+                        all_descendant_ids.add(gc.id)
+                        to_process.append(gc.id)
+            
+            unit_ids = [unit.id] + list(all_descendant_ids)  # Unit + all its descendants
+            
+            # Sum up financial records for employees in this unit or its descendants
             total = db.query(
                 func.sum(FinancialRecord.total_net)
             ).join(
@@ -394,7 +444,7 @@ def get_cost_distribution(
             
             if total and total > 0:
                 results.append({
-                    'name': branch.name,
+                    'name': unit.name,
                     'value': float(total)
                 })
         
@@ -403,7 +453,7 @@ def get_cost_distribution(
             'cached_at': datetime.now().isoformat()
         }
     
-    return get_cached_or_compute(f'cost_distribution_{current_user.id}', compute)
+    return get_cached_or_compute(f'cost_distribution_{current_user.id}_{date}', compute)
 
 
 @router.post("/clear-cache")
@@ -412,3 +462,196 @@ def clear_analytics_cache(current_user: User = Depends(get_current_active_user))
     _cache.clear()
     _cache_ttl.clear()
     return {"message": "Cache cleared", "cleared_at": datetime.now().isoformat()}
+
+@router.get("/retention-risk", response_model=RetentionDashboardResponse)
+def get_retention_risk(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Identify employees at risk based on stagnant salary (>12mo) and market gap.
+    """
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
+    def compute():
+        # 1. Fetch Active Employees with Position and OrgUnit
+        query = db.query(Employee).options(
+            joinedload(Employee.position),
+            joinedload(Employee.org_unit)
+        ).filter(Employee.status != 'Dismissed')
+        
+        if allowed_ids:
+            query = query.filter(Employee.org_unit_id.in_(allowed_ids))
+            
+        employees = query.all()
+        
+        # 2. Bulk Fetch Latest Financials
+        fact_subquery = db.query(
+            FinancialRecord.employee_id,
+            func.max(FinancialRecord.id).label('max_id')
+        ).group_by(FinancialRecord.employee_id).subquery()
+        
+        fin_records = db.query(FinancialRecord).join(
+            fact_subquery,
+            and_(
+                FinancialRecord.employee_id == fact_subquery.c.employee_id,
+                FinancialRecord.id == fact_subquery.c.max_id
+            )
+        ).all()
+        fin_map = {fr.employee_id: fr for fr in fin_records}
+        
+        # 3. Bulk Fetch Market Data
+        market_rows = db.query(MarketData).all()
+        # Map: (position_title, branch_id) -> median
+        # Fallback: (position_title, None) -> median
+        market_map = {}
+        for m in market_rows:
+            key = (m.position_title.lower().strip() if m.position_title else "", m.branch_id)
+            market_map[key] = m.median_salary
+            if m.branch_id is None:
+                market_map[(m.position_title.lower().strip() if m.position_title else "", None)] = m.median_salary
+
+        risk_items = []
+        risk_dist = {"High": 0, "Medium": 0, "Low": 0}
+        now = datetime.now()
+        
+        for emp in employees:
+            fr = fin_map.get(emp.id)
+            if not fr: continue
+            
+            # Stagnation
+            # Parse created_at. If None (legacy), assume old (2 years ago)
+            created_dt = now - timedelta(days=365*2)
+            if fr.created_at:
+                try: created_dt = datetime.fromisoformat(fr.created_at)
+                except: pass
+            
+            delta = relativedelta(now, created_dt)
+            months_stagnant = delta.months + (delta.years * 12)
+            
+            # Market Gap
+            pos_title = emp.position.title.lower().strip() if emp.position else ""
+            # Try specific branch match, then global
+            median = market_map.get((pos_title, emp.org_unit_id)) or market_map.get((pos_title, None)) or 0
+            
+            current_salary = fr.total_gross
+            gap_percent = 0
+            if median > 0 and current_salary < median:
+                gap_percent = ((median - current_salary) / median) * 100
+            
+            # Risk Score
+            # High: >12mo AND >15% gap
+            # Medium: >12mo OR >15% gap
+            score = 0
+            if months_stagnant > 12: score += 50
+            if gap_percent > 15: score += 50
+            
+            risk_level = "Low"
+            if score >= 100: risk_level = "High"
+            elif score >= 50: risk_level = "Medium"
+            
+            risk_dist[risk_level] += 1
+            
+            if score >= 50: # Only report medium/high risk
+                risk_items.append({
+                    "id": emp.id,
+                    "full_name": emp.full_name,
+                    "position": emp.position.title if emp.position else "-",
+                    "branch": emp.org_unit.name if emp.org_unit else "-",
+                    "last_update": fr.created_at or created_dt.isoformat(),
+                    "months_stagnant": months_stagnant,
+                    "current_salary": float(current_salary),
+                    "market_median": float(median),
+                    "gap_percent": round(gap_percent, 1),
+                    "risk_score": float(score),
+                    "years_gaps": round(months_stagnant / 12, 1)
+                })
+        
+        # Sort by gap descending
+        risk_items.sort(key=lambda x: x['gap_percent'], reverse=True)
+        
+        return {
+            "items": risk_items,
+            "risk_distribution": risk_dist,
+            "cached_at": now.isoformat()
+        }
+
+    return get_cached_or_compute(f'retention_{current_user.id}', compute)
+
+
+@router.get("/esg/pay-equity", response_model=ESGReportResponse)
+def get_esg_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    ESG: Pay Equity by Gender and Age (Generational)
+    """
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
+    def compute():
+        # Fetch active emps
+        query = db.query(Employee).filter(Employee.status != 'Dismissed')
+        if allowed_ids: query = query.filter(Employee.org_unit_id.in_(allowed_ids))
+        
+        employees = query.all()
+        
+        # Latest financials map
+        fact_subquery = db.query(FinancialRecord.employee_id, func.max(FinancialRecord.id).label('max_id')).group_by(FinancialRecord.employee_id).subquery()
+        fin_records = db.query(FinancialRecord).join(fact_subquery, and_(FinancialRecord.employee_id == fact_subquery.c.employee_id, FinancialRecord.id == fact_subquery.c.max_id)).all()
+        fin_map = {fr.employee_id: fr.total_gross for fr in fin_records}
+
+        gender_stats = {} # Gender -> [salaries]
+        age_stats = {}    # Bucket -> [salaries]
+        
+        now = datetime.now()
+        
+        for emp in employees:
+            salary = fin_map.get(emp.id, 0)
+            if salary == 0: continue
+            
+            # Gender
+            g = emp.gender or "Unknown"
+            if g not in gender_stats: gender_stats[g] = []
+            gender_stats[g].append(salary)
+            
+            # Age
+            age_bucket = "Unknown"
+            if emp.dob:
+                try: 
+                    # Try simplified parsing
+                    d_str = emp.dob[:10] # e.g. YYYY-MM-DD
+                    try:
+                         dob_dt = datetime.strptime(d_str, "%Y-%m-%d")
+                    except:
+                         dob_dt = datetime.fromisoformat(emp.dob)
+                    
+                    age = relativedelta(now, dob_dt).years
+                    if age < 25: age_bucket = "<25 Gen Z"
+                    elif age < 35: age_bucket = "25-34 Millennials"
+                    elif age < 45: age_bucket = "35-44 Millennials/Gen X"
+                    elif age < 55: age_bucket = "45-54 Gen X"
+                    else: age_bucket = "55+ Boomers"
+                except:
+                    pass
+            
+            if age_bucket not in age_stats: age_stats[age_bucket] = []
+            age_stats[age_bucket].append(salary)
+            
+        # Aggregate
+        gender_equity = [
+            {"category": k, "count": len(v), "avg_salary": round(sum(v)/len(v), 0)}
+            for k, v in gender_stats.items()
+        ]
+        age_equity = [
+            {"category": k, "count": len(v), "avg_salary": round(sum(v)/len(v), 0)}
+            for k, v in age_stats.items()
+        ]
+        
+        return {
+            "gender_equity": gender_equity,
+            "age_equity": age_equity,
+            "cached_at": now.isoformat()
+        }
+
+    return get_cached_or_compute(f'esg_{current_user.id}', compute)

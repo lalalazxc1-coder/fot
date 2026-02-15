@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { useSnapshot } from '../context/SnapshotContext';
 
 // --- Types ---
 export type SummaryData = {
@@ -18,6 +19,7 @@ export type SummaryData = {
 export type BranchComparison = {
     id: number;
     name: string;
+    type?: 'head_office' | 'branch' | 'department';  // Type of organizational unit
     plan: number;
     fact: number;
     diff: number;
@@ -40,18 +42,22 @@ export type CostDistribution = {
 // --- Hooks ---
 
 export function useAnalytics() {
+    const { snapshotDate } = useSnapshot();
+
     const summary = useQuery({
-        queryKey: ['analytics', 'summary'],
+        queryKey: ['analytics', 'summary', snapshotDate],
         queryFn: async () => {
-            const res = await api.get('/analytics/summary');
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/summary', { params });
             return res.data as SummaryData;
         },
     });
 
     const branchComparison = useQuery({
-        queryKey: ['analytics', 'branch-comparison'],
+        queryKey: ['analytics', 'branch-comparison', snapshotDate],
         queryFn: async () => {
-            const res = await api.get('/analytics/branch-comparison');
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/branch-comparison', { params });
             let data = [];
             // Helper to safely extract arrays (copied logic from old component)
             if (Array.isArray(res.data)) data = res.data;
@@ -63,9 +69,10 @@ export function useAnalytics() {
     });
 
     const topEmployees = useQuery({
-        queryKey: ['analytics', 'top-employees'],
+        queryKey: ['analytics', 'top-employees', snapshotDate],
         queryFn: async () => {
-            const res = await api.get('/analytics/top-employees?limit=5');
+            const params = { limit: 5, ...(snapshotDate ? { date: snapshotDate } : {}) };
+            const res = await api.get('/analytics/top-employees', { params });
             if (Array.isArray(res.data)) return res.data as TopEmployee[];
             if (res.data && Array.isArray(res.data.data)) return res.data.data as TopEmployee[];
             return [];
@@ -73,9 +80,10 @@ export function useAnalytics() {
     });
 
     const costDistribution = useQuery({
-        queryKey: ['analytics', 'cost-distribution'],
+        queryKey: ['analytics', 'cost-distribution', snapshotDate],
         queryFn: async () => {
-            const res = await api.get('/analytics/cost-distribution');
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/cost-distribution', { params });
             let data: CostDistribution[] = [];
             if (Array.isArray(res.data)) data = res.data;
             else if (res.data && Array.isArray(res.data.data)) data = res.data.data;

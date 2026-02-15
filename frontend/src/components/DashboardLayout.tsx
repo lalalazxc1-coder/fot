@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteAllNotifications } from '../hooks/useAdmin';
-import { Trash2, CheckCircle, Bell, Briefcase, Settings, LogOut, Key, Eye, EyeOff, User as UserIcon, Shield } from 'lucide-react';
+import { Trash2, CheckCircle, Bell, Briefcase, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, ChevronDown, Menu, X } from 'lucide-react';
+import { useSnapshot } from '../context/SnapshotContext';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
 import { api } from '../lib/api';
@@ -34,7 +35,121 @@ const PasswordInput = ({ value, onChange, label, error, minLength }: any) => {
     );
 };
 
+// --- User Dropdown Menu ---
+function UserDropdown({ user, hasSettingsAccess, hasAdminAccess, onChangePassword, onLogout }: {
+    user: User;
+    hasSettingsAccess: boolean;
+    hasAdminAccess: boolean;
+    onChangePassword: () => void;
+    onLogout: () => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const initials = user.full_name
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen(!open)}
+                className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-xl hover:bg-slate-100 transition-all duration-200 group"
+            >
+                <div className="w-8 h-8 bg-gradient-to-br from-slate-800 to-slate-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-md shadow-slate-900/10">
+                    {initials}
+                </div>
+                <div className="text-left hidden sm:block">
+                    <div className="text-sm font-semibold text-slate-800 leading-tight">{user.full_name}</div>
+                    <div className="text-[10px] text-slate-400 font-medium">{user.role}</div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Panel */}
+            {open && (
+                <div
+                    className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50"
+                    style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                >
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                        <div className="font-semibold text-sm text-slate-800">{user.full_name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5">{user.role}</div>
+                    </div>
+
+                    {/* Management Section */}
+                    {(hasSettingsAccess || hasAdminAccess) && (
+                        <div className="py-1 border-b border-slate-100">
+                            <div className="px-3 pt-2 pb-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Управление</span>
+                            </div>
+                            {hasSettingsAccess && (
+                                <button
+                                    onClick={() => { navigate('/settings'); setOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                                >
+                                    <Settings className="w-4 h-4 text-slate-400" />
+                                    Настройки компании
+                                </button>
+                            )}
+                            {hasAdminAccess && (
+                                <button
+                                    onClick={() => { navigate('/admin'); setOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                                >
+                                    <Shield className="w-4 h-4 text-slate-400" />
+                                    Панель администратора
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Account Section */}
+                    <div className="py-1 border-b border-slate-100">
+                        <div className="px-3 pt-2 pb-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Аккаунт</span>
+                        </div>
+                        <button
+                            onClick={() => { onChangePassword(); setOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                        >
+                            <Key className="w-4 h-4 text-slate-400" />
+                            Сменить пароль
+                        </button>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="py-1">
+                        <button
+                            onClick={() => { onLogout(); setOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Выйти из системы
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// --- Main Layout ---
 export default function DashboardLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
+    const { snapshotDate } = useSnapshot();
     const navigate = useNavigate();
     const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
     const canViewMarket = hasAdminAccess || user.permissions?.view_market;
@@ -49,6 +164,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
     const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const openModal = () => {
         setIsPassOpen(true);
@@ -98,7 +214,6 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
             console.error(e);
             let msg = e.message;
             try {
-                // Try to parse if the error message is a JSON string (from api.ts)
                 const parsed = JSON.parse(msg);
                 if (parsed.detail) {
                     msg = parsed.detail;
@@ -110,89 +225,100 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         }
     };
 
+    // Nav items config
+    const navItems = [
+        { to: '/analytics', label: 'Аналитика' },
+        { to: '/payroll', label: 'ФОТ' },
+        { to: '/employees', label: 'Сотрудники' },
+        { to: '/requests', label: 'Заявки' },
+        ...(canViewMarket ? [{ to: '/market', label: 'Рынок' }] : []),
+        { to: '/scenarios', label: 'Песочница' },
+    ];
+
     return (
         <div className="min-h-screen font-sans text-slate-900 bg-slate-100/80 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-100 via-slate-200/50 to-slate-200/80">
-            {/* Header */}
-            <header className="sticky top-0 z-30 w-full bg-white/80 border-b border-slate-200 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-white/60">
-                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
 
-                    {/* Left: Logo & Nav */}
-                    <div className="flex items-center gap-10">
+            {/* Dropdown animation keyframes */}
+            <style>{`
+                @keyframes dropdownIn {
+                    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+            `}</style>
+
+            {/* Header */}
+            <header className="sticky top-0 z-30 w-full bg-white/70 border-b border-slate-200/80 backdrop-blur-xl">
+                <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+
+                    {/* Left: Logo + Nav */}
+                    <div className="flex items-center gap-6">
                         {/* Logo */}
-                        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-                            <div className="w-9 h-9 bg-slate-900 rounded-lg flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-                                <Briefcase className="w-5 h-5" />
+                        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+                            <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-lg flex items-center justify-center text-white shadow-md shadow-slate-900/20">
+                                <Briefcase className="w-4 h-4" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="font-bold text-slate-900 text-sm leading-none tracking-tight">УПРАВЛЕНИЕ</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-0.5">Система ФОТ</span>
+                                <span className="font-bold text-slate-900 text-[13px] leading-none tracking-tight">УПРАВЛЕНИЕ</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-0.5">Система ФОТ</span>
                             </div>
                         </Link>
 
                         {/* Divider */}
-                        <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+                        <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
 
-                        {/* Navigation */}
-                        <nav className="hidden md:flex items-center gap-1">
-                            <NavLink
-                                to="/analytics"
-                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                Аналитика
-                            </NavLink>
-                            <NavLink
-                                to="/payroll"
-                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                ФОТ
-                            </NavLink>
-                            <NavLink
-                                to="/employees"
-                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                Сотрудники
-                            </NavLink>
-                            <NavLink
-                                to="/requests"
-                                className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                Заявки
-                            </NavLink>
-                            {canViewMarket && (
+                        {/* Desktop Navigation */}
+                        <nav className="hidden md:flex items-center gap-0.5">
+                            {navItems.map(item => (
                                 <NavLink
-                                    to="/market"
-                                    className={({ isActive }) => `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'text-slate-900 bg-slate-200/50 shadow-inner' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                                    key={item.to}
+                                    to={item.to}
+                                    className={({ isActive }) =>
+                                        `relative px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${isActive
+                                            ? 'text-slate-900 bg-slate-900/[0.06]'
+                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+                                        }`
+                                    }
                                 >
-                                    Рынок
+                                    {({ isActive }) => (
+                                        <>
+                                            {item.label}
+                                            {isActive && (
+                                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-slate-900 rounded-full"></span>
+                                            )}
+                                        </>
+                                    )}
                                 </NavLink>
-                            )}
+                            ))}
                         </nav>
                     </div>
 
-                    {/* Right: User Profile */}
-                    <div className="flex items-center gap-4">
+                    {/* Right: Bell + Divider + User Dropdown */}
+                    <div className="flex items-center gap-2">
 
-                        {/* Notify Bell */}
+                        {/* Notification Bell */}
                         <div className="relative">
                             <button
                                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                                className="p-2 text-slate-400 hover:text-slate-900 rounded-lg relative"
+                                className="relative p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
                             >
-                                <Bell className="w-5 h-5" />
+                                <Bell className="w-[18px] h-[18px]" />
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                                    <span className="absolute top-1.5 right-1.5 flex items-center justify-center min-w-[14px] h-[14px] text-[9px] font-bold bg-red-500 text-white rounded-full px-0.5 ring-2 ring-white">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
                                 )}
                             </button>
 
                             {isNotifOpen && (
                                 <div
-                                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
+                                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50"
+                                    style={{ animation: 'dropdownIn 0.15s ease-out' }}
                                     onMouseLeave={() => setIsNotifOpen(false)}
                                 >
                                     <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <span className="font-bold text-sm text-slate-700">Уведомления</span>
-                                            {unreadCount > 0 && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">{unreadCount}</span>}
+                                            {unreadCount > 0 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold">{unreadCount}</span>}
                                         </div>
                                         <div className="flex gap-1">
                                             <button
@@ -200,29 +326,29 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                                                 className="p-1 text-slate-400 hover:text-emerald-600 rounded hover:bg-emerald-50"
                                                 title="Прочитать все"
                                             >
-                                                <CheckCircle className="w-4 h-4" />
+                                                <CheckCircle className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 onClick={() => deleteAll.mutate()}
                                                 className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50"
                                                 title="Удалить все"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="max-h-[300px] overflow-y-auto">
+                                    <div className="max-h-[280px] overflow-y-auto">
                                         {notifications.length === 0 ? (
-                                            <div className="p-8 text-center text-slate-400 text-sm">Нет уведомлений</div>
+                                            <div className="p-6 text-center text-slate-400 text-sm">Нет уведомлений</div>
                                         ) : (
                                             notifications.map((n: any) => (
                                                 <div
                                                     key={n.id}
                                                     onClick={() => handleNotifClick(n)}
-                                                    className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}
+                                                    className={`p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors ${!n.is_read ? 'bg-blue-50/40' : ''}`}
                                                 >
-                                                    <div className="text-sm text-slate-800">{n.message}</div>
-                                                    <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
+                                                    <div className="text-sm text-slate-700">{n.message}</div>
+                                                    <div className="text-[10px] text-slate-400 mt-1 flex justify-between items-center">
                                                         <span>{n.created_at}</span>
                                                         {!n.is_read && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>}
                                                     </div>
@@ -234,62 +360,69 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                             )}
                         </div>
 
-                        {hasSettingsAccess && (
-                            <button
-                                onClick={() => navigate('/settings')}
-                                title="Настройки компании"
-                                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                            >
-                                <Settings className="w-5 h-5" />
-                            </button>
-                        )}
+                        {/* Separator */}
+                        <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block"></div>
 
-                        {hasAdminAccess && (
-                            <button
-                                onClick={() => navigate('/admin')}
-                                title="Панель администратора (Пользователи/Роли)"
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            >
-                                <Shield className="w-5 h-5" />
-                            </button>
-                        )}
+                        {/* User Dropdown */}
+                        <UserDropdown
+                            user={user}
+                            hasSettingsAccess={hasSettingsAccess}
+                            hasAdminAccess={hasAdminAccess}
+                            onChangePassword={openModal}
+                            onLogout={onLogout}
+                        />
 
-                        <div className="h-6 w-px bg-slate-200 mx-1"></div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="text-right hidden sm:block">
-                                <div className="text-sm font-bold text-slate-800 leading-tight">{user.full_name}</div>
-                                <div className="text-xs text-slate-500 font-medium">{user.role}</div>
-                            </div>
-                            <div className="w-9 h-9 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/10 cursor-default">
-                                <UserIcon className="w-5 h-5" />
-                            </div>
-
-                            <button
-                                onClick={openModal}
-                                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all"
-                                title="Сменить пароль"
-                            >
-                                <Key className="w-5 h-5" />
-                            </button>
-
-                            <button
-                                onClick={onLogout}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
-                                title="Выйти"
-                            >
-                                <LogOut className="w-5 h-5" />
-                            </button>
-                        </div>
+                        {/* Mobile Hamburger */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="md:hidden p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all ml-1"
+                        >
+                            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
                     </div>
                 </div>
+
+                {/* Mobile Navigation */}
+                {isMobileMenuOpen && (
+                    <div
+                        className="md:hidden border-t border-slate-100 bg-white/95 backdrop-blur-lg"
+                        style={{ animation: 'dropdownIn 0.15s ease-out' }}
+                    >
+                        <nav className="max-w-7xl mx-auto px-4 py-2 flex flex-col gap-0.5">
+                            {navItems.map(item => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={({ isActive }) =>
+                                        `px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
+                                            ? 'text-slate-900 bg-slate-100'
+                                            : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                                        }`
+                                    }
+                                >
+                                    {item.label}
+                                </NavLink>
+                            ))}
+                        </nav>
+                    </div>
+                )}
             </header>
+
+            {/* Snapshot Warning Banner */}
+            {snapshotDate && (
+                <div className="bg-amber-500 text-white text-center py-1 text-[11px] font-bold uppercase tracking-wider sticky top-14 z-20 shadow-sm flex items-center justify-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    Режим истории: {snapshotDate} — Только чтение
+                </div>
+            )}
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 py-8">
                 <Outlet context={{ user }} />
             </main>
 
+            {/* Change Password Modal */}
             <Modal isOpen={isPassOpen} onClose={() => setIsPassOpen(false)} title="Смена пароля">
                 <form onSubmit={handleChangePassword} className="space-y-4">
                     {error && (

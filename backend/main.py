@@ -17,7 +17,7 @@ from database import models # Ensure models are loaded
 Base.metadata.create_all(bind=engine)
 
 # 4. Import Routers
-from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics, salary, positions, workflow
+from routers import auth, roles, users, structure, employees, admin, planning, requests, market, analytics, salary, positions, workflow, scenarios
 
 app = FastAPI(title="FOT System MVP")
 
@@ -50,7 +50,8 @@ routers = [
     auth.router, roles.router, users.router, structure.router, 
     employees.router, admin.router, planning.router, 
     requests.router, market.router, analytics.router,
-    salary.router, positions.router, workflow.router
+    salary.router, positions.router, workflow.router,
+    scenarios.router
 ]
 
 for router in routers:

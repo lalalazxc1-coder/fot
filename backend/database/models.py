@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from .database import Base
 
 class Role(Base):
@@ -35,6 +36,10 @@ class OrganizationUnit(Base):
     parent = relationship("OrganizationUnit", remote_side=[id])
     children = relationship("OrganizationUnit", back_populates="parent")
 
+    # New: Head of Unit
+    head_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    head = relationship("Employee", foreign_keys=[head_id])
+
 class Position(Base):
     __tablename__ = "positions"
     id = Column(Integer, primary_key=True, index=True)
@@ -45,6 +50,8 @@ class Employee(Base):
     __tablename__ = "employees"
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True)
+    gender = Column(String, nullable=True) # New
+    dob = Column(String, nullable=True)    # New
     position_id = Column(Integer, ForeignKey("positions.id"))
     org_unit_id = Column(Integer, ForeignKey("organization_units.id"))
     status = Column(String)
@@ -52,13 +59,14 @@ class Employee(Base):
     hire_date = Column(String, nullable=True) # New field
     
     position = relationship("Position")
-    org_unit = relationship("OrganizationUnit")
+    org_unit = relationship("OrganizationUnit", foreign_keys=[org_unit_id])
     financial_records = relationship("FinancialRecord", back_populates="employee")
 
 class FinancialRecord(Base):
     __tablename__ = "financial_records"
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"))
+    created_at = Column(String, default=lambda: datetime.now().isoformat()) # New: For timeline reconstruction
     month = Column(String) 
     
     # Base Salary
@@ -99,10 +107,26 @@ class AuditLog(Base):
     
     user = relationship("User")
 
+# NEW: Scenario Planning
+class Scenario(Base):
+    __tablename__ = "scenarios"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    status = Column(String, default="draft") # draft, approved, archived
+    created_at = Column(String, default=lambda: datetime.now().isoformat())
+    
+    # Relationship
+    planning_positions = relationship("PlanningPosition", back_populates="scenario", cascade="all, delete-orphan")
+
 # NEW: Planning Table Model
 class PlanningPosition(Base):
     __tablename__ = "planning_lines"
     id = Column(Integer, primary_key=True, index=True)
+    
+    # Scenario Link (Null = Live Budget)
+    scenario_id = Column(Integer, ForeignKey("scenarios.id"), nullable=True)
+    scenario = relationship("Scenario", back_populates="planning_positions")
     
     position_title = Column(String, nullable=False)
     

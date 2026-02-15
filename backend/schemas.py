@@ -38,17 +38,25 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 # Structure
+# Structure
 class OrgUnitCreate(BaseModel):
     name: str
     type: str 
     parent_id: Optional[int] = None
+    head_id: Optional[int] = None
+
+class OrgUnitUpdate(BaseModel):
+    name: Optional[str] = None
+    parent_id: Optional[int] = None
+    head_id: Optional[int] = None
 
 # Employees
 class EmployeeCreate(BaseModel):
     full_name: str
     position_title: str
-    branch_id: int
+    branch_id: Optional[int] = None
     department_id: Optional[int] = None
+    is_head: Optional[bool] = False
     # Financials (Pairs)
     base_net: float = 0
     base_gross: float = 0
@@ -237,3 +245,32 @@ class PaginatedRequestsResponse(BaseModel):
     page: int
     size: int
     total_pages: int
+
+# Retention
+class RetentionRiskItem(BaseModel):
+    id: int
+    full_name: str
+    position: str
+    branch: str
+    last_update: Optional[str] = None
+    months_stagnant: int
+    current_salary: float
+    market_median: float
+    gap_percent: float
+    years_gaps: float = 0 # gap in years
+
+class RetentionDashboardResponse(BaseModel):
+    items: List[RetentionRiskItem]
+    risk_distribution: Dict[str, int]
+    cached_at: str
+
+# ESG
+class PayEquityItem(BaseModel):
+    category: str
+    count: int
+    avg_salary: float
+
+class ESGReportResponse(BaseModel):
+    gender_equity: List[PayEquityItem]
+    age_equity: List[PayEquityItem]
+    cached_at: str

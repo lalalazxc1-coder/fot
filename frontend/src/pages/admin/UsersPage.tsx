@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Users, Trash2, Edit2, User as UserIcon, Loader2 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { useUsers, useRoles, useCreateUser, useUpdateUser, useDeleteUser, User } from '../../hooks/useAdmin';
-import { useStructure } from '../../hooks/useStructure';
+import { useFlatStructure } from '../../hooks/useStructure';
 
 export default function UsersPage() {
     const { data: users = [], isLoading: isUsersLoading } = useUsers();
     const { data: roles = [], isLoading: isRolesLoading } = useRoles();
-    const { data: structure = [], isLoading: isStructureLoading } = useStructure();
+    const { data: structure = [], isLoading: isStructureLoading } = useFlatStructure();
 
     const createUserMutation = useCreateUser();
     const updateUserMutation = useUpdateUser();
@@ -219,50 +219,50 @@ export default function UsersPage() {
                     {/* Scope Config */}
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Доступ к филиалам</label>
-                            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                {structure.map(b => (
-                                    <label key={b.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-2 rounded-lg transition-colors">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.scope_branches.includes(b.id)}
-                                            onChange={() => toggleBranch(b.id)}
-                                            className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900"
-                                        />
-                                        <span className="text-sm text-slate-700 font-medium">{b.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Доступ к подразделениям</label>
+                            <p className="text-xs text-slate-400 mb-3">Выберите головной офис, филиалы или отделы</p>
+                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                                {structure
+                                    .filter(u => u.type === 'head_office' || u.type === 'branch')
+                                    .map(topUnit => (
+                                        <div key={topUnit.id} className="space-y-1">
+                                            <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-2 rounded-lg transition-colors">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.scope_branches.includes(topUnit.id)}
+                                                    onChange={() => toggleBranch(topUnit.id)}
+                                                    className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900"
+                                                />
+                                                <span className={`text-sm font-medium ${topUnit.type === 'head_office' ? 'text-purple-700' : 'text-slate-700'}`}>
+                                                    {topUnit.type === 'head_office' ? '🏢' : '🏢'} {topUnit.name}
+                                                </span>
+                                            </label>
 
-                        {formData.scope_branches.length > 0 && (
-                            <div className="border-t border-slate-200 pt-4">
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Уточнение подразделений</label>
-                                <p className="text-xs text-slate-400 mb-3">Выберите подразделения для ограничения доступа. Если ничего не выбрано, доступен весь филиал.</p>
-
-                                <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
-                                    {structure.filter(b => formData.scope_branches.includes(b.id)).map(b => (
-                                        <div key={b.id}>
-                                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{b.name}</div>
-                                            <div className="pl-2 space-y-1">
-                                                {b.departments.map(d => (
-                                                    <label key={d.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={formData.scope_departments.includes(d.id)}
-                                                            onChange={() => toggleDept(d.id)}
-                                                            className="w-3.5 h-3.5 rounded text-slate-900 focus:ring-slate-900 opacity-70"
-                                                        />
-                                                        <span className="text-sm text-slate-600">{d.name}</span>
-                                                    </label>
-                                                ))}
-                                                {b.departments.length === 0 && <span className="text-xs text-slate-300 pl-2">- нет отделов -</span>}
-                                            </div>
+                                            {/* Show child departments/branches */}
+                                            {formData.scope_branches.includes(topUnit.id) && (
+                                                <div className="pl-6 space-y-1 border-l-2 border-slate-200 ml-3">
+                                                    {structure
+                                                        .filter(u => u.parent_id === topUnit.id)
+                                                        .map(child => (
+                                                            <label key={child.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={formData.scope_departments.includes(child.id)}
+                                                                    onChange={() => toggleDept(child.id)}
+                                                                    className="w-3.5 h-3.5 rounded text-slate-900 focus:ring-slate-900"
+                                                                />
+                                                                <span className="text-sm text-slate-600">
+                                                                    {child.type === 'branch' ? '🏢' : '📁'} {child.name}
+                                                                </span>
+                                                            </label>
+                                                        ))}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
-                                </div>
                             </div>
-                        )}
+                            <p className="text-xs text-slate-400 mt-2 italic">Если ничего не выбрано в дочерних подразделениях, доступен весь выбранный уровень.</p>
+                        </div>
                     </div>
 
                     <button disabled={isSubmitting} className="w-full mt-6 bg-slate-900 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">

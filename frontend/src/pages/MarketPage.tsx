@@ -13,7 +13,7 @@ import {
 } from '../hooks/useMarket';
 import { useEmployees } from '../hooks/useEmployees';
 import { usePositions } from '../hooks/usePositions';
-import { useStructure } from '../hooks/useStructure';
+import { useFlatStructure } from '../hooks/useStructure';
 import { formatMoney } from '../utils';
 import Modal from '../components/Modal';
 import SalaryRangeChart from '../components/SalaryRangeChart';
@@ -126,7 +126,7 @@ export default function MarketPage() {
     const { data: marketData = [], isLoading: isMarketLoading } = useMarket();
     const { data: employees = [], isLoading: isEmployeesLoading } = useEmployees();
     const { data: positions = [] } = usePositions();
-    const { data: structure = [] } = useStructure();
+    const { data: flatStructure = [] } = useFlatStructure();
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -147,6 +147,31 @@ export default function MarketPage() {
         return Array.from(unique).sort();
     }, [employees]);
 
+    const hierarchicalOptions = useMemo(() => {
+        if (!flatStructure.length) return [];
+        const heads = flatStructure.filter((u: any) => u.type === 'head_office');
+        const branches = flatStructure.filter((u: any) => u.type === 'branch');
+        const depts = flatStructure.filter((u: any) => u.type === 'department');
+
+        const result: any[] = [];
+
+        // Heads
+        for (const h of heads) {
+            result.push({ ...h, level: 0, label: `🏢 ${h.name}` });
+            const childDepts = depts.filter((d: any) => d.parent_id === h.id);
+            for (const d of childDepts) result.push({ ...d, level: 1, label: `\u00A0\u00A0📁 ${d.name}` });
+        }
+
+        // Branches
+        for (const b of branches) {
+            result.push({ ...b, level: 0, label: `🏢 ${b.name}` });
+            const childDepts = depts.filter((d: any) => d.parent_id === b.id);
+            for (const d of childDepts) result.push({ ...d, level: 1, label: `\u00A0\u00A0📁 ${d.name}` });
+        }
+
+        return result;
+    }, [flatStructure]);
+
     // Derived state
     const comparisonData = useMemo(() => {
         if (!marketData.length) return [];
@@ -157,20 +182,23 @@ export default function MarketPage() {
             let matchedEmployees: any[] = [];
 
             if (employees.length > 0) {
-                // Determine effective branch name if market item is scoped
-                let requiredBranchName: string | null = null;
-                if (marketItem.branch_id) {
-                    const foundBranch = structure.find((s: any) => s.id === marketItem.branch_id);
-                    if (foundBranch) requiredBranchName = foundBranch.name;
-                }
-
                 matchedEmployees = employees.filter((e: any) => {
                     const titleMatch = e.position.toLowerCase().trim() === marketItem.position_title.toLowerCase().trim();
                     if (!titleMatch) return false;
 
-                    // If market item has branch_id, only match employees from that branch
-                    if (requiredBranchName) {
-                        return e.branch === requiredBranchName;
+                    // If market item has branch_id, only match employees from that unit (Branch or Dept)
+                    if (marketItem.branch_id) {
+                        const unit = flatStructure.find((s: any) => s.id === marketItem.branch_id);
+                        if (unit) {
+                            if (unit.type === 'department') {
+                                if (e.department_id !== marketItem.branch_id) return false;
+                            } else {
+                                // Branch or Head Office - match root branch_id
+                                if (e.branch_id !== marketItem.branch_id) return false;
+                            }
+                        } else {
+                            return false;
+                        }
                     }
                     return true;
                 });
@@ -200,7 +228,7 @@ export default function MarketPage() {
                 deviation,
                 employeeSalaries: matchedEmployees.map((e: any) => e.total.net),
                 // Helper for UI
-                branchName: marketItem.branch_id ? structure.find((s: any) => s.id === marketItem.branch_id)?.name : null
+                branchName: marketItem.branch_id ? flatStructure.find((s: any) => s.id === marketItem.branch_id)?.name : null
             };
         });
 
@@ -231,7 +259,7 @@ export default function MarketPage() {
         });
 
         return processed;
-    }, [marketData, employees, search, sortBy, sortDir, filterBranch, structure]);
+    }, [marketData, employees, search, sortBy, sortDir, filterBranch, flatStructure]);
 
     const createMutation = useCreateMarketEntry();
     const bulkCreateMutation = useBulkCreateMarketEntry();
@@ -403,7 +431,7 @@ export default function MarketPage() {
                             value={filterBranch}
                             onChange={e => setFilterBranch(e.target.value)}
                         >
-                            <option value="all">Все филиалы</option>
+                            <option value="all">Все подразделения</option>
                             {branches.map(b => (
                                 <option key={b as string} value={b as string}>{b as string}</option>
                             ))}
@@ -565,15 +593,15 @@ export default function MarketPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Филиал (Опционально)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Подразделение (Опционально)</label>
                         <select
                             className="w-full h-10 rounded-lg border border-slate-300 px-3 outline-none focus:ring-2 focus:ring-slate-900/10 bg-white"
                             value={form.branch_id || ''}
                             onChange={e => setForm({ ...form, branch_id: e.target.value ? Number(e.target.value) : null })}
                         >
-                            <option value="">Все филиалы (Глобально)</option>
-                            {structure.map((b: any) => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
+                            <option value="">Все подразделения (Глобально)</option>
+                            {hierarchicalOptions.map((opt: any) => (
+                                <option key={opt.id} value={opt.id}>{opt.label}</option>
                             ))}
                         </select>
                         <p className="text-xs text-slate-400 mt-1">Оставьте пустым для анализа по всей компании.</p>

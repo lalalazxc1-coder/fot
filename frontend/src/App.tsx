@@ -7,7 +7,9 @@ import LoginPage from './pages/LoginPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import RequestsPage from './pages/RequestsPage';
 import MarketPage from './pages/MarketPage';
+import ScenariosPage from './pages/ScenariosPage';
 import { api } from './lib/api';
+import { SnapshotProvider } from './context/SnapshotContext';
 
 // Admin SubPages
 import AdminLayout from './pages/admin/AdminLayout';
@@ -123,53 +125,56 @@ function App() {
     }
 
     return (
-        <Routes>
-            <Route path="/login" element={
-                !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />
-            } />
+        <SnapshotProvider>
+            <Routes>
+                <Route path="/login" element={
+                    !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />
+                } />
 
-            {/* Protected Routes */}
-            {isAuthenticated && user ? (
-                <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
-                    <Route path="/" element={<Navigate to="/analytics" replace />} />
-                    <Route path="/analytics" element={<AnalyticsPage />} />
-                    <Route path="/payroll" element={<PlanningTable user={user} />} />
-                    <Route path="/employees" element={<EmployeeTable user={user} onLogout={handleLogout} />} />
-                    <Route path="/requests" element={<RequestsPage />} />
+                {/* Protected Routes */}
+                {isAuthenticated && user ? (
+                    <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
+                        <Route path="/" element={<Navigate to="/analytics" replace />} />
+                        <Route path="/analytics" element={<AnalyticsPage />} />
+                        <Route path="/payroll" element={<PlanningTable user={user} />} />
+                        <Route path="/employees" element={<EmployeeTable user={user} onLogout={handleLogout} />} />
+                        <Route path="/requests" element={<RequestsPage />} />
+                        <Route path="/scenarios" element={<ScenariosPage />} />
 
-                    <Route path="/market" element={
-                        <ProtectedMarketRoute user={user}>
-                            <MarketPage />
-                        </ProtectedMarketRoute>
-                    } />
+                        <Route path="/market" element={
+                            <ProtectedMarketRoute user={user}>
+                                <MarketPage />
+                            </ProtectedMarketRoute>
+                        } />
 
-                    {/* Settings Routes - Company config */}
-                    <Route path="/settings" element={
-                        <ProtectedSettingsRoute user={user}>
-                            <SettingsLayout />
-                        </ProtectedSettingsRoute>
-                    }>
-                        <Route index element={<Navigate to="structure" replace />} />
-                        <Route path="structure" element={<StructurePage />} />
-                        <Route path="positions" element={<PositionsPage />} />
+                        {/* Settings Routes - Company config */}
+                        <Route path="/settings" element={
+                            <ProtectedSettingsRoute user={user}>
+                                <SettingsLayout />
+                            </ProtectedSettingsRoute>
+                        }>
+                            <Route index element={<Navigate to="structure" replace />} />
+                            <Route path="structure" element={<StructurePage />} />
+                            <Route path="positions" element={<PositionsPage />} />
+                        </Route>
+
+                        {/* Admin Routes - System config */}
+                        <Route path="/admin" element={
+                            <ProtectedAdminRoute user={user}>
+                                <AdminLayout />
+                            </ProtectedAdminRoute>
+                        }>
+                            <Route index element={<AdminDashboard />} />
+                            <Route path="roles" element={<RolesPage />} />
+                            <Route path="users" element={<UsersPage />} />
+                            <Route path="workflow" element={<WorkflowPage />} />
+                        </Route>
                     </Route>
-
-                    {/* Admin Routes - System config */}
-                    <Route path="/admin" element={
-                        <ProtectedAdminRoute user={user}>
-                            <AdminLayout />
-                        </ProtectedAdminRoute>
-                    }>
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="roles" element={<RolesPage />} />
-                        <Route path="users" element={<UsersPage />} />
-                        <Route path="workflow" element={<WorkflowPage />} />
-                    </Route>
-                </Route>
-            ) : (
-                <Route path="*" element={<Navigate to="/login" replace />} />
-            )}
-        </Routes>
+                ) : (
+                    <Route path="*" element={<Navigate to="/login" replace />} />
+                )}
+            </Routes>
+        </SnapshotProvider>
     );
 }
 

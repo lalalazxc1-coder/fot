@@ -1,32 +1,44 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
 from database.database import get_db
 from database.models import User, OrganizationUnit
 from schemas import UserCreate, UserUpdate
-
 from dependencies import require_admin
+from passlib.context import CryptContext
+
+# Security: Password Hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(require_admin)])
 
 @router.get("")
 def get_users(db: Session = Depends(get_db)):
-    # Remove joinedload for scope_unit since it's removed/changed
-    users = db.query(User).options(joinedload(User.role_rel)).all()
+    # Optimized: Use joinedload for role to avoid N+1
+    users = db.scalars(
+        select(User).options(joinedload(User.role_rel))
+    ).all()
+    
     res = []
     
     # Pre-fetch units for name resolution
-    units = db.query(OrganizationUnit).all()
+    units = db.scalars(select(OrganizationUnit)).all()
     unit_map = {u.id: u.name for u in units}
     
     for u in users:
         scope_str = "Все филиалы"
         
-        # Format Scope String
         if u.scope_branches:
-            branch_names = [unit_map.get(bid, str(bid)) for bid in u.scope_branches]
+            branch_names = [unit_map.get(int(bid), str(bid)) for bid in u.scope_branches if str(bid).isdigit()]
             scope_str = ", ".join(branch_names)
             if u.scope_departments:
-                 dept_names = [unit_map.get(did, str(did)) for did in u.scope_departments]
+                 dept_names = [unit_map.get(int(did), str(did)) for did in u.scope_departments if str(did).isdigit()]
                  scope_str += f" ({', '.join(dept_names)})"
         
         res.append({
@@ -43,15 +55,17 @@ def get_users(db: Session = Depends(get_db)):
 
 @router.post("")
 def create_user(u: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter_by(email=u.email).first():
+    if db.scalars(select(User).filter_by(email=u.email)).first():
         raise HTTPException(400, "Email already registered")
+    
+    # Secure: Hash password before saving
+    hashed = get_password_hash(u.password)
         
     new_user = User(
         email=u.email, 
         full_name=u.full_name, 
-        hashed_password=u.password, 
+        hashed_password=hashed, 
         role_id=u.role_id,
-        # scope_unit_id is deprecated
         scope_branches=u.scope_branches or [],
         scope_departments=u.scope_departments or []
     )
@@ -61,7 +75,7 @@ def create_user(u: UserCreate, db: Session = Depends(get_db)):
 
 @router.put("/{user_id}")
 def update_user(user_id: int, u: UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(User).get(user_id)
+    user = db.get(User, user_id)
     if not user: raise HTTPException(404, "User not found")
 
     user.email = u.email
@@ -72,14 +86,15 @@ def update_user(user_id: int, u: UserUpdate, db: Session = Depends(get_db)):
     user.scope_departments = u.scope_departments or []
 
     if u.password:
-        user.hashed_password = u.password 
+        # Secure: Hash new password
+        user.hashed_password = get_password_hash(u.password)
     
     db.commit()
     return {"status": "updated"}
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).get(user_id)
+    user = db.get(User, user_id)
     if not user: raise HTTPException(404, "User not found")
     db.delete(user)
     db.commit()

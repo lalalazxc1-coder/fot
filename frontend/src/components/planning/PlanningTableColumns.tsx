@@ -1,11 +1,11 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit2, History, Trash2 } from 'lucide-react';
-import { formatMoney } from '../../utils';
 import { PlanRow } from '../../hooks/usePlanning';
-import { StructureItem } from '../../hooks/useStructure';
+import { FlatStructureItem } from '../../hooks/useStructure';
+import { FinancialCell } from '../payroll/FinancialCell';
 
 export const createColumns = (
-    structure: StructureItem[],
+    flatStructure: FlatStructureItem[],
     canManage: boolean,
     onHistory: (id: number) => void,
     onEdit: (row: PlanRow) => void,
@@ -18,16 +18,60 @@ export const createColumns = (
             size: 50,
         },
         {
-            header: 'Филиал / Подразделение',
+            header: 'Подразделение',
             accessorKey: 'branch_id',
             cell: info => {
-                const val = info.getValue();
-                const branch = structure.find(b => b.id.toString() === val?.toString());
-                const dept = branch?.departments.find(d => d.id.toString() === info.row.original.department_id?.toString());
+                const row = info.row.original;
+                // Prefer department if set, else branch
+                const targetId = row.department_id || row.branch_id;
+                if (!targetId) return <span className="text-slate-300 text-xs">Не указано</span>;
+
+                const unit = flatStructure.find(u => u.id.toString() === targetId.toString());
+
+                let branchName = "Неизвестно";
+                let deptName = null;
+
+                if (!unit) {
+                    // Unit not found - data inconsistency
+                    console.warn(`Planning position ${row.id} references non-existent unit ${targetId}`);
+                    return (
+                        <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-red-600">⚠️ Неизвестно</span>
+                            <span className="text-[9px] text-red-400">(ID:{targetId})</span>
+                        </div>
+                    );
+                }
+
+                // If unit is branch or head_office, use it as branch
+                if (unit.type === 'branch' || unit.type === 'head_office') {
+                    branchName = unit.name;
+                } else {
+                    // Unit is department - show department name
+                    deptName = unit.name;
+                    // Find branch or head_office parent
+                    let current = unit;
+                    while (current.parent_id) {
+                        const p = flatStructure.find(u => u.id === current.parent_id);
+                        if (p) {
+                            if (p.type === 'branch' || p.type === 'head_office') {
+                                branchName = p.name;
+                                break;
+                            }
+                            current = p;
+                        } else {
+                            break;
+                        }
+                    }
+                    // Fallback: if still unknown and current is branch/head_office, use it
+                    if (branchName === "Неизвестно" && (current.type === 'branch' || current.type === 'head_office')) {
+                        branchName = current.name;
+                    }
+                }
+
                 return (
                     <div>
-                        <div className="text-xs font-bold text-slate-700">{branch?.name || <span className="text-slate-300">Не выбран</span>}</div>
-                        {dept && <div className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-0.5">{dept.name}</div>}
+                        <div className="text-sm font-medium text-slate-700">{branchName}</div>
+                        {deptName && <div className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1">{deptName}</div>}
                     </div>
                 );
             }
@@ -35,7 +79,7 @@ export const createColumns = (
         {
             header: 'Должность',
             accessorKey: 'position',
-            cell: info => <div className="font-bold text-slate-800 text-sm">{info.getValue() as string}</div>,
+            cell: info => <div className="font-medium text-slate-800 text-sm">{info.getValue() as string}</div>,
         },
         {
             header: 'График',
@@ -50,30 +94,18 @@ export const createColumns = (
         {
             header: 'Оклад (Net/Gross)',
             id: 'base',
-            cell: ({ row }) => (
-                <div className="flex flex-col text-xs min-w-[100px]">
-                    <div className="flex justify-between gap-2 text-slate-500">
-                        <span>Net:</span> <span className="font-medium text-emerald-700">{formatMoney(row.original.base_net)}</span>
-                    </div>
-                    <div className="flex justify-between gap-2 border-t mt-0.5 pt-0.5 border-slate-100">
-                        <span className="text-slate-400">Grs:</span> <span className="text-slate-600">{formatMoney(row.original.base_gross)}</span>
-                    </div>
-                </div>
-            ),
+            cell: ({ row }) => <FinancialCell value={{
+                net: row.original.base_net,
+                gross: row.original.base_gross
+            }} />,
         },
         {
             header: 'KPI (Net/Gross)',
             id: 'kpi',
-            cell: ({ row }) => (
-                <div className="flex flex-col text-xs min-w-[100px]">
-                    <div className="flex justify-between gap-2 text-slate-500">
-                        <span>Net:</span> <span className="font-medium text-blue-700">{formatMoney(row.original.kpi_net)}</span>
-                    </div>
-                    <div className="flex justify-between gap-2 border-t mt-0.5 pt-0.5 border-slate-100">
-                        <span className="text-slate-400">Grs:</span> <span className="text-slate-600">{formatMoney(row.original.kpi_gross)}</span>
-                    </div>
-                </div>
-            ),
+            cell: ({ row }) => <FinancialCell value={{
+                net: row.original.kpi_net,
+                gross: row.original.kpi_gross
+            }} />,
         },
         {
             header: 'Итого на ед.',
@@ -82,16 +114,7 @@ export const createColumns = (
                 const r = row.original;
                 const net = r.base_net + r.kpi_net + r.bonus_net;
                 const gross = r.base_gross + r.kpi_gross + r.bonus_gross;
-                return (
-                    <div className="flex flex-col text-xs min-w-[100px]">
-                        <div className="flex justify-between gap-2 text-slate-500">
-                            <span>Net:</span> <span className="font-bold text-emerald-700">{formatMoney(net)}</span>
-                        </div>
-                        <div className="flex justify-between gap-2 border-t mt-0.5 pt-0.5 border-slate-100">
-                            <span className="text-slate-400">Grs:</span> <span className="text-slate-600">{formatMoney(gross)}</span>
-                        </div>
-                    </div>
-                );
+                return <FinancialCell value={{ net, gross }} />;
             }
         },
         {
@@ -103,9 +126,8 @@ export const createColumns = (
                 const net = (r.base_net + r.kpi_net + r.bonus_net) * r.count;
                 const gross = (r.base_gross + r.kpi_gross + r.bonus_gross) * r.count;
                 return (
-                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm w-full min-w-[120px] text-left text-xs">
-                        <div className="flex justify-between items-center mb-0.5"><span className="text-slate-400 opacity-70">Net:</span><span className="font-bold">{formatMoney(net)}</span></div>
-                        <div className="flex justify-between items-center border-t border-slate-700/50 pt-0.5"><span className="text-slate-500">Grs:</span><span className="text-slate-400">{formatMoney(gross)}</span></div>
+                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm min-w-[100px]">
+                        <FinancialCell value={{ net, gross }} isTotal={true} />
                     </div>
                 );
             }

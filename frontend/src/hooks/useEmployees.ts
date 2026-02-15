@@ -25,9 +25,14 @@ export function useCreateEmployee() {
         onSuccess: () => {
             toast.success("Сотрудник успешно создан");
             queryClient.invalidateQueries({ queryKey: ['employees'] });
+            queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
         onError: (err: any) => {
-            toast.error("Ошибка при создании: " + (err.response?.data?.detail || err.message));
+            let msg = err.response?.data?.detail || err.message;
+            if (typeof msg === 'object') {
+                msg = JSON.stringify(msg, null, 2);
+            }
+            toast.error("Ошибка при создании: " + msg);
         }
     });
 }
@@ -59,6 +64,7 @@ export function useDismissEmployee() {
         onSuccess: () => {
             toast.success("Сотрудник уволен");
             queryClient.invalidateQueries({ queryKey: ['employees'] });
+            queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
         onError: (err: any) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));

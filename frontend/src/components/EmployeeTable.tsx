@@ -47,8 +47,8 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
 
   // Filters
   const [globalFilter, setGlobalFilter] = useState('');
-  const [branchFilter, setBranchFilter] = useState<string>('Все');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('Все');
+  const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
 
   // Infinite Scroll State
   const [visibleRows, setVisibleRows] = useState(20);
@@ -95,24 +95,68 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
       res = res.filter(item => item.status === 'Dismissed');
     }
 
-    // Safety Guard: Filter against authorized structure
-    if (structure.length > 0) {
-      const allowedBranchNames = new Set(structure.map(b => b.name));
-      res = res.filter(item => allowedBranchNames.has(item.branch));
+
+
+
+    // Helper to find all descendants of a unit
+    const getDescendantIds = (rootId: number, structureData: typeof structure) => {
+      const ids = new Set<number>();
+      // We need a flat map of all units to traverse easily or just iterate
+      // Since structure is Branch -> Departments[], we can iterate capable branches
+
+      // Let's build a flat parent-lookup from structure
+      // Actually structure is BranchStructure[] which contains all descendants in 'departments' list now (flat list with parent_id)
+
+      // Find the branch or unit in structure
+      const branch = structureData.find(b => b.id === rootId);
+      if (branch) {
+        ids.add(branch.id);
+        branch.departments.forEach(d => ids.add(d.id));
+        return ids;
+      }
+
+      // If rootId is a department, we need to find it in one of the branches
+      for (const b of structureData) {
+        const dept = b.departments.find(d => d.id === rootId);
+        if (dept) {
+          ids.add(dept.id);
+          // Find all children of this department
+          // Simple 1-level down check? No, we need recursive.
+          // Re-build tree from flat list to find descendants
+          const findChildren = (pid: number) => {
+            b.departments.filter(d => d.parent_id === pid).forEach(child => {
+              ids.add(child.id);
+              findChildren(child.id);
+            });
+          };
+          findChildren(rootId);
+          return ids;
+        }
+      }
+      return ids;
+    };
+
+    // Filter by Branch (UI Filter) - Now using ID
+    if (branchFilter !== 'all') {
+      const branchId = parseInt(branchFilter);
+      const validIds = getDescendantIds(branchId, structure);
+      // Include the branch itself and all its sub-units
+      // Data items have org_unit_id
+      res = res.filter(item => item.org_unit_id && validIds.has(item.org_unit_id));
     }
 
-    // Filter by Branch (UI Filter)
-    if (branchFilter !== 'Все') {
-      res = res.filter(item => item.branch === branchFilter);
-    }
-
-    // Filter by Department (UI Filter)
-    if (departmentFilter !== 'Все') {
-      res = res.filter(item => item.department === departmentFilter);
+    // Filter by Department (UI Filter) - Now using ID
+    if (departmentFilter !== 'all') {
+      const deptId = parseInt(departmentFilter);
+      const validIds = getDescendantIds(deptId, structure);
+      res = res.filter(item => item.org_unit_id && validIds.has(item.org_unit_id));
     }
     // Filter by Search
     if (globalFilter) {
-      res = res.filter(item => item.full_name.toLowerCase().includes(globalFilter.toLowerCase()));
+      res = res.filter(item =>
+        item.full_name.toLowerCase().includes(globalFilter.toLowerCase()) ||
+        item.position.toLowerCase().includes(globalFilter.toLowerCase())
+      );
     }
 
     return res;
@@ -264,7 +308,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className="px-6 py-4 font-bold text-slate-500 select-none align-top"
+                        className="px-4 py-3 font-bold text-slate-500 select-none align-top"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -281,7 +325,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
                     onClick={() => handleRowClick(row.original)}
                   >
                     {row.getVisibleCells().map(cell => (
-                      <td key={cell.id} className="px-6 py-4 align-top">
+                      <td key={cell.id} className="px-4 py-3 align-top">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -309,7 +353,6 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
       <AddEmployeeModal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        structure={structure}
         planningData={planningData}
       />
 
@@ -317,7 +360,6 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         employee={selectedEmployee}
-        structure={structure}
         planningData={planningData}
       />
 

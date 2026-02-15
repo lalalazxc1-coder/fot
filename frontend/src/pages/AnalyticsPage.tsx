@@ -4,6 +4,9 @@ import { Users, TrendingUp, Wallet, Target, AlertCircle, PieChart as PieIcon, Br
 import { PageHeader } from '../components/shared';
 import { formatMoney } from '../utils';
 import { useAnalytics, useRefreshAnalytics, BranchComparison } from '../hooks/useAnalytics';
+import { RetentionDashboard } from '../components/analytics/RetentionDashboard';
+import { ESGReport } from '../components/analytics/ESGReport';
+import { TimeTravelPicker } from '../components/TimeTravelPicker';
 
 // --- Colors ---
 const COLORS = [
@@ -22,7 +25,7 @@ const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data })
             <table className="w-full text-left text-sm border-separate border-spacing-0">
                 <thead className="sticky top-0 bg-white z-10">
                     <tr>
-                        <th className="pb-3 pt-2 text-slate-400 font-medium pl-4 border-b border-slate-100 bg-white">Филиал</th>
+                        <th className="pb-3 pt-2 text-slate-400 font-medium pl-4 border-b border-slate-100 bg-white">Подразделение</th>
                         <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white">План</th>
                         <th className="pb-3 pt-2 text-left pl-8 text-slate-400 font-medium border-b border-slate-100 bg-white min-w-[150px]">Факт</th>
                         <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white">Отклонение</th>
@@ -30,36 +33,63 @@ const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data })
                     </tr>
                 </thead>
                 <tbody>
-                    {data.map((item) => (
-                        <tr
-                            key={item.id}
-                            className="group hover:bg-slate-50 transition-colors"
-                        >
-                            <td className="py-3 pl-4 font-semibold text-slate-700 border-b border-slate-50">{item.name}</td>
-                            <td className="py-3 text-right text-slate-500 border-b border-slate-50">{formatMoney(item.plan)}</td>
+                    {data.map((item) => {
+                        // Visual indicators for type
+                        const getTypeIcon = (type?: string) => {
+                            if (type === 'head_office') return '🏢';
+                            if (type === 'branch') return '🏢';
+                            if (type === 'department') return '📁';
+                            return '📊';
+                        };
 
-                            {/* Visual Data Bar Cell */}
-                            <td className="py-3 pl-8 text-slate-900 font-bold border-b border-slate-50 relative">
-                                <div className="flex items-center gap-2 relative z-10">
-                                    <span>{formatMoney(item.fact)}</span>
-                                </div>
-                                {/* The Data Bar */}
-                                <div
-                                    className="absolute left-6 top-2 bottom-2 bg-slate-100 rounded-r-md -z-0 transition-all duration-500"
-                                    style={{ width: `${(item.fact / maxFact) * 80}%` }}
-                                />
-                            </td>
+                        const getTypeColor = (type?: string) => {
+                            if (type === 'head_office') return 'text-purple-700';
+                            if (type === 'branch') return 'text-blue-700';
+                            if (type === 'department') return 'text-slate-600';
+                            return 'text-slate-700';
+                        };
 
-                            <td className={`py-3 text-right font-bold border-b border-slate-50 ${item.diff > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                {item.diff > 0 ? '+' : ''}{formatMoney(item.diff)}
-                            </td>
-                            <td className="py-3 text-right pr-4 border-b border-slate-50">
-                                <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.percent > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
-                                    {item.percent}%
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
+                        const getIndentation = (type?: string) => {
+                            if (type === 'department') return 'pl-8';
+                            return 'pl-4';
+                        };
+
+                        return (
+                            <tr
+                                key={item.id}
+                                className="group hover:bg-slate-50 transition-colors"
+                            >
+                                <td className={`py-3 ${getIndentation(item.type)} font-semibold border-b border-slate-50 ${getTypeColor(item.type)}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base">{getTypeIcon(item.type)}</span>
+                                        <span>{item.name}</span>
+                                    </div>
+                                </td>
+                                <td className="py-3 text-right text-slate-500 border-b border-slate-50">{formatMoney(item.plan)}</td>
+
+                                {/* Visual Data Bar Cell */}
+                                <td className="py-3 pl-8 text-slate-900 font-bold border-b border-slate-50 relative">
+                                    <div className="flex items-center gap-2 relative z-10">
+                                        <span>{formatMoney(item.fact)}</span>
+                                    </div>
+                                    {/* The Data Bar */}
+                                    <div
+                                        className="absolute left-6 top-2 bottom-2 bg-slate-100 rounded-r-md -z-0 transition-all duration-500"
+                                        style={{ width: `${(item.fact / maxFact) * 80}%` }}
+                                    />
+                                </td>
+
+                                <td className={`py-3 text-right font-bold border-b border-slate-50 ${item.diff > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                    {item.diff > 0 ? '+' : ''}{formatMoney(item.diff)}
+                                </td>
+                                <td className="py-3 text-right pr-4 border-b border-slate-50">
+                                    <span className={`px-2 py-1 rounded-md text-xs font-bold ${item.percent > 100 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                        {item.percent}%
+                                    </span>
+                                </td>
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
@@ -142,6 +172,7 @@ export default function AnalyticsPageOptimized() {
                     </p>
                 )}
             >
+                <TimeTravelPicker />
                 <button
                     onClick={handleRefresh}
                     disabled={refreshMutation.isPending}
@@ -335,6 +366,12 @@ export default function AnalyticsPageOptimized() {
                     </h3>
                     <BranchComparisonTable data={branchComparison} />
                 </div>
+            </div>
+
+            {/* New Modules */}
+            <div className="grid grid-cols-1 gap-8 border-t border-slate-200 pt-8 mt-8">
+                <RetentionDashboard />
+                <ESGReport />
             </div>
         </div>
     );

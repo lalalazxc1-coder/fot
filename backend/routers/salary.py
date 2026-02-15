@@ -58,6 +58,8 @@ class SalaryBreakdown(BaseModel):
     
 # --- Helpers ---
 
+from services.salary_service import calculate_taxes, solve_gross_from_net
+
 def get_or_create_config(db: Session) -> SalaryConfiguration:
     config = db.query(SalaryConfiguration).first()
     if not config:
@@ -81,107 +83,6 @@ def get_or_create_config(db: Session) -> SalaryConfiguration:
         db.add(config)
         db.commit()
     return config
-
-def calculate_taxes(gross: float, config: SalaryConfiguration, apply_deduction: bool = True):
-    """
-    Standard RK Calculation (2024)
-    Returns dictionary with all tax components.
-    """
-    # 1. OPV (Pension)
-    # Cap: 50 * MZP
-    opv_base = min(gross, config.opv_limit_mzp * config.mzp)
-    opv = opv_base * config.opv_rate
-    
-    # 2. VOSMS (Health Employee)
-    # Cap: 10 * MZP
-    vosms_base = min(gross, config.vosms_limit_mzp * config.mzp)
-    vosms = vosms_base * config.vosms_rate
-    
-    # 3. IPN (Income Tax)
-    # Base = Gross - OPV - VOSMS - Deduction (14 MRP)
-    deduction = (config.ipn_deduction_mrp * config.mrp) if apply_deduction else 0
-    ipn_base = gross - opv - vosms - deduction
-    if ipn_base < 0: ipn_base = 0
-    
-    # "Correction" for low income (< 25 MRP) is deprecated/changed often, ignoring for generic calculator unless specific rule needed.
-    # As of 2024: 90% adjustment for < 25 MRP is removed/changed in some contexts, but let's stick to standard formula.
-    
-    ipn = ipn_base * config.ipn_rate
-    
-    # 4. Net
-    net = gross - opv - vosms - ipn
-    
-    # Employer Side
-    # OSMS
-    osms_base = min(gross, config.vosms_limit_mzp * config.mzp)
-    osms = osms_base * config.vosms_employer_rate
-    
-    # SO (Social Insurance)
-    # Base: Gross - OPV, Cap: 7 * MZP, Min: 1 * MZP
-    so_base_raw = gross - opv
-    so_cap = 7 * config.mzp
-    so_min = config.mzp
-    
-    so_base = max(so_min, min(so_base_raw, so_cap))
-    # Correcting SO base: usually it is defined by specific rules. 
-    # Let's use standard: max(MZP, min(Gross - OPV, 7*MZP))
-    
-    so = so_base * config.so_rate
-    
-    # SN (Social Tax)
-    # Base: Gross - OPV - VOSMS (or just Gross - OPV? Rules vary by regime. General regime: Gross - OPV)
-    # General Regime: SN = (Gross - OPV) * 9.5% - SO
-    sn_base = gross - opv
-    sn_calc = sn_base * config.sn_rate
-    sn = max(0, sn_calc - so)
-    
-    # OPVR (Employer Pension)
-    # Base = Gross, Cap = 50 MZP
-    opvr_base = min(gross, getattr(config, 'opvr_limit_mzp', 50) * config.mzp)
-    opvr = opvr_base * getattr(config, 'opvr_rate', 0.0) # Handle if missing in old object, but we are using new table.
-    
-    return {
-        "gross": round(gross, 2),
-        "net": round(net, 2),
-        "opv": round(opv, 2),
-        "vosms": round(vosms, 2),
-        "ipn": round(ipn, 2),
-        "osms": round(osms, 2),
-        "so": round(so, 2),
-        "sn": round(sn, 2),
-        "opvr": round(opvr, 2),
-        "deduction": deduction
-    }
-
-def solve_gross_from_net(target_net: float, config: SalaryConfiguration, apply_deduction: bool = True) -> float:
-    """
-    Reverse calculation. Since tax function is piecewise linear (due to caps and floors),
-    we can use binary search or iterative approximation.
-    Iterative is simpler and fast enough.
-    """
-    # Initial guess: Net / 0.8
-    guess = target_net / 0.8
-    
-    # Binary Search
-    # Lower bound: Net (since taxes are positive)
-    # Upper bound: Net * 2 (safe bet)
-    low = target_net
-    high = target_net * 2.0
-    
-    for _ in range(20): # 20 iterations is plenty for float precision
-        mid = (low + high) / 2
-        res = calculate_taxes(mid, config, apply_deduction)
-        calc_net = res['net']
-        
-        if abs(calc_net - target_net) < 0.01:
-            return mid
-            
-        if calc_net < target_net:
-            low = mid
-        else:
-            high = mid
-            
-    return (low + high) / 2
 
 # --- Endpoints ---
 
@@ -340,5 +241,6 @@ def calculate_salary(input: SalaryCalculationInput, db: Session = Depends(get_db
         "osms": result['osms'],
         "so": result['so'],
         "sn": result['sn'],
+        "opvr": result['opvr'],
         "deduction_applied": result['deduction']
     }

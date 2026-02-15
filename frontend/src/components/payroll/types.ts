@@ -2,6 +2,7 @@ export type FinancialValue = { net: number; gross: number };
 
 export interface EmployeeRecord {
     id: number;
+    org_unit_id?: number;
     full_name: string;
     position: string;
     branch: string;
@@ -26,7 +27,7 @@ export interface AuditLog {
 export interface BranchStructure {
     id: number;
     name: string;
-    departments: { id: number; name: string }[];
+    departments: { id: number; name: string; parent_id?: number | null; type?: string }[];
 }
 
 export interface PlanRow {

@@ -23,21 +23,44 @@ export const PlanningFilters: React.FC<PlanningFiltersProps> = ({
 
     return (
         <>
+            <div className="relative w-full sm:w-64">
+                <select
+                    className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600"
+                    value={branchFilter || 'all'}
+                    onChange={e => {
+                        setBranchFilter(e.target.value === 'all' ? '' : e.target.value);
+                        setDepartmentFilter('');
+                    }}
+                >
+                    <option value="all">Все структуры</option>
+                    {structure.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                </select>
+            </div>
+            <div className="relative w-full sm:w-64">
+                <select
+                    className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600 disabled:opacity-50"
+                    value={departmentFilter || 'all'}
+                    onChange={e => setDepartmentFilter(e.target.value === 'all' ? '' : e.target.value)}
+                    disabled={!branchFilter || branchFilter === 'all'}
+                >
+                    <option value="all">Все подразделения</option>
+                    {selectedFilterBranch?.departments.map(d => (
+                        <option key={d.id} value={d.id}>
+                            {d.parent_id && d.parent_id !== selectedFilterBranch?.id ? ` - ${d.name}` : d.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
             <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Поиск по должности..." className="pl-9 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-            </div>
-            <div className="relative w-full sm:w-64">
-                <select className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600" value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setDepartmentFilter(''); }}>
-                    <option value="">Все филиалы</option>
-                    {structure.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-            </div>
-            <div className="relative w-full sm:w-64">
-                <select className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600 disabled:opacity-50" value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)} disabled={!branchFilter}>
-                    <option value="">Все подразделения</option>
-                    {selectedFilterBranch?.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
+                <Input
+                    placeholder="Поиск по должности..."
+                    className="pl-9 bg-slate-50 border-transparent focus:bg-white transition-all rounded-xl"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                />
             </div>
         </>
     );

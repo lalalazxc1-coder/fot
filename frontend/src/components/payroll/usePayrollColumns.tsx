@@ -68,8 +68,8 @@ export const usePayrollColumns = ({
             accessorKey: 'total',
             header: 'Итого',
             cell: ({ row }) => (
-                <div className="flex items-center gap-3">
-                    <div className="bg-slate-900 text-white px-3 py-1.5 rounded-lg shadow-sm min-w-[120px]">
+                <div className="flex items-center gap-2">
+                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm min-w-[100px]">
                         <FinancialCell value={row.original.total} isTotal={true} />
                     </div>
 

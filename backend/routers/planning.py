@@ -167,82 +167,8 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
 # --- Private Helpers ---
 
 def _sync_employee_financials(db: Session, plan: PlanningPosition, changes: dict, user: User, audit_ts: str):
-    """
-    Synchronizes financial changes from a Plan to all relevant Employees.
-    Only triggered if financial fields are modified.
-    """
-    fin_fields = {'base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross'}
-    changed_fin_fields = set(changes.keys()).intersection(fin_fields)
-    
-    if not changed_fin_fields:
-        return 0
-        
-    # Find matching employees
-    from database.models import Position, Employee, FinancialRecord
-    pos = db.query(Position).filter_by(title=plan.position_title).first()
-    
-    # Resolve OrgUnit ID (Dept if exists, else Branch)
-    target_org_id = plan.department_id if plan.department_id else plan.branch_id
-    
-    if not pos or not target_org_id:
-        return 0
-        
-    # Find active employees in this position & unit
-    employees = db.query(Employee).filter(
-        Employee.position_id == pos.id,
-        Employee.org_unit_id == target_org_id,
-        Employee.status != 'Dismissed'
-    ).all()
-    
-    sync_count = 0
-    for emp in employees:
-        # Get latest financial record
-        fin = db.query(FinancialRecord).filter_by(employee_id=emp.id).order_by(desc(FinancialRecord.id)).first()
-        if fin:
-            emp_audit_changes = {}
-
-            def apply_chamge_val(field, new_val):
-                old_val = getattr(fin, field)
-                if old_val != new_val:
-                    setattr(fin, field, new_val)
-                    emp_audit_changes[field] = {'old': old_val, 'new': new_val}
-
-            # Apply updates
-            if 'base_net' in changes: apply_chamge_val('base_net', plan.base_net)
-            if 'base_gross' in changes: apply_chamge_val('base_gross', plan.base_gross)
-            
-            if 'kpi_net' in changes: apply_chamge_val('kpi_net', plan.kpi_net)
-            if 'kpi_gross' in changes: apply_chamge_val('kpi_gross', plan.kpi_gross)
-            
-            if 'bonus_net' in changes: apply_chamge_val('bonus_net', plan.bonus_net)
-            if 'bonus_gross' in changes: apply_chamge_val('bonus_gross', plan.bonus_gross)
-            
-            if emp_audit_changes:
-                # Recalc totals
-                fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
-                fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
-                
-                # Legacy Sync (for backward compatibility)
-                fin.base_salary = fin.base_net
-                fin.kpi_amount = fin.kpi_net
-                fin.total_payment = fin.total_net
-
-                sync_count += 1
-                
-                # Add metadata
-                emp_audit_changes['sync_source'] = {'old': '', 'new': f'План (ID: {plan.id})'}
-
-                # Create Audit Log for Employee update
-                db.add(AuditLog(
-                    user_id=user.id,
-                    target_entity="employee",
-                    target_entity_id=emp.id,
-                    timestamp=audit_ts,
-                    old_values={k: v['old'] for k,v in emp_audit_changes.items()},
-                    new_values={k: v['new'] for k,v in emp_audit_changes.items()}
-                ))
-    
-    return sync_count
+    from services.salary_service import sync_employee_financials
+    return sync_employee_financials(db, plan, changes, user, audit_ts)
 
 
 @router.patch("/planning/{plan_id}")
@@ -343,6 +269,11 @@ def get_plan_history(plan_id: int, db: Session = Depends(get_db)):
 @router.get("/planning/export")
 def export_planning_excel(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     try:
+        # Optimized: Pre-fetch Organization Units to avoid N+1 queries
+        from sqlalchemy import select
+        units = db.scalars(select(OrganizationUnit)).all()
+        unit_map = {u.id: u for u in units}
+        
         # Get planning data with scope filtering
         query = db.query(PlanningPosition)
         query = filter_by_scope(query, current_user, db)
@@ -377,15 +308,14 @@ def export_planning_excel(db: Session = Depends(get_db), current_user: User = De
             branch_name = "-"
             dept_name = "-"
             
+            # Lookup from pre-fetched map (O(1)) instead of DB query (O(N))
             if plan.branch_id:
-                branch = db.query(OrganizationUnit).get(plan.branch_id)
-                if branch:
-                    branch_name = branch.name
+                branch = unit_map.get(plan.branch_id)
+                if branch: branch_name = branch.name
             
             if plan.department_id:
-                dept = db.query(OrganizationUnit).get(plan.department_id)
-                if dept:
-                    dept_name = dept.name
+                dept = unit_map.get(plan.department_id)
+                if dept: dept_name = dept.name
             
             total_net = plan.base_net + plan.kpi_net + plan.bonus_net
             total_gross = plan.base_gross + plan.kpi_gross + plan.bonus_gross

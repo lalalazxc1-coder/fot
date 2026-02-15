@@ -37,41 +37,49 @@ class EmployeeService:
         # if using self-referential without clear relationship name in model.
         # Let's stick to simple logic for now, much better than loop over financials.
 
+        # Pre-fetch all OrgUnits to resolve hierarchy efficiently in memory
+        all_units = db.query(OrganizationUnit).all()
+        unit_map = {u.id: u for u in all_units}
+
         for emp in employees:
             # Financials: In One-to-Many, we usually want the LATEST record.
-            # Python side filtering/sorting might be faster than subquery for small N, 
-            # but ideally we should have a relationship 'current_financial_record'.
-            # For now, we sort in Python since we joined loaded them.
             fin = None
             if emp.financial_records:
-                # Assuming ID is increasing with time, or sort by ID desc
                 fin = sorted(emp.financial_records, key=lambda x: x.id, reverse=True)[0]
             
             pos_name = emp.position.title if emp.position else "Не указано"
             
-            org = emp.org_unit
+            # Resolve Branch/Dept from hierarchical org_unit
             branch_name = "Неизвестно"
             dept_name = "-"
             branch_id = None
             department_id = None
-
-            if org:
-                # Naive resolution, might trigger manageable lazy loads
-                if org.type == 'branch':
-                    branch_name = org.name
-                    branch_id = org.id
-                elif org.type == 'department':
-                    dept_name = org.name
-                    department_id = org.id
-                    # This might trigger a query if parent not loaded. 
-                    # Acceptable for now as it's cached in session identity map often.
-                    if org.parent_id:
-                        # We can try to fetch from session or simple query
-                        # Since we don't have parent relationship explicitly loaded in query above easily without alias
-                       parent = db.query(OrganizationUnit).get(org.parent_id)
-                       if parent: 
-                           branch_name = parent.name
-                           branch_id = parent.id
+            
+            if emp.org_unit_id and emp.org_unit_id in unit_map:
+                current = unit_map[emp.org_unit_id]
+                
+                # If assigned directly to a department, capture it
+                if current.type == 'department':
+                    dept_name = current.name
+                    department_id = current.id
+                
+                # Traverse up to find the Branch or Head Office (Root)
+                cursor = current
+                while cursor:
+                    # Check for both branch and head_office types
+                    if cursor.type in ('branch', 'head_office'):
+                        branch_name = cursor.name
+                        branch_id = cursor.id
+                        break 
+                    
+                    if cursor.parent_id and cursor.parent_id in unit_map:
+                        cursor = unit_map[cursor.parent_id]
+                    else:
+                        # Reached top or missing parent, stop.
+                        # If we started at a department and never found a branch, 
+                        # maybe the top-level department IS the logical branch context?
+                        # For now, adhere to strict 'branch' or 'head_office' type check.
+                        break
 
             base_n = fin.base_net if fin else 0
             base_g = fin.base_gross if fin else 0
@@ -105,6 +113,8 @@ class EmployeeService:
     @staticmethod
     def create_employee(db: Session, user: User, data: EmployeeCreate, scope_ids: Optional[List[int]]) -> dict:
         target_org_id = data.department_id if data.department_id else data.branch_id
+        if not target_org_id:
+            raise HTTPException(400, "Branch or Department is required")
         
         # Scope Check
         if scope_ids is not None:
@@ -145,6 +155,19 @@ class EmployeeService:
             base_salary=data.base_net, kpi_amount=data.kpi_net, total_payment=total_n
         )
         db.add(fin)
+
+        # Assign as Head Logic
+        assigned_head = False
+        if data.is_head:
+            org_unit = db.query(OrganizationUnit).filter(OrganizationUnit.id == target_org_id).first()
+            if org_unit:
+                if not org_unit.head_id:
+                    org_unit.head_id = new_emp.id
+                    db.add(org_unit)
+                    assigned_head = True
+                else:
+                    # Optional: We could warn, but for now we just skip if occupied
+                    pass
         
         # Log
         EmployeeService._log_change(db, user, new_emp.id, 
