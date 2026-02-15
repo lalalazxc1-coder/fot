@@ -29,7 +29,7 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
         allowed_bids = set()
         for x in current_user.scope_branches:
             try: allowed_bids.add(int(x))
-            except: pass
+            except (ValueError, TypeError): pass
         branches = [b for b in branches if b.id in allowed_bids]
         
     # Pre-fetch ALL units to build hierarchy in memory (avoid N+1)
@@ -53,7 +53,7 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
     if current_user.scope_departments:
          for x in current_user.scope_departments:
              try: user_dept_ids.add(int(x))
-             except: pass
+             except (ValueError, TypeError): pass
 
     for b in branches:
         # Get ALL descendants (recursive)

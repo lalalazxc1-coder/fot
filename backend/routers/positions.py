@@ -38,7 +38,7 @@ def create_position(data: PositionCreate, db: Session = Depends(get_db)):
 
 @router.put("/{pos_id}", response_model=PositionResponse, dependencies=[Depends(PermissionChecker('edit_positions'))])
 def update_position(pos_id: int, data: PositionUpdate, db: Session = Depends(get_db)):
-    pos = db.query(Position).get(pos_id)
+    pos = db.get(Position, pos_id)
     if not pos:
         raise HTTPException(404, "Position not found")
     
@@ -56,7 +56,7 @@ def update_position(pos_id: int, data: PositionUpdate, db: Session = Depends(get
 
 @router.delete("/{pos_id}", dependencies=[Depends(PermissionChecker('edit_positions'))])
 def delete_position(pos_id: int, db: Session = Depends(get_db)):
-    pos = db.query(Position).get(pos_id)
+    pos = db.get(Position, pos_id)
     if not pos:
         raise HTTPException(404, "Position not found")
     

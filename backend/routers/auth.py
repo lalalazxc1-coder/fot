@@ -67,7 +67,7 @@ def get_notifications(db: Session = Depends(get_db), current_user: User = Depend
 @router.patch("/notifications/{id}/read")
 def mark_read(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     from database.models import Notification
-    note = db.query(Notification).get(id)
+    note = db.get(Notification, id)
     if not note or note.user_id != current_user.id:
         raise HTTPException(404, "Notification not found")
     note.is_read = True

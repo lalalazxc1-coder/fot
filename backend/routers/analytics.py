@@ -524,7 +524,7 @@ def get_retention_risk(
             created_dt = now - timedelta(days=365*2)
             if fr.created_at:
                 try: created_dt = datetime.fromisoformat(fr.created_at)
-                except: pass
+                except (ValueError, TypeError): pass
             
             delta = relativedelta(now, created_dt)
             months_stagnant = delta.months + (delta.years * 12)
@@ -623,7 +623,7 @@ def get_esg_metrics(
                     d_str = emp.dob[:10] # e.g. YYYY-MM-DD
                     try:
                          dob_dt = datetime.strptime(d_str, "%Y-%m-%d")
-                    except:
+                    except (ValueError, TypeError):
                          dob_dt = datetime.fromisoformat(emp.dob)
                     
                     age = relativedelta(now, dob_dt).years
@@ -632,7 +632,7 @@ def get_esg_metrics(
                     elif age < 45: age_bucket = "35-44 Millennials/Gen X"
                     elif age < 55: age_bucket = "45-54 Gen X"
                     else: age_bucket = "55+ Boomers"
-                except:
+                except (ValueError, TypeError):
                     pass
             
             if age_bucket not in age_stats: age_stats[age_bucket] = []

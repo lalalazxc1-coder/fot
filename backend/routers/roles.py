@@ -23,7 +23,7 @@ def create_role(role: RoleCreate, db: Session = Depends(get_db)):
 
 @router.put("/{role_id}")
 def update_role(role_id: int, role_data: RoleCreate, db: Session = Depends(get_db)):
-    role = db.query(Role).get(role_id)
+    role = db.get(Role, role_id)
     if not role: raise HTTPException(404, "Role not found")
     
     role.name = role_data.name
@@ -33,7 +33,7 @@ def update_role(role_id: int, role_data: RoleCreate, db: Session = Depends(get_d
 
 @router.delete("/{role_id}")
 def delete_role(role_id: int, db: Session = Depends(get_db)):
-    role = db.query(Role).get(role_id)
+    role = db.get(Role, role_id)
     if not role: raise HTTPException(404, "Role not found")
     
     # Check usage

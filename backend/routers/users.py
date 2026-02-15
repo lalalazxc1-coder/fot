@@ -5,16 +5,7 @@ from database.database import get_db
 from database.models import User, OrganizationUnit
 from schemas import UserCreate, UserUpdate
 from dependencies import require_admin
-from passlib.context import CryptContext
-
-# Security: Password Hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
+from security import get_password_hash  # Single source of truth
 
 router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(require_admin)])
 

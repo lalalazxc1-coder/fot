@@ -80,7 +80,7 @@ def delete_scenario(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    scenario = db.query(Scenario).get(id)
+    scenario = db.get(Scenario, id)
     if not scenario: raise HTTPException(404, "Scenario not found")
     
     db.delete(scenario) # Cascades to planning_positions due to model settings 'delete-orphan' assumption or DB FK? 
@@ -171,7 +171,7 @@ def mass_update_scenario(
     Mass update rows in a scenario.
     Example: Increase base_net by 10% for Department X.
     """
-    scenario = db.query(Scenario).get(id)
+    scenario = db.get(Scenario, id)
     if not scenario: raise HTTPException(404, "Scenario not found")
     
     query = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == id)
@@ -242,7 +242,7 @@ def commit_scenario(
     2. Move Scenario rows to Live
     3. Sync with Employees
     """
-    scenario = db.query(Scenario).get(id)
+    scenario = db.get(Scenario, id)
     if not scenario: raise HTTPException(404, "Scenario not found")
     
     # 1. Backup Live

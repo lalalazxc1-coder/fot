@@ -4,6 +4,7 @@ Uses an in-memory SQLite database so tests are isolated and fast.
 """
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
+os.environ["ENVIRONMENT"] = "testing"  # Disable rate limiting during tests
 
 import pytest
 from sqlalchemy import create_engine

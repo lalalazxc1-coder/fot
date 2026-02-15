@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/requests", tags=["requests"])
 @router.post("")
 def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # Check if employee exists
-    emp = db.query(Employee).get(data.employee_id)
+    emp = db.get(Employee, data.employee_id)
     if not emp: raise HTTPException(404, "Employee not found")
     
     # 1. Determine Initial Step
@@ -170,14 +170,14 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
             s_br = r.requester.scope_branches or []
             if len(s_br) == 1:
                 # Fetch branch name
-                b_obj = db.query(OrganizationUnit).get(s_br[0])
+                b_obj = db.get(OrganizationUnit, s_br[0])
                 if b_obj: req_branch = b_obj.name
             elif len(s_br) > 1:
                 req_branch = f"{len(s_br)} филиалов"
                 
             s_dp = r.requester.scope_departments or []
             if len(s_dp) == 1:
-                d_obj = db.query(OrganizationUnit).get(s_dp[0])
+                d_obj = db.get(OrganizationUnit, s_dp[0])
                 if d_obj: req_dept = d_obj.name
             elif len(s_dp) > 1:
                 req_dept = f"{len(s_dp)} отделов"
@@ -223,7 +223,7 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
                 
                 s_br = h.actor.scope_branches or []
                 if len(s_br) == 1:
-                    b_obj = db.query(OrganizationUnit).get(s_br[0])
+                    b_obj = db.get(OrganizationUnit, s_br[0])
                     if b_obj: actor_branch = b_obj.name
                 elif len(s_br) > 1:
                     actor_branch = f"{len(s_br)} филиалов"
@@ -272,7 +272,7 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
 def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     from database.models import ApprovalStep, RequestHistory, FinancialRecord
     
-    req = db.query(SalaryRequest).get(req_id)
+    req = db.get(SalaryRequest, req_id)
     if not req: raise HTTPException(404, "Request not found")
     
     # 1. Validate permissions
@@ -370,7 +370,7 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
         
         elif req.current_step_id:
             # Notify people in the NEW current step
-             new_step = db.query(ApprovalStep).get(req.current_step_id)
+             new_step = db.get(ApprovalStep, req.current_step_id)
              if new_step:
                  if new_step.user_id:
                      _notify(db, new_step.user_id, f"Заявка согласована предыдущим этапом. Теперь ваша очередь: {req.employee.full_name}", link="/requests")
@@ -394,7 +394,7 @@ def _notify(db: Session, user_id: int, message: str, link: str = None):
 
 @router.delete("/{req_id}")
 def delete_request(req_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    req = db.query(SalaryRequest).get(req_id)
+    req = db.get(SalaryRequest, req_id)
     if not req: raise HTTPException(404, "Not found")
     
     # Only Owner can delete pending? Or Admin anywhere?
@@ -420,7 +420,7 @@ def delete_request(req_id: int, db: Session = Depends(get_db), current_user: Use
 
 @router.get("/{req_id}/analytics")
 def get_request_analytics(req_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    r = db.query(SalaryRequest).get(req_id)
+    r = db.get(SalaryRequest, req_id)
     if not r:
         raise HTTPException(status_code=404, detail="Request not found")
         

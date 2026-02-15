@@ -282,7 +282,7 @@ def get_config_history(db: Session = Depends(get_db)):
         user_name = "Unknown"
         try:
             if log.user: user_name = log.user.full_name or log.user.email
-        except: pass
+        except Exception: pass
         result.append({
             "id": log.id, 
             "timestamp": log.timestamp, 

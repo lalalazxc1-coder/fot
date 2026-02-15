@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -248,13 +248,13 @@ class SalaryConfiguration(Base):
     mzp = Column(Integer, default=100000)    # 2026 Projection
     
     # Rates (percentages as decimals)
-    opv_rate = Column(JSON, default=0.1)     # Pension
-    opvr_rate = Column(JSON, default=0.025)  # Employer Pension (2026: 2.5%)
-    vosms_rate = Column(JSON, default=0.02)  # Health (Employee)
-    vosms_employer_rate = Column(JSON, default=0.03) # Health (Employer)
-    so_rate = Column(JSON, default=0.035)    # Social Insurance
-    sn_rate = Column(JSON, default=0.095)    # Social Tax
-    ipn_rate = Column(JSON, default=0.1)     # Income Tax
+    opv_rate = Column(Float, default=0.1)     # Pension
+    opvr_rate = Column(Float, default=0.025)  # Employer Pension (2026: 2.5%)
+    vosms_rate = Column(Float, default=0.02)  # Health (Employee)
+    vosms_employer_rate = Column(Float, default=0.03) # Health (Employer)
+    so_rate = Column(Float, default=0.035)    # Social Insurance
+    sn_rate = Column(Float, default=0.095)    # Social Tax
+    ipn_rate = Column(Float, default=0.1)     # Income Tax
     
     # Limits (multipliers of MZP usually)
     opv_limit_mzp = Column(Integer, default=50) 

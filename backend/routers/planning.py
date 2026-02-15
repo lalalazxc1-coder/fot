@@ -176,7 +176,7 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
     if not check_manage_permission(current_user):
         raise HTTPException(403, "Permission 'manage_planning' required")
         
-    db_plan = db.query(PlanningPosition).get(plan_id)
+    db_plan = db.get(PlanningPosition, plan_id)
     if not db_plan: raise HTTPException(404, "Plan not found")
     
     # Scope Check
@@ -223,7 +223,7 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db), current_user: User 
     if not check_manage_permission(current_user):
         raise HTTPException(403, "Permission 'manage_planning' required")
 
-    db_plan = db.query(PlanningPosition).get(plan_id)
+    db_plan = db.get(PlanningPosition, plan_id)
     if not db_plan: raise HTTPException(404, "Plan not found")
     
     # Scope Check

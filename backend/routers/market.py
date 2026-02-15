@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/market", tags=["market"])
 def recalculate_stats(db: Session, market_id: int):
     # Fetch all entries for this market_id
     entries = db.query(MarketEntry).filter(MarketEntry.market_id == market_id).all()
-    market_item = db.query(MarketData).get(market_id)
+    market_item = db.get(MarketData, market_id)
     
     if not market_item:
         return
@@ -102,7 +102,7 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
     # Check permission
     # ...
     
-    market_item = db.query(MarketData).get(entry.market_id)
+    market_item = db.get(MarketData, entry.market_id)
     if not market_item:
         raise HTTPException(404, "Market data not found")
         
@@ -123,7 +123,7 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
 
 @router.delete("/entries/{id}")
 def delete_market_entry(id: int, db: Session = Depends(get_db)):
-    entry = db.query(MarketEntry).get(id)
+    entry = db.get(MarketEntry, id)
     if not entry:
         raise HTTPException(404, "Entry not found")
     
@@ -137,7 +137,7 @@ def delete_market_entry(id: int, db: Session = Depends(get_db)):
 @router.delete("/{id}")
 def delete_market_data(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # ... Permission check ...
-    item = db.query(MarketData).get(id)
+    item = db.get(MarketData, id)
     if not item: raise HTTPException(404, "Not found")
     
     # Cascade delete should handle entries via relationship, but check 
