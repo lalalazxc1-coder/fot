@@ -76,7 +76,7 @@ def filter_by_scope(query, user: User, db: Session):
 def get_planning(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # Everyone with access to system can view? Or restricted?
     # Let's apply scope filtering.
-    q = db.query(PlanningPosition)
+    q = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == None)
     q = filter_by_scope(q, current_user, db)
     plans = q.all()
     
@@ -275,7 +275,7 @@ def export_planning_excel(db: Session = Depends(get_db), current_user: User = De
         unit_map = {u.id: u for u in units}
         
         # Get planning data with scope filtering
-        query = db.query(PlanningPosition)
+        query = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == None)
         query = filter_by_scope(query, current_user, db)
         plans = query.all()
         

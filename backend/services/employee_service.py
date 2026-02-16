@@ -145,8 +145,19 @@ class EmployeeService:
         total_n = data.base_net + data.kpi_net + data.bonus_net
         total_g = data.base_gross + data.kpi_gross + data.bonus_gross
         
+        
+        # Determine created_at for the financial record
+        created_at_val = datetime.now().isoformat()
+        if data.last_raise_date:
+            # If only date provided, append time to make it ISO-ish
+            if len(data.last_raise_date) == 10: # YYYY-MM-DD
+                 created_at_val = f"{data.last_raise_date}T12:00:00.000000"
+            else:
+                 created_at_val = data.last_raise_date
+
         fin = FinancialRecord(
             employee_id=new_emp.id,
+            created_at=created_at_val,
             month=datetime.now().strftime("%Y-%m"),
             base_net=data.base_net, base_gross=data.base_gross,
             kpi_net=data.kpi_net, kpi_gross=data.kpi_gross,
@@ -349,7 +360,7 @@ class EmployeeService:
         return {"status": "details_updated"}
 
     @staticmethod
-    def dismiss_employee(db: Session, user: User, emp_id: int, scope_ids: Optional[List[int]]):
+    def dismiss_employee(db: Session, user: User, emp_id: int, reason: str, date: str, scope_ids: Optional[List[int]]):
         emp = db.query(Employee).get(emp_id)
         if not emp: raise HTTPException(404, "Not found")
         
@@ -359,7 +370,17 @@ class EmployeeService:
         if emp.status == "Dismissed": return {"status": "already_dismissed"}
         
         emp.status = "Dismissed"
-        EmployeeService._log_change(db, user, emp_id, old_values={"Status": "Active"}, new_values={"Status": "Dismissed"})
+        emp.dismissal_reason = reason
+        emp.dismissal_date = date
+        
+        EmployeeService._log_change(db, user, emp_id, 
+            old_values={"Статус": "Активен"}, 
+            new_values={
+                "Статус": "Уволен",
+                "Причина": reason,
+                "Дата увольнения": date
+            }
+        )
         db.commit()
         return {"status": "dismissed"}
 

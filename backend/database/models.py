@@ -56,7 +56,9 @@ class Employee(Base):
     org_unit_id = Column(Integer, ForeignKey("organization_units.id"))
     status = Column(String)
     schedule = Column(String)
-    hire_date = Column(String, nullable=True) # New field
+    hire_date = Column(String, nullable=True)
+    dismissal_date = Column(String, nullable=True) # New
+    dismissal_reason = Column(String, nullable=True) # New
     
     position = relationship("Position")
     org_unit = relationship("OrganizationUnit", foreign_keys=[org_unit_id])

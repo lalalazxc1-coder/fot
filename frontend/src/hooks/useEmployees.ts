@@ -57,8 +57,8 @@ export function useUpdateEmployee() {
 export function useDismissEmployee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (id: number) => {
-            const res = await api.post(`/employees/${id}/dismiss`);
+        mutationFn: async ({ id, reason, date }: { id: number; reason: string; date: string }) => {
+            const res = await api.post(`/employees/${id}/dismiss`, { reason, date });
             return res.data;
         },
         onSuccess: () => {

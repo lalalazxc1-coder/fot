@@ -35,14 +35,17 @@ def update_employee(
 ):
     return EmployeeService.update_employee(db, current_user, emp_id, data, scope)
 
+from schemas import EmployeeCreate, FinancialUpdate, EmployeeUpdate, EmpDetailsUpdate, DismissEmployeeRequest
+
 @router.post("/employees/{emp_id}/dismiss", dependencies=[Depends(PermissionChecker('edit_employees'))])
 def dismiss_employee(
     emp_id: int,
+    data: DismissEmployeeRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     scope: Optional[List[int]] = Depends(get_user_scope)
 ):
-    return EmployeeService.dismiss_employee(db, current_user, emp_id, scope)
+    return EmployeeService.dismiss_employee(db, current_user, emp_id, data.reason, data.date, scope)
 
 
 @router.get("/employees")
@@ -177,3 +180,48 @@ def export_employees_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@router.get("/audit-logs/{emp_id}")
+def get_employee_history(
+    emp_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Returns the audit log for a specific employee, formatted for the frontend HistoryModal.
+    """
+    logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.target_entity == "employee", AuditLog.target_entity_id == emp_id)
+        .order_by(AuditLog.id.desc())
+        .all()
+    )
+    
+    # Pre-fetch users to avoid N+1
+    user_ids = set(l.user_id for l in logs)
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {u.id: u.full_name or u.email for u in users}
+    
+    formatted_logs = []
+    for log in logs:
+        # Each log can have multiple changed fields in old_values/new_values
+        keys = set()
+        if log.new_values: keys.update(log.new_values.keys())
+        if log.old_values: keys.update(log.old_values.keys())
+        
+        user_name = user_map.get(log.user_id, "Система")
+        
+        # Sort keys to make 'created' first if present
+        sorted_keys = sorted(list(keys), key=lambda x: 0 if x == 'created' else 1)
+        
+        for k in sorted_keys:
+             formatted_logs.append({
+                "date": log.timestamp,
+                "user": user_name,
+                "field": k,
+                "oldVal": str(log.old_values.get(k, '') if log.old_values else ''),
+                "newVal": str(log.new_values.get(k, '') if log.new_values else '')
+            })
+            
+    return formatted_logs
+

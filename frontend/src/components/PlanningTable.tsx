@@ -102,43 +102,55 @@ export default function PlanningTable({ user }: { user: any }) {
         (id) => handleDelete(id)
     ), [flatStructure, user]);
 
+    // Helper to find all descendants of a unit (Same logic as EmployeeTable)
+    const getDescendantIds = (rootId: number) => {
+        const ids = new Set<number>();
+        ids.add(rootId);
+
+        const findChildren = (pid: number) => {
+            flatStructure.filter(u => u.parent_id === pid).forEach(child => {
+                ids.add(child.id);
+                findChildren(child.id);
+            });
+        };
+        findChildren(rootId);
+        return ids;
+    };
+
     // Filtering logic
     const filteredData = useMemo(() => {
-        return data.filter(row => {
-            const matchesSearch = row.position.toLowerCase().includes(searchQuery.toLowerCase());
+        let res = data;
 
-            // Check matches for branch/dept
-            const targetId = (row.department_id || row.branch_id)?.toString();
-            const unit = flatStructure.find(u => u.id.toString() === targetId);
+        // Filter by Branch
+        if (branchFilter && branchFilter !== 'all') {
+            const branchId = parseInt(branchFilter);
+            const validIds = getDescendantIds(branchId);
+            res = res.filter(row => {
+                const targetId = row.department_id || row.branch_id;
+                return targetId && validIds.has(Number(targetId));
+            });
+        }
 
-            let matchesBranch = true;
-            if (branchFilter) {
-                // Find top-level unit for this row
-                let currentBranchName = "Unknown";
-                if (unit) {
-                    if (unit.type === 'branch' || unit.type === 'head_office') {
-                        currentBranchName = unit.name;
-                    } else {
-                        // Traverse up
-                        let curr = unit;
-                        while (curr.parent_id) {
-                            const p = flatStructure.find(u => u.id === curr.parent_id);
-                            if (p) {
-                                if (p.type === 'branch' || p.type === 'head_office') {
-                                    currentBranchName = p.name;
-                                    break;
-                                }
-                                curr = p;
-                            } else { break; }
-                        }
-                    }
-                }
-                matchesBranch = currentBranchName === branchFilter;
-            }
+        // Filter by Department
+        if (departmentFilter && departmentFilter !== 'all') {
+            const deptId = parseInt(departmentFilter);
+            const validIds = getDescendantIds(deptId);
+            res = res.filter(row => {
+                const targetId = row.department_id || row.branch_id;
+                return targetId && validIds.has(Number(targetId));
+            });
+        }
 
-            return matchesSearch && matchesBranch;
-        }).slice(0, visibleRows);
-    }, [data, searchQuery, branchFilter, flatStructure, visibleRows]);
+        // Filter by Search
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            res = res.filter(row =>
+                row.position.toLowerCase().includes(q)
+            );
+        }
+
+        return res;
+    }, [data, searchQuery, branchFilter, departmentFilter, flatStructure]);
 
     const table = useReactTable({
         data: filteredData,

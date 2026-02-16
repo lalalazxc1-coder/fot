@@ -131,7 +131,7 @@ def get_analytics_summary(
             func.sum(
                 (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
             ).label('total_net')
-        )
+        ).filter(PlanningPosition.scenario_id == None)
         
         if allowed_ids is not None:
             # Filter plan by branch_id (assuming planning is done at branch level mostly)
@@ -221,14 +221,15 @@ def get_branch_comparison(
             # All unit IDs (unit itself + all descendants)
             unit_ids = [unit.id] + list(all_descendant_ids)
             
-            # Plan aggregation for this unit
+            # Plan aggregation for this unit (any position linked to this unit or its descendants)
             plan_query = db.query(
                 func.sum(
                     (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
                 )
             ).filter(
+                PlanningPosition.scenario_id == None,
                 or_(
-                    PlanningPosition.branch_id == unit.id,
+                    PlanningPosition.branch_id.in_(unit_ids),
                     PlanningPosition.department_id.in_(unit_ids)
                 )
             )
@@ -655,3 +656,105 @@ def get_esg_metrics(
         }
 
     return get_cached_or_compute(f'esg_{current_user.id}', compute)
+
+@router.get("/turnover")
+def get_turnover_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    days: int = Query(365, description="Period in days for turnover calculation")
+):
+    """
+    Staffing Gaps & Turnover Analytics
+    """
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
+    def compute():
+        # 1. Staffing Gaps (Plan vs Fact Headcount per Org Unit)
+        # Fetch all branches/depts first
+        units_query = db.query(OrganizationUnit)
+        if allowed_ids: units_query = units_query.filter(OrganizationUnit.id.in_(allowed_ids))
+        units = units_query.all()
+        
+        gaps_data = []
+        
+        for u in units:
+            # Plan Headcount (for this unit and children?) 
+            # Let's keep it simple: positions directly assigned to this unit OR descendants?
+            # Usually gaps are best seen at Department level.
+            # Logic: Get Plan count for this unit. Get Active Employee count for this unit.
+            
+            # Recursive ID fetch
+            child_ids = [c.id for c in db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == u.id).all()]
+            all_unit_ids = [u.id] + child_ids # Simplified 1-level for now or use recursive helper if needed
+            
+            # Plan Count
+            plan_count = db.query(func.sum(PlanningPosition.count)).filter(
+                PlanningPosition.scenario_id == None,
+                or_(PlanningPosition.branch_id == u.id, PlanningPosition.department_id == u.id)
+            ).scalar() or 0
+            
+            # Fact Count (Active)
+            fact_count = db.query(func.count(Employee.id)).filter(
+                Employee.org_unit_id == u.id,
+                Employee.status != 'Dismissed'
+            ).scalar() or 0
+            
+            gap = plan_count - fact_count
+            if gap > 0: # Only show gaps i.e. vacancies
+                gaps_data.append({
+                    "unit_name": u.name,
+                    "unit_type": u.type,
+                    "plan": int(plan_count),
+                    "fact": int(fact_count),
+                    "gap": int(gap)
+                })
+        
+        # Sort gaps descending
+        gaps_data.sort(key=lambda x: x['gap'], reverse=True)
+        
+        # 2. Turnover Rate
+        # Formula: (Dismissed in Period / Average Headcount) * 100
+        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_str = cutoff_date.strftime("%Y-%m-%d") # Assuming dismissal_date stored as YYYY-MM-DD
+        
+        # Dismissed count
+        dismissed_query = db.query(Employee).filter(
+            Employee.status == 'Dismissed',
+            # We need to filter by date. dismissal_date is string YYYY-MM-DD.
+            Employee.dismissal_date >= cutoff_str
+        )
+        if allowed_ids: dismissed_query = dismissed_query.filter(Employee.org_unit_id.in_(allowed_ids))
+        dismissed_count = dismissed_query.count()
+        
+        # Avg Headcount
+        # Approx: (Start + End) / 2? Or just current active?
+        # Let's use current active as denominator for simplicity, or slightly better: current active + dismissed/2
+        active_query = db.query(Employee).filter(Employee.status != 'Dismissed')
+        if allowed_ids: active_query = active_query.filter(Employee.org_unit_id.in_(allowed_ids))
+        current_active = active_query.count()
+        
+        avg_headcount = current_active + (dismissed_count / 2)
+        turnover_rate = 0
+        if avg_headcount > 0:
+            turnover_rate = (dismissed_count / avg_headcount) * 100
+            
+        # 3. Dismissal Reasons Distribution
+        reasons_dist = {}
+        dismissed_employees = dismissed_query.all()
+        for emp in dismissed_employees:
+            r = emp.dismissal_reason or "Не указана"
+            reasons_dist[r] = reasons_dist.get(r, 0) + 1
+            
+        # Format reasons for chart
+        reasons_chart = [{"name": k, "value": v} for k,v in reasons_dist.items()]
+        
+        return {
+            "staffing_gaps": gaps_data,
+            "turnover_rate": round(turnover_rate, 1),
+            "dismissed_count": dismissed_count,
+            "period_days": days,
+            "reasons_distribution": reasons_chart,
+            "cached_at": datetime.now().isoformat()
+        }
+
+    return get_cached_or_compute(f'turnover_{current_user.id}_{days}', compute)

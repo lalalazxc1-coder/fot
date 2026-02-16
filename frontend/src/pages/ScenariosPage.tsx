@@ -236,12 +236,21 @@ export default function ScenariosPage() {
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-3 relative z-10">
-                                    <div className={`font-bold text-base ${selectedScenarioId === s.id ? 'text-blue-900' : 'text-slate-800'}`}>{s.name}</div>
-                                    {selectedScenarioId === s.id && (
-                                        <div className="text-blue-600">
-                                            <LayoutDashboard size={18} />
-                                        </div>
-                                    )}
+                                    <div className={`font-bold text-base pr-6 ${selectedScenarioId === s.id ? 'text-blue-900' : 'text-slate-800'}`}>{s.name}</div>
+                                    <div className="flex items-center gap-1">
+                                        {selectedScenarioId === s.id && (
+                                            <div className="text-blue-600">
+                                                <LayoutDashboard size={18} />
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); if (confirm('Удалить сценарий?')) deleteMutation.mutate(s.id); }}
+                                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                            title="Удалить"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="text-sm text-slate-500 line-clamp-2 mb-4 h-10 leading-relaxed">{s.description || 'Нет описания'}</div>
                                 <div className="flex items-center justify-between text-xs relative z-10">
@@ -253,14 +262,6 @@ export default function ScenariosPage() {
                                     </span>
                                     <span className="text-slate-400 font-medium">{new Date(s.created_at).toLocaleDateString()}</span>
                                 </div>
-
-                                {/* Delete Hover Action */}
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); if (confirm('Удалить сценарий?')) deleteMutation.mutate(s.id); }}
-                                    className="absolute top-2 right-2 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
                             </div>
                         ))}
 

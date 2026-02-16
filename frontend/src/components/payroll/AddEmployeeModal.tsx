@@ -36,7 +36,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         kpi_net: 0,
         kpi_gross: 0,
         bonus_net: 0,
-        bonus_gross: 0
+        bonus_gross: 0,
+        last_raise_date: ''
     });
 
     // --- Tree Select Logic ---
@@ -235,6 +236,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 kpi_gross: Number(newEmployee.kpi_gross),
                 bonus_net: Number(newEmployee.bonus_net),
                 bonus_gross: Number(newEmployee.bonus_gross),
+                last_raise_date: newEmployee.last_raise_date || null
             };
 
             await createMutation.mutateAsync(payload);
@@ -255,7 +257,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 kpi_net: 0,
                 kpi_gross: 0,
                 bonus_net: 0,
-                bonus_gross: 0
+                bonus_gross: 0,
+                last_raise_date: ''
             });
         } catch (error) {
             console.error(error);
@@ -279,6 +282,18 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                         value={newEmployee.hire_date}
                         onChange={e => setNewEmployee({ ...newEmployee, hire_date: e.target.value })}
                     />
+                </div>
+
+                <div className="mt-2">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Дата последнего обновления ЗП</label>
+                    <Input
+                        type="date"
+                        value={newEmployee.last_raise_date}
+                        onChange={e => setNewEmployee({ ...newEmployee, last_raise_date: e.target.value })}
+                    />
+                    <p className="text-[10px] text-slate-400 ml-1 mt-1">
+                        Если зарплата не менялась давно, укажите дату последнего изменения.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

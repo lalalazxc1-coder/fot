@@ -245,64 +245,129 @@ def commit_scenario(
     scenario = db.get(Scenario, id)
     if not scenario: raise HTTPException(404, "Scenario not found")
     
-    # 1. Backup Live
+    # 1. Backup Live (Clone existing live to backup scenario)
     backup_name = f"Backup {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     backup_scenario = Scenario(name=backup_name, status="archived", description="Auto-backup before commit")
     db.add(backup_scenario)
     db.flush()
     
-    # Move current Live rows to Backup
-    db.query(PlanningPosition).filter(PlanningPosition.scenario_id == None).update(
-        {PlanningPosition.scenario_id: backup_scenario.id}, 
-        synchronize_session=False
-    )
-    
-    # 2. Promote Scenario rows to Live
-    # We clone them to Live (keeping the scenario record intact as history? or moving them?)
-    # "Commit" usually implies the scenario IS now the live version.
-    # Let's clone so the Scenario record remains as a snapshot of what was approved.
-    
-    scenario_rows = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == id).all()
-    
-    sync_total = 0
-    now_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
-    
-    for row in scenario_rows:
-        new_live = PlanningPosition(
-            scenario_id=None, # Live
-            position_title=row.position_title,
-            branch_id=row.branch_id,
-            department_id=row.department_id,
-            schedule=row.schedule,
-            count=row.count,
-            base_net=row.base_net,
-            base_gross=row.base_gross,
-            kpi_net=row.kpi_net,
-            kpi_gross=row.kpi_gross,
-            bonus_net=row.bonus_net,
-            bonus_gross=row.bonus_gross
+    # Clone current Live rows to Backup (preserving data snapshot)
+    live_rows = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == None).all()
+    for live in live_rows:
+        backup_pos = PlanningPosition(
+            scenario_id=backup_scenario.id,
+            position_title=live.position_title,
+            branch_id=live.branch_id,
+            department_id=live.department_id,
+            schedule=live.schedule,
+            count=live.count,
+            base_net=live.base_net, base_gross=live.base_gross,
+            kpi_net=live.kpi_net, kpi_gross=live.kpi_gross,
+            bonus_net=live.bonus_net, bonus_gross=live.bonus_gross
         )
-        db.add(new_live)
-        db.flush() # get ID
+        db.add(backup_pos)
+    
+    # 2. Smart Merge Scenario to Live
+    scenario_rows = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == id).all()
+    now_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+    sync_total = 0
+    
+    # Map existing live positions by a unique key to identify updates vs news
+    # Key: (position_title, branch_id, department_id, schedule)
+    # We assume this tuple defines a unique "Planning Slot"
+    live_map = {}
+    for r in live_rows:
+        key = (r.position_title, r.branch_id, r.department_id, r.schedule)
+        if key not in live_map: live_map[key] = []
+        live_map[key].append(r) 
+        # Note: If multiple rows have same key, we pop them one by one.
+
+    processed_live_ids = set()
+
+    for row in scenario_rows:
+        key = (row.position_title, row.branch_id, row.department_id, row.schedule)
         
-        # 3. Sync with Employees
-        # We treat this as a change from "Previous Live" to "New Live".
-        # Since we don't track 1:1 map easily, we just ensure Employee matches this new Plan.
-        # But wait, sync_employee_financials is designed to apply a CHANGE delta.
-        # Here we have a whole new state.
-        # Logic: For this position, find employees. Update their financials to match this plan.
-        # This acts as an enforcement of the new plan.
-        
-        changes_dummy = {
-            'base_net': row.base_net, 'base_gross': row.base_gross,
-            'kpi_net': row.kpi_net, 'kpi_gross': row.kpi_gross,
-            'bonus_net': row.bonus_net, 'bonus_gross': row.bonus_gross
-        }
-        
-        sync_count = sync_employee_financials(db, new_live, changes_dummy, current_user, now_ts)
-        sync_total += sync_count
-        
+        target_live = None
+        if key in live_map and live_map[key]:
+            target_live = live_map[key].pop(0) # Take one match
+            processed_live_ids.add(target_live.id)
+            
+            # Update Logic
+            changes = {}
+            def update_if_diff(field, val):
+                old = getattr(target_live, field)
+                if old != val:
+                    changes[field] = {'old': old, 'new': val}
+                    setattr(target_live, field, val)
+            
+            update_if_diff('count', row.count)
+            update_if_diff('base_net', row.base_net)
+            update_if_diff('base_gross', row.base_gross)
+            update_if_diff('kpi_net', row.kpi_net)
+            update_if_diff('kpi_gross', row.kpi_gross)
+            update_if_diff('bonus_net', row.bonus_net)
+            update_if_diff('bonus_gross', row.bonus_gross)
+            
+            if changes:
+                # Audit Log for Preservation
+                db.add(AuditLog(
+                    user_id=current_user.id,
+                    target_entity="planning",
+                    target_entity_id=target_live.id,
+                    timestamp=now_ts,
+                    old_values={k: v['old'] for k,v in changes.items()},
+                    new_values={k: v['new'] for k,v in changes.items()}
+                ))
+                
+                # Sync Employees
+                # We interpret changes as applied to employees
+                dummy_changes_for_sync = {k: v['new'] for k,v in changes.items() if k in ['base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross']}
+                if dummy_changes_for_sync:
+                     sync_count = sync_employee_financials(db, target_live, dummy_changes_for_sync, current_user, now_ts)
+                     sync_total += sync_count
+
+        else:
+            # Create New
+            new_live = PlanningPosition(
+                scenario_id=None,
+                position_title=row.position_title,
+                branch_id=row.branch_id,
+                department_id=row.department_id,
+                schedule=row.schedule,
+                count=row.count,
+                base_net=row.base_net, base_gross=row.base_gross,
+                kpi_net=row.kpi_net, kpi_gross=row.kpi_gross,
+                bonus_net=row.bonus_net, bonus_gross=row.bonus_gross
+            )
+            db.add(new_live)
+            db.flush()
+            
+            # Audit Creation
+            db.add(AuditLog(
+                user_id=current_user.id,
+                target_entity="planning",
+                target_entity_id=new_live.id,
+                timestamp=now_ts,
+                old_values=None,
+                new_values={"Событие": "Создано из сценария", "Название": row.position_title}
+            ))
+
+    # 3. Clean up deleted rows (Live rows not in scenario)
+    for live in live_rows:
+        if live.id not in processed_live_ids:
+            # This position was deleted in scenario
+            # Audit Deletion
+            db.add(AuditLog(
+                user_id=current_user.id,
+                target_entity="planning",
+                target_entity_id=live.id,
+                timestamp=now_ts,
+                old_values={"Событие": "Удалено сценарием", "Название": live.position_title},
+                new_values=None
+            ))
+            db.delete(live)
+
     scenario.status = "committed"
     db.commit()
     
-    return {"status": "committed", "backup_id": backup_scenario.id, "synced_employees": sync_total}
+    return {"status": "committed", "backup_id": backup_scenario.id, "synced_employees": sync_total, "updated_rows": len(processed_live_ids)}

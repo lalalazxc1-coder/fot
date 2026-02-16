@@ -71,6 +71,7 @@ class EmployeeCreate(BaseModel):
     status: str = "Активен"
     gender: Optional[str] = None
     dob: Optional[str] = None
+    last_raise_date: Optional[str] = None
 
 class FinancialUpdate(BaseModel):
     base_net: Optional[float] = None
@@ -104,6 +105,10 @@ class EmployeeUpdate(BaseModel):
     status: Optional[str] = "Активен"
     hire_date: Optional[str] = None
     
+class DismissEmployeeRequest(BaseModel):
+    reason: str
+    date: str
+
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str

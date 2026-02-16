@@ -13,6 +13,7 @@ import { PageHeader } from './shared';
 import { Button } from './ui-mocks';
 import { api } from '../lib/api';
 import Modal from './Modal';
+import { DismissModal } from './payroll/DismissModal';
 
 import {
   EmployeeStats,
@@ -61,6 +62,8 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [dismissEmployee, setDismissEmployee] = useState<EmployeeRecord | null>(null);
+  const [isDismissOpen, setIsDismissOpen] = useState(false);
 
   const handleHistoryClick = async (e: React.MouseEvent, emp: EmployeeRecord) => {
     e.stopPropagation();
@@ -80,8 +83,18 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
   };
 
   const handleDismiss = async (id: number) => {
-    if (!confirm("Вы действительно хотите уволить этого сотрудника?")) return;
-    await dismissMutation.mutateAsync(id);
+    const emp = data.find(e => e.id === id);
+    if (emp) {
+      setDismissEmployee(emp);
+      setIsDismissOpen(true);
+    }
+  };
+
+  const confirmDismiss = async (reason: string, date: string) => {
+    if (dismissEmployee) {
+      await dismissMutation.mutateAsync({ id: dismissEmployee.id, reason, date });
+      setIsDismissOpen(false);
+    }
   };
 
   // --- Filtering Logic ---
@@ -430,6 +443,13 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
           </div>
         </div>
       </Modal>
+
+      <DismissModal
+        isOpen={isDismissOpen}
+        onClose={() => setIsDismissOpen(false)}
+        onConfirm={confirmDismiss}
+        employeeName={dismissEmployee?.full_name || ''}
+      />
     </div>
   );
 }
