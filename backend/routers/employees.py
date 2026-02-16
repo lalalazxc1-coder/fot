@@ -16,7 +16,34 @@ from services.employee_service import EmployeeService
 
 router = APIRouter(prefix="/api", tags=["employees"])
 
-# ... (Previous endpoints for CRUD kept as is or assumed) ...
+@router.post("/employees", dependencies=[Depends(PermissionChecker('edit_employees'))])
+def create_employee(
+    data: EmployeeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    scope: Optional[List[int]] = Depends(get_user_scope)
+):
+    return EmployeeService.create_employee(db, current_user, data, scope)
+
+@router.put("/employees/{emp_id}", dependencies=[Depends(PermissionChecker('edit_employees'))])
+def update_employee(
+    emp_id: int,
+    data: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    scope: Optional[List[int]] = Depends(get_user_scope)
+):
+    return EmployeeService.update_employee(db, current_user, emp_id, data, scope)
+
+@router.post("/employees/{emp_id}/dismiss", dependencies=[Depends(PermissionChecker('edit_employees'))])
+def dismiss_employee(
+    emp_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    scope: Optional[List[int]] = Depends(get_user_scope)
+):
+    return EmployeeService.dismiss_employee(db, current_user, emp_id, scope)
+
 
 @router.get("/employees")
 def get_employees(

@@ -133,7 +133,9 @@ class EmployeeService:
             position_id=pos.id, 
             org_unit_id=target_org_id, 
             status=data.status, 
-            hire_date=data.hire_date
+            hire_date=data.hire_date,
+            gender=data.gender,
+            dob=data.dob
         )
         db.add(new_emp)
         db.commit()
@@ -235,6 +237,22 @@ class EmployeeService:
         if data.full_name != emp.full_name:
             changes['ФИО'] = {'old': emp.full_name, 'new': data.full_name}
             emp.full_name = data.full_name
+
+        if data.gender != emp.gender:
+            changes['Пол'] = {'old': emp.gender, 'new': data.gender}
+            emp.gender = data.gender
+            
+        if data.dob != emp.dob:
+            changes['Дата рождения'] = {'old': emp.dob, 'new': data.dob}
+            emp.dob = data.dob
+            
+        if data.status != emp.status:
+            changes['Статус'] = {'old': emp.status, 'new': data.status}
+            emp.status = data.status
+            
+        if data.hire_date != emp.hire_date:
+            changes['Дата приема'] = {'old': emp.hire_date, 'new': data.hire_date}
+            emp.hire_date = data.hire_date
 
         current_pos_title = emp.position.title if emp.position else ""
         if data.position_title != current_pos_title:
