@@ -33,6 +33,7 @@ from routers import (
     salary, positions, workflow, scenarios,
 )
 from routers.salary_config import router as salary_config_router
+from routers import integrations
 
 app = FastAPI(
     title="FOT System",
@@ -114,6 +115,8 @@ all_routers = [
     requests.router, market.router, analytics.router,
     salary.router, positions.router, workflow.router,
     scenarios.router, salary_config_router,
+    # New
+    integrations.router,
 ]
 
 for r in all_routers:

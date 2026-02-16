@@ -20,6 +20,7 @@ import SalaryRangeChart from '../components/SalaryRangeChart';
 import Papa from 'papaparse';
 import Fuse from 'fuse.js';
 import { toast } from 'sonner';
+import { CandidateSearch } from '../components/market/CandidateSearch';
 
 // Helper component for managing market entries
 function MarketEntriesManager({ marketId, canEdit }: { marketId: number, canEdit: boolean }) {
@@ -362,6 +363,8 @@ export default function MarketPage() {
     const canEdit = user?.role === 'Administrator' || user?.permissions?.admin_access || user?.permissions?.edit_market;
     const canView = user?.role === 'Administrator' || user?.permissions?.admin_access || user?.permissions?.view_market || user?.permissions?.edit_market || user?.permissions?.manage_planning;
 
+    const [activeTab, setActiveTab] = useState<'analytics' | 'candidates'>('analytics');
+
     if (isMarketLoading || isEmployeesLoading) return (
         <div className="h-64 flex justify-center items-center">
             <Loader2 className="animate-spin w-8 h-8 text-slate-400" />
@@ -371,7 +374,7 @@ export default function MarketPage() {
     if (!canView) return <div className="p-10 text-center text-slate-500">У вас нет прав для просмотра этой страницы.</div>;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
             <PageHeader
                 title="Анализ рынка"
                 subtitle="Сравнение зарплатных предложений с рыночными показателями"
@@ -384,196 +387,221 @@ export default function MarketPage() {
                         Как это работает?
                     </button>
                 }
-            />
-
-            {/* Stats / Intro */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                        <Globe className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-sm text-slate-500 font-medium uppercase">Всего позиций</div>
-                        <div className="text-2xl font-bold text-slate-900">{marketData.length}</div>
-                    </div>
+            >
+                <div className="flex p-1 bg-slate-100 rounded-xl w-fit">
+                    <button
+                        onClick={() => setActiveTab('analytics')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'analytics'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        Аналитика зарплат
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('candidates')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'candidates'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        <Users className="w-4 h-4" />
+                        Поиск талантов (AI)
+                    </button>
                 </div>
-                {/* Sources Card Removed */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                        <BarChart2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-sm text-slate-500 font-medium uppercase">Сотрудников в оценке</div>
-                        <div className="text-2xl font-bold text-slate-900">
-                            {comparisonData.reduce((acc: number, curr: any) => acc + curr.employeesCount, 0)}
+            </PageHeader>
+
+            {activeTab === 'analytics' ? (
+                <>
+                    {/* Stats / Intro */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                                <Globe className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <div className="text-sm text-slate-500 font-medium uppercase">Всего позиций</div>
+                                <div className="text-2xl font-bold text-slate-900">{marketData.length}</div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                                <BarChart2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <div className="text-sm text-slate-500 font-medium uppercase">Сотрудников в оценке</div>
+                                <div className="text-2xl font-bold text-slate-900">
+                                    {comparisonData.reduce((acc: number, curr: any) => acc + curr.employeesCount, 0)}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Main Content */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50/50">
-                    <div className="flex items-center gap-4 flex-1 w-full">
-                        <div className="relative max-w-sm w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="text"
-                                className="w-full h-10 rounded-lg border border-slate-200 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
-                                placeholder="Поиск по должности..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                            />
+                    {/* Main Content */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50/50">
+                            <div className="flex items-center gap-4 flex-1 w-full">
+                                <div className="relative max-w-sm w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        className="w-full h-10 rounded-lg border border-slate-200 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
+                                        placeholder="Поиск по должности..."
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+
+                                <select
+                                    className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10 bg-white"
+                                    value={filterBranch}
+                                    onChange={e => setFilterBranch(e.target.value)}
+                                >
+                                    <option value="all">Все подразделения</option>
+                                    {branches.map(b => (
+                                        <option key={b as string} value={b as string}>{b as string}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {canEdit && (
+                                <div className="flex items-center gap-2">
+                                    <label className={`flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer ${isImporting ? 'opacity-50 cursor-wait' : ''}`}>
+                                        {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                                        Импорт CSV
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                            disabled={isImporting}
+                                        />
+                                    </label>
+
+                                    <button
+                                        onClick={() => setIsAddOpen(true)}
+                                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-slate-900/10 whitespace-nowrap"
+                                    >
+                                        <Plus className="w-4 h-4" /> Добавить
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
-                        <select
-                            className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:ring-2 focus:ring-slate-900/10 bg-white"
-                            value={filterBranch}
-                            onChange={e => setFilterBranch(e.target.value)}
-                        >
-                            <option value="all">Все подразделения</option>
-                            {branches.map(b => (
-                                <option key={b as string} value={b as string}>{b as string}</option>
-                            ))}
-                        </select>
-
-
-                    </div>
-
-                    {canEdit && (
-                        <div className="flex items-center gap-2">
-                            {/* Legacy Import Button - can hide if we want to force new flow */}
-                            <label className={`flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer ${isImporting ? 'opacity-50 cursor-wait' : ''}`}>
-                                {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                                Импорт CSV
-                                <input
-                                    type="file"
-                                    accept=".csv"
-                                    className="hidden"
-                                    onChange={handleFileUpload}
-                                    disabled={isImporting}
-                                />
-                            </label>
-
-                            <button
-                                onClick={() => setIsAddOpen(true)}
-                                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-slate-900/10 whitespace-nowrap"
-                            >
-                                <Plus className="w-4 h-4" /> Добавить
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
-                                <th
-                                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
-                                    onClick={() => handleSort('position')}
-                                >
-                                    Должность {sortBy === 'position' && (sortDir === 'asc' ? '↑' : '↓')}
-                                </th>
-                                <th className="px-6 py-4 text-center w-64">Диапазон зарплат (Калькулятор)</th>
-                                <th
-                                    className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
-                                    onClick={() => handleSort('median')}
-                                >
-                                    Медиана {sortBy === 'median' && (sortDir === 'asc' ? '↑' : '↓')}
-                                </th>
-                                <th className="px-6 py-4 text-center">Штат</th>
-                                <th className="px-6 py-4 text-left">Отклонение</th>
-                                <th
-                                    className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
-                                    onClick={() => handleSort('updated')}
-                                >
-                                    Дата {sortBy === 'updated' && (sortDir === 'asc' ? '↑' : '↓')}
-                                </th>
-                                {canEdit && <th className="px-6 py-4 w-10"></th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {comparisonData.map((row: any) => (
-                                <tr
-                                    key={row.id}
-                                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                                    onClick={() => setSelectedPosition(row)}
-                                >
-                                    <td className="px-6 py-4 font-medium text-slate-900">
-                                        <div className="flex items-center gap-2">
-                                            {row.position_title}
-                                            {row.branchName && (
-                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">
-                                                    {row.branchName}
-                                                </span>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
+                                        <th
+                                            className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                                            onClick={() => handleSort('position')}
+                                        >
+                                            Должность {sortBy === 'position' && (sortDir === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th className="px-6 py-4 text-center w-64">Диапазон зарплат (Калькулятор)</th>
+                                        <th
+                                            className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                                            onClick={() => handleSort('median')}
+                                        >
+                                            Медиана {sortBy === 'median' && (sortDir === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        <th className="px-6 py-4 text-center">Штат</th>
+                                        <th className="px-6 py-4 text-left">Отклонение</th>
+                                        <th
+                                            className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                                            onClick={() => handleSort('updated')}
+                                        >
+                                            Дата {sortBy === 'updated' && (sortDir === 'asc' ? '↑' : '↓')}
+                                        </th>
+                                        {canEdit && <th className="px-6 py-4 w-10"></th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {comparisonData.map((row: any) => (
+                                        <tr
+                                            key={row.id}
+                                            className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                                            onClick={() => setSelectedPosition(row)}
+                                        >
+                                            <td className="px-6 py-4 font-medium text-slate-900">
+                                                <div className="flex items-center gap-2">
+                                                    {row.position_title}
+                                                    {row.branchName && (
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                                            {row.branchName}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-slate-400 font-normal mt-0.5 flex items-center gap-1">
+                                                    <Calculator className="w-3 h-3" />
+                                                    {row.source}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {row.median_salary > 0 ? (
+                                                    <SalaryRangeChart
+                                                        min={row.min_salary}
+                                                        max={row.max_salary}
+                                                        median={row.median_salary}
+                                                        employeeSalaries={row.employeeSalaries}
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">Нет данных (0 компаний)</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-emerald-700 font-mono font-bold bg-emerald-50/10 text-sm whitespace-nowrap">
+                                                {formatMoney(row.median_salary)}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                {row.employeesCount > 0 ? (
+                                                    <span
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-700 transition-colors"
+                                                    >
+                                                        <Users className="w-3 h-3" />
+                                                        {row.employeesCount}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-300">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {row.employeesCount > 0 && row.median_salary > 0 ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${Math.abs(row.deviation) < 5 ? 'bg-emerald-500' : row.deviation < 0 ? 'bg-red-500' : 'bg-blue-500'}`} />
+                                                        <span className={`text-xs font-bold ${Math.abs(row.deviation) < 5 ? 'text-emerald-600' : row.deviation < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                                            {row.deviation > 0 ? '+' : ''}{row.deviation.toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                ) : <span className="text-slate-300 text-xs">-</span>}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-slate-400 text-xs whitespace-nowrap">{row.updated_at}</td>
+                                            {canEdit && (
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(row.id);
+                                                        }}
+                                                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
                                             )}
-                                        </div>
-                                        <div className="text-xs text-slate-400 font-normal mt-0.5 flex items-center gap-1">
-                                            <Calculator className="w-3 h-3" />
-                                            {row.source}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {row.median_salary > 0 ? (
-                                            <SalaryRangeChart
-                                                min={row.min_salary}
-                                                max={row.max_salary}
-                                                median={row.median_salary}
-                                                employeeSalaries={row.employeeSalaries}
-                                            />
-                                        ) : (
-                                            <span className="text-xs text-slate-400 italic">Нет данных (0 компаний)</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-right text-emerald-700 font-mono font-bold bg-emerald-50/10 text-sm whitespace-nowrap">
-                                        {formatMoney(row.median_salary)}
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {row.employeesCount > 0 ? (
-                                            <span
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-700 transition-colors"
-                                            >
-                                                <Users className="w-3 h-3" />
-                                                {row.employeesCount}
-                                            </span>
-                                        ) : (
-                                            <span className="text-slate-300">-</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {row.employeesCount > 0 && row.median_salary > 0 ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${Math.abs(row.deviation) < 5 ? 'bg-emerald-500' : row.deviation < 0 ? 'bg-red-500' : 'bg-blue-500'}`} />
-                                                <span className={`text-xs font-bold ${Math.abs(row.deviation) < 5 ? 'text-emerald-600' : row.deviation < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                                    {row.deviation > 0 ? '+' : ''}{row.deviation.toFixed(1)}%
-                                                </span>
-                                            </div>
-                                        ) : <span className="text-slate-300 text-xs">-</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-right text-slate-400 text-xs whitespace-nowrap">{row.updated_at}</td>
-                                    {canEdit && (
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDelete(row.id);
-                                                }}
-                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <CandidateSearch />
+            )}
 
-            {/* Add Modal */}
+            {/* Modals remain the same... */}
             <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Добавить позицию для анализа">
+                {/* ... existing modal content ... */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Должность</label>
@@ -648,7 +676,7 @@ export default function MarketPage() {
                     <div className="space-y-2">
                         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                             <Users className="w-4 h-4" />
-                            Наши сотрудники
+                            Наши сотрудники ({selectedPosition?.matchedEmployees?.length || 0})
                         </h3>
                         <div className="max-h-60 overflow-y-auto custom-scrollbar border rounded-xl border-slate-200">
                             <table className="w-full text-sm text-left">
@@ -690,7 +718,7 @@ export default function MarketPage() {
                 </div>
             </Modal>
 
-            {/* Help / Info Modal */}
+            {/* Help / Info Modal is unchanged */}
             <Modal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} title="Как работает анализ рынка?">
                 <div className="space-y-6 text-sm text-slate-600">
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">

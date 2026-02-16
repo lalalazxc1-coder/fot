@@ -34,6 +34,12 @@ export default function AdminLayout() {
                     >
                         Цепочка согласования
                     </NavLink>
+                    <NavLink
+                        to="/admin/integrations"
+                        className={({ isActive }) => `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+                    >
+                        Интеграции
+                    </NavLink>
                 </div>
             </PageHeader>
 

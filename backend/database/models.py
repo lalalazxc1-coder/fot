@@ -268,3 +268,14 @@ class SalaryConfiguration(Base):
     
     updated_at = Column(String)
     updated_by = Column(Integer, nullable=True)
+
+class IntegrationSettings(Base):
+    __tablename__ = "integration_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    service_name = Column(String, unique=True, index=True) # 'hh', 'openai'
+    api_key = Column(String, nullable=True)
+    client_id = Column(String, nullable=True)
+    client_secret = Column(String, nullable=True)
+    is_active = Column(Boolean, default=False)
+    additional_params = Column(JSON, default={}) # For future flexibility
+    updated_at = Column(String, default=lambda: datetime.now().isoformat())

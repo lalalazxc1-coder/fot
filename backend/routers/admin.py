@@ -19,9 +19,10 @@ def get_admin_stats(db: Session = Depends(get_db)):
     # 2. Financial Overview (Quick snapshot)
     # Use optimized query from analytics or simple aggregation here
     # Total Active Employees Budget
+    max_ids_query = db.query(func.max(FinancialRecord.id)).group_by(FinancialRecord.employee_id)
     budget_query = db.query(func.sum(FinancialRecord.total_net)).join(Employee).filter(
         Employee.status != 'Dismissed',
-        FinancialRecord.id == db.query(func.max(FinancialRecord.id)).group_by(FinancialRecord.employee_id).scalar_subquery()
+        FinancialRecord.id.in_(max_ids_query)
     )
     total_budget = budget_query.scalar() or 0
     avg_salary = total_budget / total_employees if total_employees > 0 else 0

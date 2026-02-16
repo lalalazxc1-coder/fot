@@ -18,6 +18,7 @@ import UsersPage from './pages/admin/UsersPage';
 import StructurePage from './pages/admin/StructurePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import WorkflowPage from './pages/admin/WorkflowPage';
+import IntegrationsPage from './pages/admin/IntegrationsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import PositionsPage from './pages/settings/PositionsPage';
 
@@ -168,6 +169,7 @@ function App() {
                             <Route path="roles" element={<RolesPage />} />
                             <Route path="users" element={<UsersPage />} />
                             <Route path="workflow" element={<WorkflowPage />} />
+                            <Route path="integrations" element={<IntegrationsPage />} />
                         </Route>
                     </Route>
                 ) : (
