@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Save, Info, CheckCircle, XCircle, Key, Loader2, Trash2, Play } from 'lucide-react';
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function IntegrationsPage() {
     const queryClient = useQueryClient();
@@ -53,6 +53,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
     const [clientSecret, setClientSecret] = useState('');
     const [isActive, setIsActive] = useState(service.is_active);
     const [isTesting, setIsTesting] = useState(false);
+    const [baseUrl, setBaseUrl] = useState(service.additional_params?.base_url || 'https://api.openai.com/v1');
 
     const isHH = service.service_name === 'hh';
     const isAI = service.service_name === 'openai';
@@ -63,6 +64,11 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
         if (apiKey.trim()) payload.api_key = apiKey.trim();
         if (clientId.trim()) payload.client_id = clientId.trim();
         if (clientSecret.trim()) payload.client_secret = clientSecret.trim();
+
+        if (isAI) {
+            payload.additional_params = { ...service.additional_params, base_url: baseUrl };
+        }
+
         onSave(payload);
     };
 
@@ -83,6 +89,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
             if (apiKey.trim()) payload.api_key = apiKey.trim();
             if (clientId.trim()) payload.client_id = clientId.trim();
             if (clientSecret.trim()) payload.client_secret = clientSecret.trim();
+            if (isAI) payload.base_url = baseUrl;
 
             const res = await api.post('/integrations/test-connection', payload);
             if (res.data.success) {
@@ -173,6 +180,37 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
                     {isAI && (
                         <>
                             <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Провайдер / Base URL</label>
+                                <div className="flex gap-2 mb-3">
+                                    <button
+                                        onClick={() => setBaseUrl('https://api.openai.com/v1')}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition-all ${baseUrl.includes('openai.com') ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        OpenAI
+                                    </button>
+                                    <button
+                                        onClick={() => setBaseUrl('https://api.deepseek.com')}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition-all ${baseUrl.includes('deepseek.com') ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        DeepSeek
+                                    </button>
+                                    <button
+                                        onClick={() => setBaseUrl('https://openrouter.ai/api/v1')}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold border transition-all ${baseUrl.includes('openrouter.ai') ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        OpenRouter
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    value={baseUrl}
+                                    onChange={e => setBaseUrl(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                                    placeholder="https://api.openai.com/v1"
+                                />
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
                                 <div className="flex gap-2 relative">
                                     <input
@@ -180,14 +218,14 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
                                         value={apiKey}
                                         onChange={e => setApiKey(e.target.value)}
                                         className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 pr-10"
-                                        placeholder={service.has_api_key ? "sk-•••••••• (Сохранен)" : "sk-..."}
+                                        placeholder={service.has_api_key ? "•••••••• (Сохранен)" : "Введите API Key"}
                                     />
                                     <Key className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
                                 </div>
                             </div>
                             <div className="bg-slate-100 p-3 rounded-lg flex gap-3 text-sm text-slate-600">
                                 <Info className="w-5 h-5 flex-shrink-0" />
-                                <p>Используется для анализа резюме и матчинга вакансий. Поддерживаются ключи OpenAI.</p>
+                                <p>Используется для анализа резюме и матчинга вакансий. Поддерживаются OpenAI, DeepSeek и OpenRouter.</p>
                             </div>
                         </>
                     )}

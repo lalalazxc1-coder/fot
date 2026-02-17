@@ -54,7 +54,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <QueryClientProvider client={queryClient}>
                 <BrowserRouter>
                     <App />
-                    <Toaster position="top-right" richColors />
+                    <Toaster position="top-right" richColors offset="65px" />
                 </BrowserRouter>
             </QueryClientProvider>
         </ErrorBoundary>

@@ -17,7 +17,9 @@
     "chart.js": "^4.5.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
+    "framer-motion": "^12.34.0",
     "fuse.js": "^7.1.0",
+    "gsap": "^3.14.2",
     "lucide-react": "^0.294.0",
     "papaparse": "^5.5.3",
     "react": "^18.2.0",
@@ -30,7 +32,8 @@
     "reactflow": "^11.11.4",
     "recharts": "^2.10.3",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^2.6.1"
+    "tailwind-merge": "^2.6.1",
+    "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.37",
