@@ -66,17 +66,25 @@ def get_allowed_unit_ids(db: Session, user: User):
     
     # 1. Branches scope
     if user.scope_branches:
-        for b_id in user.scope_branches:
-            allowed_ids.add(b_id)
-            # Add all child departments
-            children = db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == b_id).all()
-            for child in children:
-                allowed_ids.add(child.id)
+        for b_id_raw in user.scope_branches:
+            try:
+                b_id = int(b_id_raw)
+                allowed_ids.add(b_id)
+                # Add all child departments
+                children = db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == b_id).all()
+                for child in children:
+                    allowed_ids.add(child.id)
+            except (ValueError, TypeError):
+                continue
                 
     # 2. Departments scope
     if user.scope_departments:
-        for d_id in user.scope_departments:
-            allowed_ids.add(d_id)
+        for d_id_raw in user.scope_departments:
+            try:
+                d_id = int(d_id_raw)
+                allowed_ids.add(d_id)
+            except (ValueError, TypeError):
+                continue
             
     return list(allowed_ids)
 
