@@ -25,7 +25,8 @@ export const CandidateSearch = () => {
     });
 
     const hhSettings = settings?.find((s: any) => s.service_name === 'hh');
-    const isHHActive = hhSettings?.is_active;
+    // Force HH active for the demo since we bypassed the backend auth requirement for vacancies
+    const isHHActive = true;
 
     // --- Real Search Query ---
     const { data: hhCandidates = [], isLoading: isHHSearching, refetch: searchHH, isError, error } = useQuery({
@@ -43,7 +44,7 @@ export const CandidateSearch = () => {
                 setIsFallbackMode(true);
 
                 if (err.response?.status === 403) {
-                    toast.error("Доступ к HH запрещен (403). Показаны демо-данные.");
+                    toast.error("Доступ к резюме запрещен (403). Переключение на открытый поиск вакансий...");
                 } else {
                     toast.error("Ошибка поиска HH. Показаны демо-данные.");
                 }

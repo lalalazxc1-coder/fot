@@ -135,6 +135,7 @@ class MarketEntryResponse(BaseModel):
     company_name: str
     salary: int
     created_at: str
+    url: Optional[str] = None
 
 class MarketDataCreate(BaseModel):
     position_title: str
@@ -225,6 +226,8 @@ class ApprovalStepBase(BaseModel):
     is_final: bool = False
     step_type: str = "approval" # 'approval', 'notification'
     notify_on_completion: bool = False
+    condition_type: Optional[str] = None
+    condition_amount: Optional[int] = None
 
 class ApprovalStepCreate(ApprovalStepBase):
     pass

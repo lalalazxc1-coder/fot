@@ -18,6 +18,18 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
         return () => setMounted(false);
     }, []);
 
+    // Lock scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
     if (!isOpen || !mounted) return null;
 
     return createPortal(

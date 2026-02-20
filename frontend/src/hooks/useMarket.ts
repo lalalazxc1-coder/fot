@@ -130,3 +130,21 @@ export function useDeleteMarketEntryPoint() {
         }
     });
 }
+
+export function useSyncMarketData() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await api.post(`/market/${id}/sync-hh`);
+            return res.data;
+        },
+        onSuccess: (data: any) => {
+            toast.success(`Успешно! Найдено вакансий: ${data.count || 0}`);
+            queryClient.invalidateQueries({ queryKey: ['market'] });
+            queryClient.invalidateQueries({ queryKey: ['market-entries'] });
+        },
+        onError: (err: any) => {
+            toast.error("Ошибка синхронизации: " + (err.response?.data?.detail || err.message));
+        }
+    });
+}

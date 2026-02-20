@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from typing import List, Optional
 from datetime import datetime
 from database.database import get_db
 from database.models import PlanningPosition, User, OrganizationUnit, AuditLog
@@ -48,26 +49,24 @@ def check_manage_permission(user: User):
     return user.role_rel.permissions.get('manage_planning', False) if user.role_rel and user.role_rel.permissions else False
 
 def filter_by_scope(query, user: User, db: Session):
-    is_admin = False
-    if user.role_rel:
-        if user.role_rel.permissions.get('admin_access'): is_admin = True
-        
-    if is_admin: return query
+    from dependencies import get_user_scope
+    from sqlalchemy import or_
+
+    allowed_ids = get_user_scope(db, user)
     
-    allowed_branch_ids = []
+    # Non-admin with scope restrictions
+    if allowed_ids is not None:
+        # User only sees planning positions if they fall exactly into the allowed IDs list.
+        # This means EITHER it's attached directly to an allowed branch OR an allowed department
+        return query.filter(
+            or_(
+                PlanningPosition.branch_id.in_(allowed_ids),
+                PlanningPosition.department_id.in_(allowed_ids)
+            )
+        )
     
-    if user.scope_branches:
-        for bid_raw in user.scope_branches:
-            bid = int(bid_raw)
-            allowed_branch_ids.append(bid)
-            
-    # Simple branch filtering for now. Department level filtering could be added if needed.
-    if allowed_branch_ids:
-        return query.filter(PlanningPosition.branch_id.in_(allowed_branch_ids))
-    
-    # If no scope defined but not admin - allow access to all branches
-    # This is logical: no restriction = access to everything
-    return query 
+    # If no restrictions (or admin), return all
+    return query
 
 
 # --- Endpoints ---
@@ -266,8 +265,12 @@ def get_plan_history(plan_id: int, db: Session = Depends(get_db)):
             
     return formatted_logs
 
-@router.get("/planning/export")
-def export_planning_excel(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+
+class ExportRequest(BaseModel):
+    ids: Optional[List[int]] = None
+
+@router.post("/planning/export")
+def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     try:
         # Optimized: Pre-fetch Organization Units to avoid N+1 queries
         from sqlalchemy import select
@@ -277,6 +280,8 @@ def export_planning_excel(db: Session = Depends(get_db), current_user: User = De
         # Get planning data with scope filtering
         query = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == None)
         query = filter_by_scope(query, current_user, db)
+        if req.ids is not None:
+            query = query.filter(PlanningPosition.id.in_(req.ids))
         plans = query.all()
         
         print(f"Found {len(plans)} planning positions to export")

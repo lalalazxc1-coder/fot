@@ -25,7 +25,9 @@ export default function WorkflowPage() {
         label: '',
         is_final: false,
         step_type: 'approval',
-        notify_on_completion: false
+        notify_on_completion: false,
+        condition_type: '',
+        condition_amount: 0
     });
 
     const handleOpenCreate = () => {
@@ -38,7 +40,9 @@ export default function WorkflowPage() {
             label: '',
             is_final: false,
             step_type: 'approval',
-            notify_on_completion: false
+            notify_on_completion: false,
+            condition_type: '',
+            condition_amount: 0
         });
         setEditingStep(null);
         setIsModalOpen(true);
@@ -53,7 +57,9 @@ export default function WorkflowPage() {
             label: step.label,
             is_final: step.is_final,
             step_type: step.step_type || 'approval',
-            notify_on_completion: step.notify_on_completion || false
+            notify_on_completion: step.notify_on_completion || false,
+            condition_type: step.condition_type || '',
+            condition_amount: step.condition_amount || 0
         });
         setEditingStep(step);
         setIsModalOpen(true);
@@ -71,7 +77,9 @@ export default function WorkflowPage() {
         const payload: any = {
             ...form,
             role_id: form.assign_type === 'role' ? form.role_id : null,
-            user_id: form.assign_type === 'user' ? form.user_id : null
+            user_id: form.assign_type === 'user' ? form.user_id : null,
+            condition_type: form.condition_type === '' ? null : form.condition_type,
+            condition_amount: form.condition_amount === 0 ? null : form.condition_amount
         };
         delete payload.assign_type;
 
@@ -147,6 +155,11 @@ export default function WorkflowPage() {
                                             )}
                                         </div>
                                     </div>
+                                    {step.condition_type && (
+                                        <div className="mt-2 text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded inline-flex items-center gap-1 font-medium shadow-sm border border-amber-100">
+                                            Условие: Только если сумма повышения {step.condition_type === 'amount_less_than' ? '<' : '≥'} {step.condition_amount} ₸
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -256,6 +269,31 @@ export default function WorkflowPage() {
                         </select>
                     </div>
 
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 mt-2 space-y-3">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Умная маршрутизация (Smart Routing)</label>
+                        <select
+                            className="w-full h-10 rounded-lg border border-slate-300 px-3 bg-white"
+                            value={form.condition_type}
+                            onChange={e => setForm({ ...form, condition_type: e.target.value })}
+                        >
+                            <option value="">Всегда проходить этот этап</option>
+                            <option value="amount_less_than">Только если сумма повышения меньше</option>
+                            <option value="amount_greater_than_or_equal">Только если сумма повышения больше или равна</option>
+                        </select>
+                        {form.condition_type && (
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Сумма повышения (₸)</label>
+                                <input
+                                    type="number"
+                                    className="w-full h-10 rounded-lg border border-slate-300 px-3"
+                                    value={form.condition_amount}
+                                    onChange={e => setForm({ ...form, condition_amount: Number(e.target.value) })}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
@@ -361,11 +399,11 @@ export default function WorkflowPage() {
                     </div>
 
                     <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
-                        <div className="font-bold mb-1">Пример типичной цепочки:</div>
+                        <div className="font-bold mb-1">Пример умной маршрутизации (Условия):</div>
                         <div className="space-y-1 mt-2">
-                            <div>1. Руководитель отдела (роль: Manager)</div>
-                            <div>2. HR отдел (роль: HR)</div>
-                            <div>3. Финансовый директор (пользователь: Иванов И.И.) ✓ Финал</div>
+                            <div>1. Непосредственный руководитель (Всегда)</div>
+                            <div>2. HR Директор (Только если сумма повышения ≥ 50 000 ₸)</div>
+                            <div>3. Финансовый директор (Финальный этап, Всегда)</div>
                         </div>
                     </div>
                 </div>

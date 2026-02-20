@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Eye, HelpCircle } from 'lucide-react';
+import { Plus, Eye, HelpCircle, Calculator } from 'lucide-react';
 import { PageHeader } from '../components/shared';
 import Modal from '../components/Modal';
 import { useRequests, useUpdateRequestStatus } from '../hooks/useRequests';
@@ -74,10 +74,23 @@ export default function RequestsPage() {
         setPage(1);
     }, [viewMode]);
 
+    // Lock scroll when any modal is open
+    useEffect(() => {
+        const anyModalOpen = isModalOpen || !!selectedRequest || isHelpOpen || statusModal.isOpen;
+        if (anyModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isModalOpen, selectedRequest, isHelpOpen, statusModal.isOpen]);
+
     if (loading) return <div className="p-10">Загрузка...</div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <PageHeader
                 title="Заявки на пересмотр"
                 subtitle="Управление запросами на повышение и бонусы"
@@ -292,59 +305,54 @@ export default function RequestsPage() {
             {/* Help Modal */}
             <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работают заявки?">
                 <div className="space-y-6 text-sm text-slate-600">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p className="mb-2">
-                            <span className="font-bold text-slate-900">Система заявок</span> позволяет управлять запросами на повышение зарплаты и бонусы.
-                        </p>
-                        <p>
-                            Каждая заявка проходит многоуровневое согласование в соответствии с настроенным Workflow.
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <p className="leading-relaxed">
+                            <span className="font-bold text-slate-900 text-base block mb-1">Центр согласований</span>
+                            Система управления изменениями. Здесь менеджеры запрашивают повышение окладов или разовые бонусы, а руководство принимает обоснованные решения.
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900">Основные этапы</h4>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <span className="font-medium text-slate-900">1. Создание:</span> Менеджер создает заявку на повышение или бонус с обоснованием.
-                            </li>
-                            <li>
-                                <span className="font-medium text-slate-900">2. Согласование:</span> Заявка проходит через несколько уровней: Руководитель филиала → HR → Директор.
-                            </li>
-                            <li>
-                                <span className="font-medium text-slate-900">3. Утверждение:</span> После одобрения на всех этапах, изменения автоматически применяются к финансовым данным сотрудника.
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900">Типы заявок</h4>
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="flex items-start gap-3">
-                                <div className="w-3 h-3 rounded-full bg-blue-500 mt-1"></div>
+                        <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Процесс (Workflow)</h4>
+                        <div className="space-y-3">
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">1</div>
                                 <div>
-                                    <span className="font-bold text-blue-600">Повышение:</span> Постоянное увеличение оклада. Изменения сохраняются в истории сотрудника.
+                                    <div className="font-bold text-slate-900">Подача запроса</div>
+                                    <div className="text-xs">Вы выбираете сотрудника и указываете новую сумму с обоснованием.</div>
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <div className="w-3 h-3 rounded-full bg-purple-500 mt-1"></div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">2</div>
                                 <div>
-                                    <span className="font-bold text-purple-600">Бонус:</span> Разовая выплата за достижения. Не влияет на постоянный оклад.
+                                    <div className="font-bold text-slate-900">Цепочка одобрений</div>
+                                    <div className="text-xs">Заявка летит по этапам (HR → Finance → CEO). Каждый может оставить комментарий или отклонить.</div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">✓</div>
+                                <div>
+                                    <div className="font-bold text-slate-900">Автоматическое применение</div>
+                                    <div className="text-xs font-medium text-emerald-700">Как только финальный аппрувер нажимает "Одобрить", данные в карточке сотрудника обновляются мгновенно.</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900">Аналитика</h4>
-                        <p>
-                            При просмотре заявки автоматически показываются рыночные данные (медиана, мин/макс) и внутренняя статистика по филиалу для обоснованного решения.
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <h4 className="font-bold text-blue-900 text-xs uppercase mb-2">Инструменты принятия решений</h4>
+                        <p className="text-blue-800 text-xs leading-relaxed">
+                            При просмотре заявки система автоматически подтягивает <strong>рыночные данные</strong> по этой должности. Вы сразу видите, находится ли запрос в рамках рынка или выше него.
                         </p>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
-                        <div className="font-bold mb-1">Совет:</div>
+                    <div className="bg-slate-900 p-4 rounded-xl text-white text-xs shadow-lg">
+                        <div className="font-bold mb-1 flex items-center gap-2">
+                            <Calculator size={14} className="text-blue-400" />
+                            Настройка этапов
+                        </div>
                         <div>
-                            Настройте Workflow в разделе Администрирование для настройки этапов согласования под вашу организации.
+                            Администратор может изменить количество шагов и ответственных в разделе <strong>"Настройки цепочки"</strong> в админ-панели.
                         </div>
                     </div>
                 </div>

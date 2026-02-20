@@ -3,18 +3,51 @@ import { Shield, Trash2, Edit2, Loader2 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { useRoles, useCreateRole, useUpdateRole, useDeleteRole, Role } from '../../hooks/useAdmin';
 
-const PERMISSIONS_LIST = [
-    { key: 'admin_access', label: 'Полные административные права' },
-    { key: 'add_employees', label: 'Добавление и редактирование сотрудников' },
-    { key: 'manage_planning', label: 'Управление ФОТ (Планирование)' },
-    { key: 'edit_financials', label: 'Редактирование финансовых данных (ЗП/KPI)' },
-    { key: 'view_structure', label: 'Просмотр структуры компании' },
-    { key: 'edit_structure', label: 'Редактирование структуры (Филиалы/Отделы)' },
-    { key: 'view_positions', label: 'Просмотр справочника должностей' },
-    { key: 'edit_positions', label: 'Редактирование справочника должностей' },
-    { key: 'view_market', label: 'Просмотр аналитики рынка (HeadHunter)' },
-    { key: 'edit_market', label: 'Редактирование аналитики рынка (Добавление/Удаление)' },
+const PERMISSION_GROUPS = [
+    {
+        title: 'Система, Аналитика и Песочница',
+        permissions: [
+            { key: 'admin_access', label: 'Полные административные права (Доступ ко всем разделам)' },
+            { key: 'view_analytics', label: 'Просмотр страницы Аналитика' },
+            { key: 'view_scenarios', label: 'Доступ к разделу Песочница' },
+        ]
+    },
+    {
+        title: 'ФОТ и Планирование',
+        permissions: [
+            { key: 'view_payroll', label: 'Просмотр главной страницы ФОТ' },
+            { key: 'manage_planning', label: 'Управление ФОТ (Добавление/Редактирование/Удаление позиций)' },
+            { key: 'edit_financials', label: 'Управление финансами (Редактирование ЗП/KPI/Бонусов)' },
+            { key: 'view_financial_reports', label: 'Просмотр финансовых данных (Суммарные ЗП, ЗП руководителей)' },
+        ]
+    },
+    {
+        title: 'Сотрудники',
+        permissions: [
+            { key: 'view_employees', label: 'Просмотр базы сотрудников' },
+            { key: 'add_employees', label: 'Управление сотрудниками (Добавление/Удаление/Редактирование)' },
+        ]
+    },
+    {
+        title: 'Аналитика Рынка (HeadHunter)',
+        permissions: [
+            { key: 'view_market', label: 'Просмотр раздела "Рынок"' },
+            { key: 'edit_market', label: 'Управление данными рынка (Импорт загрузка/удаление)' },
+        ]
+    },
+    {
+        title: 'Структура и Справочники',
+        permissions: [
+            { key: 'view_structure', label: 'Просмотр орг. структуры' },
+            { key: 'edit_structure', label: 'Редактирование орг. структуры (создание/перемещение отделов)' },
+            { key: 'view_positions', label: 'Просмотр справочника должностей' },
+            { key: 'edit_positions', label: 'Управление справочником должностей' },
+        ]
+    }
 ];
+
+// Flat list for easy lookup
+const PERMISSIONS_LIST = PERMISSION_GROUPS.flatMap(g => g.permissions);
 
 export default function RolesPage() {
     const { data: roles = [], isLoading } = useRoles();
@@ -101,7 +134,7 @@ export default function RolesPage() {
                                 <button onClick={() => handleDelete(role.id)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mt-4">
                             {Object.entries(role.permissions).filter(([_, v]) => v).map(([key]) => {
                                 const label = PERMISSIONS_LIST.find(p => p.key === key)?.label || key;
                                 return <span key={key} className="text-[11px] bg-slate-50 text-slate-700 px-2 py-1 rounded-md border border-slate-200 font-medium">{label}</span>
@@ -120,10 +153,10 @@ export default function RolesPage() {
             >
                 <form onSubmit={handleSave} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Название</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 mb-2">Название</label>
                         <input
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20"
-                            placeholder="Например: Бухгалтер"
+                            className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-900 placeholder:text-slate-400 text-sm font-medium shadow-sm"
+                            placeholder="Например: Менеджер по персоналу"
                             value={formName}
                             onChange={e => setFormName(e.target.value)}
                             required
@@ -131,24 +164,60 @@ export default function RolesPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-3">Разрешения</label>
-                        <div className="space-y-2">
-                            {PERMISSIONS_LIST.map(perm => (
-                                <label key={perm.key} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer transition-all">
-                                    <input
-                                        type="checkbox"
-                                        checked={!!formPerms[perm.key]}
-                                        onChange={() => togglePerm(perm.key)}
-                                        className="w-4 h-4 text-slate-900 rounded focus:ring-slate-500 accent-slate-900"
-                                    />
-                                    <span className="text-sm text-slate-700">{perm.label}</span>
-                                </label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 mb-3">Разрешения по категориям</label>
+                        <div className="space-y-6 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar">
+                            {PERMISSION_GROUPS.map((group, idx) => (
+                                <div key={idx} className="space-y-3">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">{group.title}</h4>
+                                    <div className="space-y-2">
+                                        {group.permissions.map(perm => (
+                                            <label
+                                                key={perm.key}
+                                                className={`flex items-center gap-3.5 p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${formPerms[perm.key]
+                                                    ? 'border-indigo-600 bg-indigo-50/40 shadow-sm'
+                                                    : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                <div className={`flex shrink-0 items-center justify-center w-5 h-5 rounded-[6px] border transition-colors ${formPerms[perm.key]
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                                                    : 'bg-white border-slate-300'
+                                                    }`}>
+                                                    {formPerms[perm.key] && (
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!formPerms[perm.key]}
+                                                    onChange={() => togglePerm(perm.key)}
+                                                    className="hidden" // Hiding the native checkbox
+                                                />
+                                                <span className={`text-[13px] leading-tight block w-full transition-colors ${formPerms[perm.key] ? 'font-semibold text-indigo-950' : 'font-medium text-slate-600'
+                                                    }`}>
+                                                    {perm.label}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     </div>
 
-                    <button disabled={isSubmitting} className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50">
-                        {isSubmitting ? 'Сохранение...' : (editingRole ? 'Сохранить изменения' : 'Создать роль')}
+                    <button
+                        disabled={isSubmitting}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30 hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Сохранение...
+                            </>
+                        ) : (
+                            editingRole ? 'Сохранить изменения' : 'Создать роль'
+                        )}
                     </button>
                 </form>
             </Modal>

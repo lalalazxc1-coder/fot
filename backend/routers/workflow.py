@@ -42,7 +42,9 @@ def create_approval_step(
         label=step.label,
         is_final=step.is_final,
         step_type=step.step_type,
-        notify_on_completion=step.notify_on_completion
+        notify_on_completion=step.notify_on_completion,
+        condition_type=step.condition_type,
+        condition_amount=step.condition_amount
     )
     db.add(new_step)
     db.commit()
@@ -69,6 +71,8 @@ def update_approval_step(
     existing.is_final = step.is_final
     existing.step_type = step.step_type
     existing.notify_on_completion = step.notify_on_completion
+    existing.condition_type = step.condition_type
+    existing.condition_amount = step.condition_amount
     
     db.commit()
     return existing

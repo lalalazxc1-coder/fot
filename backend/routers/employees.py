@@ -58,8 +58,13 @@ def get_employees(
 
 # ... (Skipping standard CRUD for brevity, focus on Export Optimization) ...
 
-@router.get("/employees/export")
+from pydantic import BaseModel
+class ExportRequest(BaseModel):
+    ids: Optional[List[int]] = None
+
+@router.post("/employees/export")
 def export_employees_excel(
+    req: ExportRequest,
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_active_user),
     scope: Optional[List[int]] = Depends(get_user_scope)
@@ -78,6 +83,9 @@ def export_employees_excel(
     
     if scope:
         query = query.filter(Employee.org_unit_id.in_(scope))
+        
+    if req.ids is not None:
+        query = query.filter(Employee.id.in_(req.ids))
         
     employees = db.scalars(query).all()
     

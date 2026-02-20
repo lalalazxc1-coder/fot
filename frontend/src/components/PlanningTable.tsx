@@ -4,7 +4,7 @@ import {
     getCoreRowModel,
     flexRender,
 } from '@tanstack/react-table';
-import { Plus, Loader2, Settings, Download, HelpCircle } from 'lucide-react';
+import { Plus, Loader2, Settings, Download, HelpCircle, Calculator, RefreshCw } from 'lucide-react';
 import { PageHeader } from './shared';
 import { Button } from './ui-mocks';
 import SalarySettingsModal from './SalarySettingsModal';
@@ -161,7 +161,7 @@ export default function PlanningTable({ user }: { user: any }) {
     if (isDataLoading || isStructureLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <PageHeader
                 title="Фонд оплаты труда"
                 subtitle="Управление штатными позициями и бюджетом"
@@ -202,10 +202,15 @@ export default function PlanningTable({ user }: { user: any }) {
                                     alert('Токен не найден');
                                     return;
                                 }
+                                const filteredIds = table.getRowModel().rows.map((r: any) => r.original.id);
+
                                 const response = await fetch('/api/planning/export', {
+                                    method: 'POST',
                                     headers: {
-                                        'Authorization': `Bearer ${token}`
-                                    }
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ ids: filteredIds })
                                 });
                                 if (!response.ok) {
                                     const text = await response.text();
@@ -310,64 +315,46 @@ export default function PlanningTable({ user }: { user: any }) {
             {/* Help Modal */}
             <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работает планирование ФОТ?">
                 <div className="space-y-6 text-sm text-slate-600">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p className="mb-2">
-                            <span className="font-bold text-slate-900">Фонд оплаты труда (ФОТ)</span> — это плановый инструмент для управления расходами на персонал.
-                        </p>
-                        <p>
-                            Здесь вы определяете штатные позиции, их количество и зарплатные условия до найма сотрудников.
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <p className="leading-relaxed">
+                            <span className="font-bold text-slate-900 text-base block mb-1">Штатное расписание</span>
+                            Это фундамент вашего бюджета. Здесь вы управляете не людьми, а <strong>позициями</strong>. Вы определяете, сколько сотрудников нужно компании и какие ресурсы (деньги) на это выделены.
                         </p>
                     </div>
 
                     <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900">Основные компоненты</h4>
-                        <ul className="list-disc pl-5 space-y-2">
-                            <li>
-                                <span className="font-medium text-slate-900">Позиция:</span> Должность (например, "Менеджер по продажам").
-                            </li>
-                            <li>
-                                <span className="font-medium text-slate-900">Филиал/Отдел:</span> Организационная привязка позиции.
-                            </li>
-                            <li>
-                                <span className="font-medium text-slate-900">Количество:</span> Сколько единиц данной позиции планируется.
-                            </li>
-                            <li>
-                                <span className="font-medium text-slate-900">Финансы:</span> Оклад, KPI, Бонусы (в нетто и брутто).
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-900">Нетто vs Брутто</h4>
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="flex items-start gap-3">
-                                <div className="w-3 h-3 rounded-full bg-emerald-500 mt-1"></div>
+                        <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Механика работы</h4>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="flex gap-3">
+                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg h-fit"><Calculator size={16} /></div>
                                 <div>
-                                    <span className="font-bold text-emerald-600">Нетто (Net):</span> Сумма, которую получает сотрудник "на руки". Указывается вручную.
+                                    <span className="font-bold text-slate-900 block">Авторасчет налогов</span>
+                                    Вы вводите сумму "на руки" (Net), а система автоматически считает "грязную" зарплату (Gross) со всеми налогами РК на 2026 год.
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <div className="w-3 h-3 rounded-full bg-blue-500 mt-1"></div>
+                            <div className="flex gap-3">
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg h-fit"><RefreshCw size={16} /></div>
                                 <div>
-                                    <span className="font-bold text-blue-600">Брутто (Gross):</span> Рассчитывается автоматически на основе нетто с учетом налогов. Коэффициент расчета можно настроить в разделе "Настройки".
+                                    <span className="font-bold text-slate-900 block">Умная синхронизация</span>
+                                    При изменении оклада в этом реестре, данные <strong>автоматически обновятся</strong> у всех привязанных к этой позиции сотрудников. Больше не нужно менять ЗП каждому вручную!
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                        <div className="font-bold text-amber-900 mb-1 flex items-center gap-2">
-                            ⚠️ Важно
+                        <div className="font-bold text-amber-900 mb-1 flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                            ⚠️ Обратите внимание
                         </div>
                         <div className="text-amber-800 text-xs">
-                            Изменения условий оплаты сотрудников происходят только через эту вкладку ФОТ. При изменении данных здесь, они автоматически применяются к связанным сотрудникам.
+                            Если вы меняете количество позиций (Count), это напрямую влияет на общую сумму ФОТ в аналитике, даже если вакансия еще не занята.
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
-                        <div className="font-bold mb-1">Совет:</div>
+                    <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs shadow-sm">
+                        <div className="font-bold mb-1 italic">PRO-совет:</div>
                         <div>
-                            После создания плановых позиций вы сможете нанимать сотрудников на вкладке "Сотрудники", привязывая их к этим позициям.
+                            Для моделирования масштабных изменений (например, индексация на 10% по всему филиалу) используйте раздел <strong>"Сценарии"</strong>, чтобы не сломать "живой" бюджет.
                         </div>
                     </div>
                 </div>

@@ -223,7 +223,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeader
         title="Список сотрудников"
         subtitle="Реестр сотрудников и начислений"
@@ -273,10 +273,15 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
                 alert('Токен не найден');
                 return;
               }
+              const filteredIds = table.getRowModel().rows.map(r => r.original.id);
+
               const response = await fetch('/api/employees/export', {
+                method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${token}`
-                }
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ids: filteredIds })
               });
               if (!response.ok) throw new Error('Export failed');
               const blob = await response.blob();
@@ -383,62 +388,62 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
       />
 
       {/* Help Modal */}
-      <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работает управление сотрудниками?">
+      <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работает реестр сотрудников?">
         <div className="space-y-6 text-sm text-slate-600">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <p className="mb-2">
-              <span className="font-bold text-slate-900">Реестр сотрудников</span> — это центральная база данных о всех сотрудниках компании.
-            </p>
-            <p>
-              Здесь вы фиксируете фактически нанятых людей и отслеживаете их финансовые условия.
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p className="leading-relaxed">
+              <span className="font-bold text-slate-900 text-base block mb-1">Центральный реестр</span>
+              База данных всех фактических сотрудников. Здесь вы отслеживаете реальные затраты компании на персонал и управляете персональными данными.
             </p>
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-bold text-slate-900">Основные функции</h4>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>
-                <span className="font-medium text-slate-900">Добавление сотрудников:</span> При добавлении вы можете выбрать позицию из плана ФОТ, и зарплатные данные заполнятся автоматически.
-              </li>
-              <li>
-                <span className="font-medium text-slate-900">Просмотр данных:</span> Здесь отображаются текущие финансовые условия всех сотрудников.
-              </li>
-              <li>
-                <span className="font-medium text-slate-900">История изменений:</span> Нажмите на иконку истории, чтобы увидеть все изменения зарплаты и статуса.
-              </li>
-              <li>
-                <span className="font-medium text-slate-900">Увольнение:</span> При увольнении сотрудник не удаляется, а переходит в статус "Уволен" и доступен на соответствующей вкладке.
-              </li>
-            </ul>
+            <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Основные возможности</h4>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex gap-3">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg h-fit"><Plus size={16} /></div>
+                <div>
+                  <span className="font-bold text-slate-900 block">Связь с планом</span>
+                  При найме вы привязываете сотрудника к позиции в ФОТ — это автоматически подгружает плановые условия.
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg h-fit"><HelpCircle size={16} /></div>
+                <div>
+                  <span className="font-bold text-slate-900 block">Аудит изменений</span>
+                  Каждое изменение оклада или статуса фиксируется в <strong>Audit Log</strong>. Кликните на иконку часов, чтобы увидеть историю "До и После".
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg h-fit"><Download size={16} /></div>
+                <div>
+                  <span className="font-bold text-slate-900 block">Экспорт</span>
+                  Выгружайте актуальный список сотрудников со всеми начислениями в Excel для внешнего бухгалтерского анализа.
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-            <div className="font-bold text-amber-900 mb-1 flex items-center gap-2">
-              ⚠️ Важно
+            <div className="font-bold text-amber-900 mb-1 flex items-center gap-2 uppercase text-[10px] tracking-widest">
+              ⚠️ Правила управления
             </div>
             <div className="text-amber-800 text-xs space-y-2">
               <p>
-                Изменения условий оплаты происходят только через вкладку <span className="font-bold">"Фонд оплаты труда"</span>.
+                Зарплата сотрудника может меняться тремя способами:
               </p>
-              <p>
-                Изменения автоматически применяются к связанным сотрудникам. Если по какой-то причине данные не обновились, вы можете вручную подтянуть актуальную информацию в настройках сотрудника.
-              </p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Автоматически при обновлении плановой позиции в <strong>ФОТ</strong>.</li>
+                <li>Через систему <strong>Заявок</strong> (после полного согласования).</li>
+                <li>Вручную в карточке сотрудника (только для администраторов).</li>
+              </ul>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="font-bold text-slate-900">Фильтры и поиск</h4>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Используйте поиск по имени или должности</li>
-              <li>Фильтруйте по филиалу и отделу</li>
-              <li>Переключайтесь между активными и уволенными сотрудниками</li>
-            </ul>
-          </div>
-
           <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-xs">
-            <div className="font-bold mb-1">Совет:</div>
+            <div className="font-bold mb-1">PRO-совет:</div>
             <div>
-              Для контроля бюджета сравнивайте общий ФОТ сотрудников с плановым ФОТ на странице Аналитики.
+              Для быстрого поиска используйте фильтры по подразделениям. Если сотрудник уволен, он переходит в архив и не учитывается в текущем бюджете.
             </div>
           </div>
         </div>

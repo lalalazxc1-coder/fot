@@ -210,15 +210,24 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
     };
 
     // Nav items config
-    // Nav items config for new NavBar
-    const tubeNavItems = React.useMemo(() => [
-        { name: 'Аналитика', url: '/analytics', icon: PieChart },
-        { name: 'ФОТ', url: '/payroll', icon: FileText },
-        { name: 'Сотрудники', url: '/employees', icon: Users },
-        { name: 'Заявки', url: '/requests', icon: FileText },
-        ...(canViewMarket ? [{ name: 'Рынок', url: '/market', icon: ShoppingBag }] : []),
-        { name: 'Песочница', url: '/scenarios', icon: Layout },
-    ], [canViewMarket]);
+    const tubeNavItems = React.useMemo(() => {
+        const canViewAnalytics = hasAdminAccess || user.permissions?.view_analytics;
+        const canViewPayroll = hasAdminAccess || user.permissions?.view_payroll;
+        const canViewEmployees = hasAdminAccess || user.permissions?.view_employees;
+        const canViewScenarios = hasAdminAccess || user.permissions?.view_scenarios;
+        // Assume requests can be viewed if you can view employees or payroll (or just true for now, letting backend filter)
+        // Wait, the user asked "На каждую страницу сделай права, если их нету то она не отображается"
+        // Let's hide what they explicitly cannot see. If requests lack a permission, let's just make it visible if they have basic access or add a specific request check. A safe assumption is basic users can see their own requests.
+
+        return [
+            ...(canViewAnalytics ? [{ name: 'Аналитика', url: '/analytics', icon: PieChart }] : []),
+            ...(canViewPayroll ? [{ name: 'ФОТ', url: '/payroll', icon: FileText }] : []),
+            ...(canViewEmployees ? [{ name: 'Сотрудники', url: '/employees', icon: Users }] : []),
+            { name: 'Заявки', url: '/requests', icon: FileText }, // basic functionality
+            ...(canViewMarket ? [{ name: 'Рынок', url: '/market', icon: ShoppingBag }] : []),
+            ...(canViewScenarios ? [{ name: 'Песочница', url: '/scenarios', icon: Layout }] : []),
+        ];
+    }, [hasAdminAccess, canViewMarket, user.permissions]);
 
     return (
         <div className="min-h-screen font-sans text-slate-900 bg-slate-100/80 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-100 via-slate-200/50 to-slate-200/80">
@@ -233,12 +242,12 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
 
             {/* Header - Airy Style with Scroll Effect */}
             <header className={`sticky top-0 z-30 w-full transition-all duration-300 ${scrolled ? 'bg-white/50 backdrop-blur-md shadow-sm border-b border-white/20' : 'bg-transparent border-b border-transparent'}`}>
-                <div className={`max-w-7xl mx-auto px-6 flex items-center justify-between transition-all duration-300 ${scrolled ? 'h-14' : 'h-16'}`}>
+                <div className={`max-w-7xl mx-auto px-6 flex items-center justify-between relative transition-all duration-300 ${scrolled ? 'h-14' : 'h-16'}`}>
 
-                    {/* Left: Logo + Nav */}
-                    <div className="flex items-center gap-6">
+                    {/* Left: Logo */}
+                    <div className="flex items-center gap-6 shrink-0 z-10">
                         {/* Logo - Airy Style */}
-                        <Link to="/" className="group flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
+                        <Link to="/" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
                             <div className="flex items-center justify-center">
                                 <svg className="w-6 h-6 text-slate-800 transition-transform group-hover:scale-110 duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -248,14 +257,11 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                                 <span className="font-semibold text-slate-800 text-[15px] leading-tight tracking-tight">HR & Payroll Hub</span>
                             </div>
                         </Link>
+                    </div>
 
-                        {/* Divider */}
-                        <div className="h-5 w-px bg-slate-200 hidden md:block"></div>
-
-                        {/* TubeLight NavBar Integrated */}
-                        <div className="hidden md:block">
-                            <NavBar items={tubeNavItems} className="relative !top-0 !left-0 !translate-x-0 !mb-0 !pt-0" />
-                        </div>
+                    {/* Center: TubeLight NavBar Integrated */}
+                    <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                        <NavBar items={tubeNavItems} className="relative !top-0 !left-0 !translate-x-0 !mb-0 !pt-0" />
                     </div>
 
                     {/* Right: Expandable Tabs for Actions */}

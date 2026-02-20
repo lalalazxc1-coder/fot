@@ -102,7 +102,7 @@ const DashboardSkeleton = () => (
     <div className="space-y-8 pb-10 animate-pulse">
         {/* Header Skeleton */}
         <div className="flex justify-between items-center">
-            <div className="space-y-3">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="h-8 w-64 bg-slate-200 rounded-lg"></div>
                 <div className="h-4 w-96 bg-slate-100 rounded-lg"></div>
             </div>
@@ -166,7 +166,7 @@ export default function AnalyticsPageOptimized() {
     const { fact, plan, metrics } = summary;
 
     return (
-        <div className="space-y-6 pb-10">
+        <div className="space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <PageHeader
                 title="Аналитика ФОТ"
                 subtitle="Комплексный обзор расходов и показателей эффективности"

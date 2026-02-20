@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { formatMoney } from '../utils';
 import { PageHeader } from '../components/shared';
-import { Plus, Trash2, ArrowRight, Save, LayoutDashboard, Copy, Filter, Calculator, Building2, Briefcase, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Trash2, ArrowRight, Save, LayoutDashboard, Copy, Filter, Calculator, Building2, Briefcase, TrendingUp, TrendingDown, DollarSign, HelpCircle } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useFlatStructure } from '../hooks/useStructure';
 
@@ -81,6 +81,7 @@ export default function ScenariosPage() {
     const queryClient = useQueryClient();
     const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     // Structure Data
     const { data: flatStructure = [] } = useFlatStructure();
@@ -202,18 +203,27 @@ export default function ScenariosPage() {
     }, [flatStructure]);
 
     return (
-        <div className="space-y-8 pb-12">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             <PageHeader
-                title="Сценарное планирование"
-                subtitle="Песочница для моделирования изменений бюджета"
+                title="Сценарное моделирование"
+                subtitle="Создание копий бюджета и симуляция изменений без влияния на живой список"
                 extra={
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-[0.98] text-sm font-medium"
-                    >
-                        <Plus size={16} />
-                        Новый сценарий
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setIsHelpOpen(true)}
+                            className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
+                        >
+                            <HelpCircle className="w-5 h-5" />
+                            Как это работает?
+                        </button>
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                        >
+                            <Copy size={16} />
+                            Создать сценарий
+                        </button>
+                    </div>
                 }
             />
 
@@ -472,6 +482,56 @@ export default function ScenariosPage() {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Help Modal */}
+            <Modal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} title="Как работают сценарии?">
+                <div className="space-y-6 text-sm text-slate-600">
+                    <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100">
+                        <p className="leading-relaxed">
+                            <span className="font-bold text-indigo-900 text-base block mb-1">Песочница для бюджета</span>
+                            Сценарии позволяют вам экспериментировать с начислениями (оклады, бонусы) во всей компании или отдельных отделах, не меняя реальные данные сотрудников.
+                        </p>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                            <Calculator size={16} className="text-indigo-600" /> Основные возможности
+                        </h4>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="flex gap-3">
+                                <div className="p-2 bg-slate-50 text-slate-600 rounded-lg h-fit font-bold">1</div>
+                                <div>
+                                    <span className="font-bold text-slate-900 block">Клонирование</span>
+                                    При создании сценария создается полная копия текущего "живого" списка сотрудников и их окладов на текущий момент.
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="p-2 bg-slate-50 text-slate-600 rounded-lg h-fit font-bold">2</div>
+                                <div>
+                                    <span className="font-bold text-slate-900 block">Симуляция (Массовые изменения)</span>
+                                    Вы можете поднять оклады на 10% всем разработчикам или установить фиксированный бонус для филиала. Система мгновенно пересчитает все налоги компании.
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="p-2 bg-slate-50 text-slate-600 rounded-lg h-fit font-bold">3</div>
+                                <div>
+                                    <span className="font-bold text-slate-900 block">Сравнение</span>
+                                    Верхние карточки показывают разницу (дельту) между живым бюджетом и вашим сценарием. Это помогает увидеть финансовые последствия решений.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                        <div className="font-bold text-amber-900 mb-1 flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                            ⚠️ Внимание: Утверждение
+                        </div>
+                        <div className="text-amber-800 text-xs">
+                            Нажатие кнопки <strong>"Утвердить сценарий"</strong> полностью заменит данные в основном реестре (сотрудники, оклады) данными из сценария. Это действие необратимо.
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

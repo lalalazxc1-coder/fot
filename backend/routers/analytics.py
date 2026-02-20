@@ -50,43 +50,11 @@ def get_cached_or_compute(key: str, compute_fn):
 
 def get_allowed_unit_ids(db: Session, user: User):
     """
-    Get list of OrganizationUnit IDs visible to the user.
+    Get list of OrganizationUnit IDs visible to the user using the shared dependency.
     Returns None if user has full access (Admin).
     """
-    # Admin check
-    # Admin check
-    if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
-        return None
-        
-    allowed_ids = set()
-    
-    # If no scope defined, return None (Full access)
-    if not user.scope_branches and not user.scope_departments:
-        return None
-    
-    # 1. Branches scope
-    if user.scope_branches:
-        for b_id_raw in user.scope_branches:
-            try:
-                b_id = int(b_id_raw)
-                allowed_ids.add(b_id)
-                # Add all child departments
-                children = db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == b_id).all()
-                for child in children:
-                    allowed_ids.add(child.id)
-            except (ValueError, TypeError):
-                continue
-                
-    # 2. Departments scope
-    if user.scope_departments:
-        for d_id_raw in user.scope_departments:
-            try:
-                d_id = int(d_id_raw)
-                allowed_ids.add(d_id)
-            except (ValueError, TypeError):
-                continue
-            
-    return list(allowed_ids)
+    from dependencies import get_user_scope
+    return get_user_scope(db, user)
 
 
 @router.get("/summary", response_model=AnalyticsSummaryResponse)
@@ -227,8 +195,13 @@ def get_branch_comparison(
                         to_process.append(gc.id)
             
             # All unit IDs (unit itself + all descendants)
-            unit_ids = [unit.id] + list(all_descendant_ids)
+            unit_ids_list = [unit.id] + list(all_descendant_ids)
+            if allowed_ids is not None:
+                unit_ids_list = [uid for uid in unit_ids_list if uid in allowed_ids]
             
+            if not unit_ids_list:
+                continue
+                
             # Plan aggregation for this unit (any position linked to this unit or its descendants)
             plan_query = db.query(
                 func.sum(
@@ -237,8 +210,8 @@ def get_branch_comparison(
             ).filter(
                 PlanningPosition.scenario_id == None,
                 or_(
-                    PlanningPosition.branch_id.in_(unit_ids),
-                    PlanningPosition.department_id.in_(unit_ids)
+                    PlanningPosition.branch_id.in_(unit_ids_list),
+                    PlanningPosition.department_id.in_(unit_ids_list)
                 )
             )
             
@@ -266,7 +239,7 @@ def get_branch_comparison(
                 Employee.id == FinancialRecord.employee_id
             ).filter(
                 and_(
-                    Employee.org_unit_id.in_(unit_ids),
+                    Employee.org_unit_id.in_(unit_ids_list),
                     Employee.status != 'Dismissed'
                 )
             )
@@ -430,7 +403,12 @@ def get_cost_distribution(
                         all_descendant_ids.add(gc.id)
                         to_process.append(gc.id)
             
-            unit_ids = [unit.id] + list(all_descendant_ids)  # Unit + all its descendants
+            unit_ids_list = [unit.id] + list(all_descendant_ids)  # Unit + all its descendants
+            if allowed_ids is not None:
+                unit_ids_list = [uid for uid in unit_ids_list if uid in allowed_ids]
+                
+            if not unit_ids_list:
+                continue
             
             # Sum up financial records for employees in this unit or its descendants
             total = db.query(
@@ -446,7 +424,7 @@ def get_cost_distribution(
                 Employee.id == FinancialRecord.employee_id
             ).filter(
                 and_(
-                    Employee.org_unit_id.in_(unit_ids),
+                    Employee.org_unit_id.in_(unit_ids_list),
                     Employee.status != 'Dismissed'
                 )
             ).scalar()

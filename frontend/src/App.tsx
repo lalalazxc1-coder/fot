@@ -63,6 +63,30 @@ const ProtectedMarketRoute = ({ user, children }: { user: AuthUser, children: JS
     return children;
 };
 
+const ProtectedAnalyticsRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics;
+    if (!hasAccess) return <Navigate to="/requests" replace />;
+    return children;
+};
+
+const ProtectedPayrollRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_payroll;
+    if (!hasAccess) return <Navigate to="/requests" replace />;
+    return children;
+};
+
+const ProtectedEmployeesRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_employees;
+    if (!hasAccess) return <Navigate to="/requests" replace />;
+    return children;
+};
+
+const ProtectedScenariosRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_scenarios;
+    if (!hasAccess) return <Navigate to="/requests" replace />;
+    return children;
+};
+
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<AuthUser | null>(null);
@@ -135,12 +159,12 @@ function App() {
                 {/* Protected Routes */}
                 {isAuthenticated && user ? (
                     <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
-                        <Route path="/" element={<Navigate to="/analytics" replace />} />
-                        <Route path="/analytics" element={<AnalyticsPage />} />
-                        <Route path="/payroll" element={<PlanningTable user={user} />} />
-                        <Route path="/employees" element={<EmployeeTable user={user} onLogout={handleLogout} />} />
+                        <Route path="/" element={<Navigate to={(user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics) ? "/analytics" : "/requests"} replace />} />
+                        <Route path="/analytics" element={<ProtectedAnalyticsRoute user={user}><AnalyticsPage /></ProtectedAnalyticsRoute>} />
+                        <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
+                        <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
                         <Route path="/requests" element={<RequestsPage />} />
-                        <Route path="/scenarios" element={<ScenariosPage />} />
+                        <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
 
                         <Route path="/market" element={
                             <ProtectedMarketRoute user={user}>

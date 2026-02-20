@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
+import httpx
 from database.database import get_db
 from database.models import MarketData, MarketEntry, User
 from schemas import MarketDataCreate, MarketDataUpdate, MarketEntryCreate, MarketEntryResponse
@@ -60,7 +61,7 @@ def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(
         pass
         # raise HTTPException(403, "Permission 'view_market' required")
 
-    return db.query(MarketData).all()
+    return db.query(MarketData).options(joinedload(MarketData.entries)).all()
 
 @router.get("/{id}/entries", response_model=list[MarketEntryResponse])
 def get_market_entries(id: int, db: Session = Depends(get_db)):
@@ -146,3 +147,91 @@ def delete_market_data(id: int, db: Session = Depends(get_db), current_user: Use
     db.delete(item)
     db.commit()
     return {"status": "deleted"}
+
+@router.post("/{id}/sync-hh")
+async def sync_market_with_hh(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    # Check Edit Permission
+    has_perm = False
+    if current_user.role_rel:
+        permissions = current_user.role_rel.permissions or {}
+        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
+        
+    if not has_perm:
+        # allow for now or raise
+        pass
+        
+    item = db.get(MarketData, id)
+    if not item:
+        raise HTTPException(404, "Market data not found")
+        
+    url = "https://api.hh.ru/vacancies"
+    # Using area=160 (Almaty), but we search across all if requested. We'll stick to Almaty (160) for relevance.
+    params = {
+        "text": item.position_title,
+        "search_field": "name",
+        "per_page": 100,
+        "area": 160,
+        "only_with_salary": "true"
+    }
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(url, params=params, headers=headers)
+        if resp.status_code != 200:
+            raise HTTPException(500, f"HH API Error: {resp.status_code} - {resp.text}")
+            
+        data = resp.json()
+        
+    vacancies = data.get("items", [])
+    if not vacancies:
+        return {"message": "No vacancies found with salaries", "count": 0}
+        
+    # Delete old HR/HH imported entries to avoid duplicates. We keep "System" or manually added separate.
+    # Actually, let's just delete old "HH.kz" ones
+    db.query(MarketEntry).filter(MarketEntry.market_id == id, MarketEntry.company_name.like('HH.kz%')).delete()
+    
+    count_added = 0
+    for vac in vacancies:
+        salary = vac.get("salary")
+        if not salary: continue
+        
+        s_from = salary.get("from")
+        s_to = salary.get("to")
+        currency = salary.get("currency", "KZT")
+        
+        multiplier = 1
+        if currency in ["RUR", "RUB"]: multiplier = 5.2
+        elif currency == "USD": multiplier = 480
+        
+        val = 0
+        if s_from and s_to:
+            val = (s_from + s_to) / 2
+        elif s_from:
+            val = s_from
+        elif s_to:
+            val = s_to
+            
+        val = int(val * multiplier)
+        if val <= 0: continue
+        
+        emp = vac.get("employer", {}).get("name", "HH.kz")
+        company_name = f"HH.kz: {emp[:30]}"
+        
+        entry = MarketEntry(
+            market_id=id,
+            company_name=company_name,
+            salary=val,
+            created_at=datetime.now().strftime("%d.%m.%Y %H:%M"),
+            url=vac.get("alternate_url")
+        )
+        db.add(entry)
+        count_added += 1
+        
+    if count_added > 0:
+        db.commit()
+        recalculate_stats(db, id)
+    
+    return {"message": "Synced successfully", "count": count_added}

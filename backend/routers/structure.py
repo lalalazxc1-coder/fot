@@ -77,7 +77,7 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
             
     return result
 
-@router.get("/flat", dependencies=[Depends(PermissionChecker('view_financial_reports'))])
+@router.get("/flat")
 def get_structure_flat(
     date: Optional[str] = Query(None, description="ISO Date for historical reconstruction"),
     db: Session = Depends(get_db), 
@@ -86,9 +86,14 @@ def get_structure_flat(
     """
     Returns a flat list of all organization units for visual structure building.
     Includes head of unit info and employee counts.
-    Protected by 'view_financial_reports' as it exposes salary data.
     If 'date' is provided, reconstructs financial state at that date.
     """
+    has_finance_acc = False
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    role_name = current_user.role_rel.name if current_user.role_rel else ''
+    if role_name == 'Administrator' or perms.get('admin_access') or perms.get('view_financial_reports'):
+        has_finance_acc = True
+
     # 1. Fetch all units with head loaded
     units = db.query(OrganizationUnit).options(joinedload(OrganizationUnit.head).joinedload(Employee.position)).all()
     
@@ -100,7 +105,7 @@ def get_structure_flat(
     head_ids = [u.head_id for u in units if u.head_id]
     head_salaries = {}
     
-    if head_ids:
+    if head_ids and has_finance_acc:
         # Subquery to identify the latest financial record ID for each head
         base_sub = db.query(
             FinancialRecord.employee_id,
@@ -125,37 +130,60 @@ def get_structure_flat(
         head_salaries = {r[0]: r[1] for r in head_salary_query}
 
     # 4. Get total salaries per unit (sum of total_net from latest financial records for ALL employees)
-    base_sub_all = db.query(
-        FinancialRecord.employee_id,
-        sql_func.max(FinancialRecord.id).label('max_id')
-    )
-    if date:
-        base_sub_all = base_sub_all.filter(FinancialRecord.created_at <= date)
+    direct_salaries = {}
+    if has_finance_acc:
+        base_sub_all = db.query(
+            FinancialRecord.employee_id,
+            sql_func.max(FinancialRecord.id).label('max_id')
+        )
+        if date:
+            base_sub_all = base_sub_all.filter(FinancialRecord.created_at <= date)
+            
+        latest_finance = base_sub_all.group_by(FinancialRecord.employee_id).subquery()
         
-    latest_finance = base_sub_all.group_by(FinancialRecord.employee_id).subquery()
-    
-    salary_query = db.query(
-        Employee.org_unit_id,
-        sql_func.sum(FinancialRecord.total_net).label('total_salary')
-    ).join(
-        FinancialRecord, Employee.id == FinancialRecord.employee_id
-    ).join(
-        latest_finance, 
-        (FinancialRecord.employee_id == latest_finance.c.employee_id) & 
-        (FinancialRecord.id == latest_finance.c.max_id)
-    ).filter(
-        Employee.status != 'Dismissed'
-    ).group_by(Employee.org_unit_id).all()
-    
-    direct_salaries = {r[0]: int(r[1]) if r[1] else 0 for r in salary_query}
+        salary_query = db.query(
+            Employee.org_unit_id,
+            sql_func.sum(FinancialRecord.total_net).label('total_salary')
+        ).join(
+            FinancialRecord, Employee.id == FinancialRecord.employee_id
+        ).join(
+            latest_finance, 
+            (FinancialRecord.employee_id == latest_finance.c.employee_id) & 
+            (FinancialRecord.id == latest_finance.c.max_id)
+        ).filter(
+            Employee.status != 'Dismissed'
+        ).group_by(Employee.org_unit_id).all()
+        
+        direct_salaries = {r[0]: int(r[1]) if r[1] else 0 for r in salary_query}
 
-    # 5. Build hierarchy map
+    # Determine allowed scope
+    from dependencies import get_user_scope
+    allowed_ids = get_user_scope(db, current_user)
+
+    # 5. Build hierarchy map and parent resolution
     children_map = {}
+    parent_map = {}
     for u in units:
+        parent_map[u.id] = u.parent_id
         if u.parent_id:
             if u.parent_id not in children_map: children_map[u.parent_id] = []
             children_map[u.parent_id].append(u.id)
             
+    # Filter visible units
+    visible_unit_ids = set()
+    if allowed_ids is not None:
+        allowed_set = set(allowed_ids)
+        for uid in allowed_set:
+            if uid in parent_map: # ensuring it exists
+                visible_unit_ids.add(uid)
+                # Resolve parents
+                curr_parent = parent_map[uid]
+                while curr_parent:
+                    visible_unit_ids.add(curr_parent)
+                    curr_parent = parent_map.get(curr_parent)
+    else:
+        visible_unit_ids = {u.id for u in units}
+
     # 6. Recursive count and salary functions with Memoization
     memo_counts = {}
     memo_salaries = {}
@@ -181,8 +209,14 @@ def get_structure_flat(
     # 7. Build Result
     result = []
     for u in units:
+        if u.id not in visible_unit_ids:
+            continue
+            
+        # Is user fully authorized for this unit? Or is it just a parent structural shell?
+        is_authorized = allowed_ids is None or u.id in allowed_ids
+        
         head_info = None
-        if u.head:
+        if u.head and is_authorized: # Only show head info if authorized
             pos_title = u.head.position.title if u.head.position else "Руководитель"
             salary = head_salaries.get(u.head.id, 0) # Fetched from batch map
             
@@ -200,9 +234,9 @@ def get_structure_flat(
             "parent_id": u.parent_id,
             "head_id": u.head_id,
             "head": head_info,
-            "employee_count": get_total_count(u.id),
-            "direct_count": direct_counts.get(u.id, 0),
-            "total_salary": get_total_salary(u.id)
+            "employee_count": get_total_count(u.id) if is_authorized else 0,
+            "direct_count": direct_counts.get(u.id, 0) if is_authorized else 0,
+            "total_salary": get_total_salary(u.id) if is_authorized else 0
         })
     return result
 

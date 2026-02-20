@@ -6,6 +6,21 @@ from database.models import SalaryRequest, User, Employee
 from schemas import SalaryRequestCreate, SalaryRequestUpdate
 from dependencies import get_current_active_user, require_admin
 
+def check_step_condition(step, req_data) -> bool:
+    if not step.condition_type:
+        return True
+    
+    if hasattr(req_data, 'requested_value') and hasattr(req_data, 'current_value'):
+        # Usually checking the raise/change amount
+        diff = (req_data.requested_value or 0) - (req_data.current_value or 0)
+        
+        if step.condition_type == 'amount_less_than' and step.condition_amount:
+            return diff < step.condition_amount
+        if step.condition_type == 'amount_greater_than_or_equal' and step.condition_amount:
+            return diff >= step.condition_amount
+            
+    return True
+
 router = APIRouter(prefix="/api/requests", tags=["requests"])
 
 @router.post("")
@@ -16,7 +31,13 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
     
     # 1. Determine Initial Step
     from database.models import ApprovalStep, RequestHistory, User
-    first_step = db.query(ApprovalStep).order_by(ApprovalStep.step_order.asc()).first()
+    all_steps = db.query(ApprovalStep).order_by(ApprovalStep.step_order.asc()).all()
+    
+    first_step = None
+    for s in all_steps:
+        if check_step_condition(s, data):
+            first_step = s
+            break
     
     current_step_id = first_step.id if first_step else None
     
@@ -341,9 +362,15 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
             
         else:
             # Move to next step
-            next_step = db.query(ApprovalStep).filter(
+            all_higher_steps = db.query(ApprovalStep).filter(
                 ApprovalStep.step_order > current_step.step_order
-            ).order_by(ApprovalStep.step_order.asc()).first()
+            ).order_by(ApprovalStep.step_order.asc()).all()
+            
+            next_step = None
+            for s in all_higher_steps:
+                if check_step_condition(s, req):
+                    next_step = s
+                    break
             
             if next_step:
                 req.current_step_id = next_step.id
@@ -466,6 +493,12 @@ def get_request_analytics(req_id: int, db: Session = Depends(get_db), current_us
                 MarketData.position_title == r.employee.position.title,
                 MarketData.branch_id == branch_id
             ).first()
+            
+            if not market:
+                # Fallback to general market data if no branch-specific data exists
+                market = db.query(MarketData).filter(
+                    MarketData.position_title == r.employee.position.title
+                ).first()
             if market:
                 analytics_data["market"] = {
                     "min": market.min_salary,

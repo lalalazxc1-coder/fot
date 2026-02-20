@@ -191,6 +191,10 @@ class ApprovalStep(Base):
     # New: Bind to specific user instead of role
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True) 
     user = relationship("User")
+    
+    # NEW: Smart Routing Conditions
+    condition_type = Column(String, nullable=True) # e.g. "amount_less_than", "amount_greater_than_or_equal"
+    condition_amount = Column(Integer, nullable=True)
 
 class RequestHistory(Base):
     __tablename__ = "request_history"
@@ -238,6 +242,7 @@ class MarketEntry(Base):
     company_name = Column(String)
     salary = Column(Integer)
     created_at = Column(String)
+    url = Column(String, nullable=True) # Link to vacancy
 
     market_data = relationship("MarketData", back_populates="entries")
 
