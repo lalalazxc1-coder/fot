@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -22,6 +22,8 @@ class User(Base):
     # scope_unit_id is deprecated
     scope_branches = Column(JSON, default=[])      # List of Branch IDs
     scope_departments = Column(JSON, default=[])   # List of Department IDs
+    
+    is_active = Column(Boolean, default=True)
     
     role_rel = relationship("Role", back_populates="users")
     # scope_unit = relationship("OrganizationUnit") # Removed single relationship
@@ -284,3 +286,74 @@ class IntegrationSettings(Base):
     is_active = Column(Boolean, default=False)
     additional_params = Column(JSON, default={}) # For future flexibility
     updated_at = Column(String, default=lambda: datetime.now().isoformat())
+
+class JobOffer(Base):
+    __tablename__ = "job_offers"
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True) # Unique link token
+    
+    candidate_name = Column(String, nullable=False)
+    candidate_email = Column(String, nullable=True)
+    candidate_phone = Column(String, nullable=True) # For security check
+    position_title = Column(String, nullable=False)
+    access_code = Column(String, nullable=True) # PIN code to open
+    
+    # Selection of Branch/Dept
+    branch_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True)
+    department_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True)
+    
+    # Money (Monthly Net)
+    base_net = Column(Integer, default=0)
+    kpi_net = Column(Integer, default=0)
+    bonus_net = Column(Integer, default=0)
+    
+    valid_until = Column(String, nullable=True)
+    status = Column(String, default="pending") # pending, accepted, rejected, expired
+    created_at = Column(String, default=lambda: datetime.now().isoformat())
+    
+    # Metadata for the offer page
+    company_name = Column(String, nullable=True)
+    manager_name = Column(String, nullable=True)
+    benefits = Column(JSON, default=[]) # List of perks
+    
+    # New Customization Fields
+    welcome_text = Column(String, nullable=True) 
+    description_text = Column(String, nullable=True) 
+    theme_color = Column(String, default="#2563eb") 
+    custom_sections = Column(JSON, default=[])
+    
+    # Formal Document Fields
+    probation_period = Column(String, default="3 месяца")
+    working_hours = Column(String, default="09:00 - 18:00")
+    lunch_break = Column(String, default="13:00 - 14:00")
+    non_compete_text = Column(String, nullable=True)
+    president_name = Column(String, nullable=True)
+    hr_name = Column(String, nullable=True)
+    start_date = Column(String, nullable=True)
+    
+    signatories = Column(JSON, default=[])
+
+    branch = relationship("OrganizationUnit", foreign_keys=[branch_id])
+    department = relationship("OrganizationUnit", foreign_keys=[department_id])
+
+class JobOfferTemplate(Base):
+    __tablename__ = "job_offer_templates"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True) # Template name
+    
+    # Settings to be copied to the offer
+    company_name = Column(String, nullable=True)
+    benefits = Column(JSON, default=[])
+    welcome_text = Column(String, nullable=True) 
+    description_text = Column(String, nullable=True) 
+    theme_color = Column(String, default="#2563eb") 
+    custom_sections = Column(JSON, default=[])
+    
+    probation_period = Column(String, default="3 месяца")
+    working_hours = Column(String, default="09:00 - 18:00")
+    lunch_break = Column(String, default="13:00 - 14:00")
+    non_compete_text = Column(String, nullable=True)
+    
+    signatories = Column(JSON, default=[])
+    created_at = Column(DateTime, default=datetime.utcnow)

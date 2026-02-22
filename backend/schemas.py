@@ -5,6 +5,7 @@ from typing import Optional, Dict, List
 class LoginRequest(BaseModel):
     username: str
     password: str
+    remember_me: Optional[bool] = False
 
 class LoginResponse(BaseModel):
     status: str
@@ -28,6 +29,7 @@ class UserCreate(BaseModel):
     # Optional scopes
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
+    is_active: bool = True
 
 class UserUpdate(BaseModel):
     full_name: str
@@ -36,6 +38,7 @@ class UserUpdate(BaseModel):
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
     password: Optional[str] = None
+    is_active: bool = True
 
 # Structure
 # Structure
@@ -288,3 +291,103 @@ class ESGReportResponse(BaseModel):
     gender_equity: List[PayEquityItem]
     age_equity: List[PayEquityItem]
     cached_at: str
+
+# Job Offers
+class CustomSection(BaseModel):
+    title: str
+    content: str
+
+class Signatory(BaseModel):
+    title: str
+    name: str
+
+class JobOfferCreate(BaseModel):
+    candidate_name: str
+    candidate_email: Optional[str] = None
+    candidate_phone: Optional[str] = None
+    position_title: str
+    branch_id: Optional[int] = None
+    department_id: Optional[int] = None
+    base_net: int
+    kpi_net: int = 0
+    bonus_net: int = 0
+    valid_until: Optional[str] = None
+    company_name: Optional[str] = "Наша Компания"
+    manager_name: Optional[str] = None
+    benefits: List[str] = []
+    
+    # Customization
+    welcome_text: Optional[str] = None
+    description_text: Optional[str] = None
+    theme_color: Optional[str] = "#2563eb"
+    custom_sections: Optional[List[CustomSection]] = []
+    
+    # Formal Fields
+    probation_period: Optional[str] = "3 месяца"
+    working_hours: Optional[str] = "09:00 - 18:00"
+    lunch_break: Optional[str] = "13:00 - 14:00"
+    non_compete_text: Optional[str] = None
+    president_name: Optional[str] = None
+    hr_name: Optional[str] = None
+    start_date: Optional[str] = None
+    signatories: Optional[List[Signatory]] = []
+
+class JobOfferResponse(BaseModel):
+    id: int
+    token: str
+    candidate_name: str
+    position_title: str
+    base_net: int
+    kpi_net: int
+    bonus_net: int
+    status: str
+    created_at: str
+    valid_until: Optional[str] = None
+    candidate_phone: Optional[str] = None
+    access_code: Optional[str] = None
+    
+    # Customization
+    welcome_text: Optional[str] = None
+    description_text: Optional[str] = None
+    theme_color: Optional[str] = None
+    custom_sections: Optional[List[CustomSection]] = []
+    
+    # Formal Fields
+    probation_period: Optional[str] = None
+    working_hours: Optional[str] = None
+    lunch_break: Optional[str] = None
+    non_compete_text: Optional[str] = None
+    president_name: Optional[str] = None
+    hr_name: Optional[str] = None
+    start_date: Optional[str] = None
+    signatories: Optional[List[Signatory]] = []
+    
+    class Config:
+        from_attributes = True
+
+class JobOfferTemplateBase(BaseModel):
+    name: str
+    company_name: Optional[str] = None
+    benefits: List[str] = []
+    welcome_text: Optional[str] = None
+    description_text: Optional[str] = None
+    theme_color: Optional[str] = "#2563eb"
+    custom_sections: Optional[List[CustomSection]] = []
+    probation_period: Optional[str] = "3 месяца"
+    working_hours: Optional[str] = "09:00 - 18:00"
+    lunch_break: Optional[str] = "13:00 - 14:00"
+    non_compete_text: Optional[str] = None
+    signatories: Optional[List[Signatory]] = []
+
+class JobOfferTemplateCreate(JobOfferTemplateBase):
+    pass
+
+class JobOfferTemplateUpdate(JobOfferTemplateBase):
+    pass
+
+class JobOfferTemplateResponse(JobOfferTemplateBase):
+    id: int
+    created_at: str
+
+    class Config:
+        from_attributes = True

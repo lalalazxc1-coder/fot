@@ -8,6 +8,8 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import RequestsPage from './pages/RequestsPage';
 import MarketPage from './pages/MarketPage';
 import ScenariosPage from './pages/ScenariosPage';
+import JobOffersPage from './pages/JobOffersPage';
+import PublicOfferPage from './pages/requests/PublicOfferPage';
 import { api } from './lib/api';
 import { SnapshotProvider } from './context/SnapshotContext';
 
@@ -21,6 +23,7 @@ import WorkflowPage from './pages/admin/WorkflowPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import PositionsPage from './pages/settings/PositionsPage';
+import OfferTemplatesPage from './pages/settings/OfferTemplatesPage';
 
 type AuthUser = {
     id: number;
@@ -95,7 +98,7 @@ function App() {
     // Check localStorage on mount & refresh user data
     useEffect(() => {
         const initAuth = async () => {
-            const storedUserRaw = localStorage.getItem('fot_user');
+            const storedUserRaw = localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user');
             if (storedUserRaw) {
                 try {
                     const storedUser = JSON.parse(storedUserRaw);
@@ -111,7 +114,11 @@ function App() {
                         const updatedUser = { ...freshUser, access_token: storedUser.access_token };
 
                         setUser(updatedUser);
-                        localStorage.setItem('fot_user', JSON.stringify(updatedUser));
+                        if (localStorage.getItem('fot_user')) {
+                            localStorage.setItem('fot_user', JSON.stringify(updatedUser));
+                        } else {
+                            sessionStorage.setItem('fot_user', JSON.stringify(updatedUser));
+                        }
                     } catch (err) {
                         console.error("Failed to refresh user data from server", err);
                     }
@@ -119,6 +126,7 @@ function App() {
                 } catch (e) {
                     console.error("Failed to parse user", e);
                     localStorage.removeItem('fot_user');
+                    sessionStorage.removeItem('fot_user');
                     setUser(null);
                     setIsAuthenticated(false);
                 }
@@ -129,14 +137,19 @@ function App() {
         initAuth();
     }, []);
 
-    const handleLogin = (userData: AuthUser) => {
+    const handleLogin = (userData: AuthUser, rememberMe: boolean = false) => {
         setUser(userData);
         setIsAuthenticated(true);
-        localStorage.setItem('fot_user', JSON.stringify(userData));
+        if (rememberMe) {
+            localStorage.setItem('fot_user', JSON.stringify(userData));
+        } else {
+            sessionStorage.setItem('fot_user', JSON.stringify(userData));
+        }
     };
 
     const handleLogout = () => {
         localStorage.removeItem('fot_user');
+        sessionStorage.removeItem('fot_user');
         setIsAuthenticated(false);
         setUser(null);
     };
@@ -156,6 +169,8 @@ function App() {
                     !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />
                 } />
 
+                <Route path="/public/offer/:token" element={<PublicOfferPage />} />
+
                 {/* Protected Routes */}
                 {isAuthenticated && user ? (
                     <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
@@ -164,6 +179,7 @@ function App() {
                         <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
                         <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
                         <Route path="/requests" element={<RequestsPage />} />
+                        <Route path="/offers" element={<JobOffersPage />} />
                         <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
 
                         <Route path="/market" element={
@@ -181,6 +197,7 @@ function App() {
                             <Route index element={<Navigate to="structure" replace />} />
                             <Route path="structure" element={<StructurePage />} />
                             <Route path="positions" element={<PositionsPage />} />
+                            <Route path="offer-templates" element={<OfferTemplatesPage />} />
                         </Route>
 
                         {/* Admin Routes - System config */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteAllNotifications } from '../hooks/useAdmin';
-import { Trash2, CheckCircle, Bell, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout } from 'lucide-react';
+import { Trash2, CheckCircle, Bell, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout, Send } from 'lucide-react';
 import { useSnapshot } from '../context/SnapshotContext';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
@@ -224,6 +224,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
             ...(canViewPayroll ? [{ name: 'ФОТ', url: '/payroll', icon: FileText }] : []),
             ...(canViewEmployees ? [{ name: 'Сотрудники', url: '/employees', icon: Users }] : []),
             { name: 'Заявки', url: '/requests', icon: FileText }, // basic functionality
+            { name: 'Офферы', url: '/offers', icon: Send },
             ...(canViewMarket ? [{ name: 'Рынок', url: '/market', icon: ShoppingBag }] : []),
             ...(canViewScenarios ? [{ name: 'Песочница', url: '/scenarios', icon: Layout }] : []),
         ];

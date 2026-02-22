@@ -16,7 +16,7 @@ export const CandidateSearch = () => {
     const [isFallbackMode, setIsFallbackMode] = useState(false);
 
     // Check integration status
-    const { data: settings, isLoading } = useQuery({
+    const { isLoading } = useQuery({
         queryKey: ['integrations'],
         queryFn: async () => {
             const res = await api.get('/integrations/settings');
@@ -24,12 +24,11 @@ export const CandidateSearch = () => {
         }
     });
 
-    const hhSettings = settings?.find((s: any) => s.service_name === 'hh');
     // Force HH active for the demo since we bypassed the backend auth requirement for vacancies
     const isHHActive = true;
 
     // --- Real Search Query ---
-    const { data: hhCandidates = [], isLoading: isHHSearching, refetch: searchHH, isError, error } = useQuery({
+    const { data: hhCandidates = [], isLoading: isHHSearching, refetch: searchHH } = useQuery({
         queryKey: ['hh-candidates', search],
         queryFn: async () => {
             if (!search.trim()) return [];

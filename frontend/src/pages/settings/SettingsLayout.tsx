@@ -1,5 +1,5 @@
+import { Building, Briefcase, Send } from 'lucide-react';
 import { useOutletContext, NavLink, Outlet } from 'react-router-dom';
-import { Building, Briefcase } from 'lucide-react';
 
 export default function SettingsLayout() {
     const { user } = useOutletContext<{ user: any }>();
@@ -14,6 +14,7 @@ export default function SettingsLayout() {
     const tabs = [
         { path: 'structure', label: 'Структура компании', icon: Building, key: 'view_structure' },
         { path: 'positions', label: 'Справочник должностей', icon: Briefcase, key: 'view_positions' },
+        { path: 'offer-templates', label: 'Шаблоны офферов', icon: Send, key: 'admin_access' },
     ].filter(t => hasPermission(t.key));
 
     return (

@@ -12,6 +12,7 @@ export type User = {
     scope_branches?: number[];
     scope_departments?: number[];
     scope_unit_name?: string;
+    is_active: boolean;
 };
 
 export type Role = {
@@ -133,6 +134,27 @@ export function useDeleteUser() {
         },
         onError: (err: any) => {
             toast.error("Ошибка при удалении: " + (err.response?.data?.detail || err.message));
+        }
+    });
+}
+
+export function useToggleBlockUser() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const res = await api.patch(`/users/${id}/toggle_block`);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            if (data.is_active) {
+                toast.success("Пользователь разблокирован");
+            } else {
+                toast.success("Пользователь заблокирован");
+            }
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+        },
+        onError: (err: any) => {
+            toast.error("Ошибка при блокировке: " + (err.response?.data?.detail || err.message));
         }
     });
 }

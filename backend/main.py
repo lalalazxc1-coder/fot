@@ -30,7 +30,8 @@ from database import models  # Ensure models are loaded
 from routers import (
     auth, roles, users, structure, employees,
     admin, planning, requests, market, analytics,
-    salary, positions, workflow, scenarios,
+    salary, positions, workflow, scenarios, job_offers,
+    job_offer_templates
 )
 from routers.salary_config import router as salary_config_router
 from routers import integrations
@@ -117,6 +118,8 @@ all_routers = [
     scenarios.router, salary_config_router,
     # New
     integrations.router,
+    job_offers.router,
+    job_offer_templates.router,
 ]
 
 for r in all_routers:

@@ -17,7 +17,7 @@ def login(creds: LoginRequest, db: Session = Depends(get_db)):
     """
     # 1. Delegate Logic to Service
     try:
-        response = AuthService.login(db, creds.username, creds.password)
+        response = AuthService.login(db, creds.username, creds.password, getattr(creds, 'remember_me', False))
         return response
     except Exception as e:
         # Re-raise HTTPException as is, or wrap generic

@@ -67,7 +67,7 @@ const SalaryRangeChart = ({ min, max, median, employeeSalaries }: { min: number,
     );
 };
 
-const MarketPositionDetails = ({ position, entries, marketId, canEdit }: { position: string, entries: any[], marketId: number, canEdit: boolean }) => {
+const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[], marketId: number, canEdit: boolean }) => {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [newSalary, setNewSalary] = useState('');
     const [newCompany, setNewCompany] = useState('');
@@ -209,8 +209,8 @@ export default function MarketPage() {
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [sortBy, setSortBy] = useState<'position' | 'median' | 'updated'>('position');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+    const [sortBy] = useState<'position' | 'median' | 'updated'>('position');
+    const [sortDir] = useState<'asc' | 'desc'>('asc');
 
     const [filterBranch, setFilterBranch] = useState<string>('all');
     const [isImporting, setIsImporting] = useState(false);
@@ -328,7 +328,7 @@ export default function MarketPage() {
             const dir = sortDir === 'asc' ? 1 : -1;
             return valA > valB ? dir : -1 * dir;
         });
-        return processed;
+        return filtered;
     }, [marketData, employees, search, sortBy, sortDir, filterBranch, flatStructure]);
 
     const createMutation = useCreateMarketEntry();
@@ -725,7 +725,6 @@ export default function MarketPage() {
                     </div>
 
                     <MarketPositionDetails
-                        position={selectedPosition?.position || ''}
                         entries={selectedPosition?.points || []}
                         marketId={selectedPosition?.id}
                         canEdit={canEdit}

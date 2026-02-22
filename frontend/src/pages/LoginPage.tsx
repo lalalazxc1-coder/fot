@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 
 const API_URL = 'http://localhost:8000/api';
 
-export default function LoginPage({ onLogin }: { onLogin: (user: any) => void }) {
+export default function LoginPage({ onLogin }: { onLogin: (user: any, rememberMe: boolean) => void }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [inputErrors, setInputErrors] = useState({ username: false, password: false });
+
+    useEffect(() => {
+        const saved = localStorage.getItem('remembered_username');
+        if (saved) {
+            setUsername(saved);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,7 +40,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any) => void })
             const res = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, remember_me: rememberMe })
             });
 
             if (!res.ok) {
@@ -58,7 +67,12 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any) => void })
 
             // Small delay for better UX
             setTimeout(() => {
-                onLogin(userData);
+                if (rememberMe) {
+                    localStorage.setItem('remembered_username', username);
+                } else {
+                    localStorage.removeItem('remembered_username');
+                }
+                onLogin(userData, rememberMe);
             }, 500);
 
         } catch (e: any) {
@@ -123,6 +137,28 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any) => void })
                             placeholder="••••••••"
                             disabled={isLoading}
                         />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                            <div className="relative flex items-center justify-center">
+                                <input
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-slate-900/20 checked:bg-slate-900 checked:border-slate-900 transition-all"
+                                    disabled={isLoading}
+                                />
+                                <svg
+                                    className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
+                                    viewBox="0 0 14 10"
+                                    fill="none"
+                                >
+                                    <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                            <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Запомнить меня</span>
+                        </label>
                     </div>
 
                     {error && (

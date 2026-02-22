@@ -40,7 +40,8 @@ def get_users(db: Session = Depends(get_db)):
             "role_id": u.role_id,
             "scope_branches": u.scope_branches,
             "scope_departments": u.scope_departments,
-            "scope_unit_name": scope_str
+            "scope_unit_name": scope_str,
+            "is_active": u.is_active
         })
     return res
 
@@ -58,7 +59,8 @@ def create_user(u: UserCreate, db: Session = Depends(get_db)):
         hashed_password=hashed, 
         role_id=u.role_id,
         scope_branches=u.scope_branches or [],
-        scope_departments=u.scope_departments or []
+        scope_departments=u.scope_departments or [],
+        is_active=u.is_active
     )
     db.add(new_user)
     db.commit()
@@ -75,6 +77,7 @@ def update_user(user_id: int, u: UserUpdate, db: Session = Depends(get_db)):
     
     user.scope_branches = u.scope_branches or []
     user.scope_departments = u.scope_departments or []
+    user.is_active = u.is_active
 
     if u.password:
         # Secure: Hash new password
@@ -83,10 +86,10 @@ def update_user(user_id: int, u: UserUpdate, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "updated"}
 
-@router.delete("/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+@router.patch("/{user_id}/toggle_block")
+def toggle_block_user(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
     if not user: raise HTTPException(404, "User not found")
-    db.delete(user)
+    user.is_active = not user.is_active
     db.commit()
-    return {"status": "deleted"}
+    return {"status": "updated", "is_active": user.is_active}

@@ -31,6 +31,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 def get_current_active_user(user: User = Depends(get_current_user)):
+    if not getattr(user, "is_active", True):
+        raise HTTPException(status_code=403, detail="Пользователь заблокирован")
     return user
 
 def require_admin(user: User = Depends(get_current_active_user)):

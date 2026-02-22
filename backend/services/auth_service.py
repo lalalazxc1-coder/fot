@@ -10,12 +10,15 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     @staticmethod
-    def login(db: Session, username: str, password: str):
+    def login(db: Session, username: str, password: str, remember_me: bool = False):
         # 1. Fetch User
         user = db.query(User).filter_by(email=username).first()
 
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
+
+        if not getattr(user, "is_active", True):
+            raise HTTPException(status_code=403, detail="Пользователь заблокирован")
 
         # 2. Verify Password
         is_valid = False
@@ -41,7 +44,9 @@ class AuthService:
         perms = user.role_rel.permissions if user.role_rel else {}
 
         # 3. Create Token
-        access_token = create_access_token(data={"sub": str(user.id)})
+        # Extend token life if "remember me" is checked (e.g. 30 days)
+        expires_delta = timedelta(days=30) if remember_me else None
+        access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=expires_delta)
 
         return {
             "status": "ok",

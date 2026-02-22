@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Users, Trash2, Edit2, User as UserIcon, Loader2 } from 'lucide-react';
+import { Users, Edit2, User as UserIcon, Loader2, Ban, CheckCircle2 } from 'lucide-react';
 import Modal from '../../components/Modal';
-import { useUsers, useRoles, useCreateUser, useUpdateUser, useDeleteUser, User } from '../../hooks/useAdmin';
+import { useUsers, useRoles, useCreateUser, useUpdateUser, useToggleBlockUser, User } from '../../hooks/useAdmin';
 import { useFlatStructure } from '../../hooks/useStructure';
 
 export default function UsersPage() {
@@ -11,9 +11,9 @@ export default function UsersPage() {
 
     const createUserMutation = useCreateUser();
     const updateUserMutation = useUpdateUser();
-    const deleteUserMutation = useDeleteUser();
+    const toggleBlockMutation = useToggleBlockUser();
 
-    const isSubmitting = createUserMutation.isPending || updateUserMutation.isPending || deleteUserMutation.isPending;
+    const isSubmitting = createUserMutation.isPending || updateUserMutation.isPending || toggleBlockMutation.isPending;
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,12 +26,13 @@ export default function UsersPage() {
         password: '',
         role_id: '',
         scope_branches: [] as number[],
-        scope_departments: [] as number[]
+        scope_departments: [] as number[],
+        is_active: true
     });
 
     const openCreateModal = () => {
         setEditingUser(null);
-        setFormData({ email: '', full_name: '', password: '', role_id: '', scope_branches: [], scope_departments: [] });
+        setFormData({ email: '', full_name: '', password: '', role_id: '', scope_branches: [], scope_departments: [], is_active: true });
         setIsModalOpen(true);
     };
 
@@ -43,7 +44,8 @@ export default function UsersPage() {
             password: '',
             role_id: user.role_id.toString(),
             scope_branches: user.scope_branches || [],
-            scope_departments: user.scope_departments || []
+            scope_departments: user.scope_departments || [],
+            is_active: user.is_active
         });
         setIsModalOpen(true);
     };
@@ -57,6 +59,7 @@ export default function UsersPage() {
             role_id: parseInt(formData.role_id),
             scope_branches: formData.scope_branches,
             scope_departments: formData.scope_departments,
+            is_active: formData.is_active,
             password: formData.password || undefined
         };
 
@@ -69,9 +72,9 @@ export default function UsersPage() {
         setIsModalOpen(false);
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Удалить пользователя?")) return;
-        await deleteUserMutation.mutateAsync(id);
+    const handleToggleBlock = async (user: User) => {
+        if (!confirm(user.is_active ? `Заблокировать пользователя ${user.full_name}?` : `Разблокировать пользователя ${user.full_name}?`)) return;
+        await toggleBlockMutation.mutateAsync(user.id);
     };
 
     const toggleBranch = (id: number) => {
@@ -142,15 +145,24 @@ export default function UsersPage() {
                                     </td>
                                     <td className="px-6 py-4 text-slate-600 hidden sm:table-cell font-medium">{u.email}</td>
                                     <td className="px-6 py-4">
-                                        <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">{u.role_name}</span>
+                                        <div className="flex gap-2">
+                                            <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">{u.role_name}</span>
+                                            {!u.is_active && <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold border border-red-200 flex items-center gap-1"><Ban className="w-3 h-3" /> Заблокирован</span>}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-slate-500 text-xs font-medium max-w-xs truncate" title={u.scope_unit_name}>
                                         {u.scope_unit_name}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <button onClick={() => openEditModal(u)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
-                                            <button onClick={() => handleDelete(u.id)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
+                                            <button onClick={() => openEditModal(u)} title="Редактировать" className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Edit2 className="w-4 h-4" /></button>
+                                            <button
+                                                onClick={() => handleToggleBlock(u)}
+                                                title={u.is_active ? "Заблокировать" : "Разблокировать"}
+                                                className={`p-2 rounded-lg transition-all ${u.is_active ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-red-500 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                                            >
+                                                {u.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -264,6 +276,21 @@ export default function UsersPage() {
                             <p className="text-xs text-slate-400 mt-2 italic">Если ничего не выбрано в дочерних подразделениях, доступен весь выбранный уровень.</p>
                         </div>
                     </div>
+
+                    {editingUser && (
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.is_active}
+                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                    className="w-4 h-4 rounded text-slate-900 focus:ring-slate-900"
+                                />
+                                Активен
+                            </label>
+                            {!formData.is_active && <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded-md">Пользователь заблокирован</span>}
+                        </div>
+                    )}
 
                     <button disabled={isSubmitting} className="w-full mt-6 bg-slate-900 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
                         {isSubmitting ? 'Сохранение...' : (editingUser ? 'Сохранить изменения' : 'Создать пользователя')}

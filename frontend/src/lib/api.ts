@@ -15,7 +15,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const userStr = localStorage.getItem('fot_user');
+  const userStr = localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user');
   if (userStr) {
     try {
       const user = JSON.parse(userStr);
@@ -23,7 +23,7 @@ api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${user.access_token}`;
       }
     } catch (e) {
-      console.error('Error parsing user from localStorage', e);
+      console.error('Error parsing user from storage', e);
     }
   }
   return config;
