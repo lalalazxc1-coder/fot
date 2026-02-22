@@ -202,7 +202,7 @@ def get_config_history(db: Session = Depends(get_db)):
         try:
             if log.user:
                 user_name = log.user.full_name or log.user.email
-        except:
+        except Exception:
             pass
             
         result.append({

@@ -95,6 +95,13 @@ if __name__ == "__main__":
     import sys
     import os
     
+    # FIX C1: Environment guard — prevent accidental prod execution
+    env = os.environ.get("ENVIRONMENT", "development")
+    if env == "production":
+        print("❌ REFUSED: Cannot run optimize_db.py in production environment.")
+        print("   Set ENVIRONMENT to 'development' or 'staging' to proceed.")
+        sys.exit(1)
+    
     # Add parent directory to path
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     

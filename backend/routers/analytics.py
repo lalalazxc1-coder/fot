@@ -7,14 +7,16 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import json
+import threading
 
-from dependencies import get_db, get_current_active_user
+from dependencies import get_db, get_current_active_user, require_admin
 from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position
 from sqlalchemy import func, and_, or_, desc
 from sqlalchemy.orm import joinedload
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from database.models import MarketData
+from services.org_unit_service import build_children_map, get_unit_with_descendants
 from schemas import (
     RetentionRiskItem, RetentionDashboardResponse, 
     ESGReportResponse, PayEquityItem
@@ -29,23 +31,41 @@ from schemas import (
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
-# Simple cache for heavy computations (5 minutes TTL)
+# FIX A2: Thread-safe cache for heavy computations (5 minutes TTL)
 _cache = {}
 _cache_ttl = {}
+_cache_lock = threading.Lock()
+_cache_version = 0  # FIX B4: Incremented when data changes, invalidating all cache
 CACHE_DURATION = 300  # 5 minutes
 
 
 def get_cached_or_compute(key: str, compute_fn):
-    """Simple cache with TTL"""
-    now = datetime.now()
-    if key in _cache and key in _cache_ttl:
-        if (now - _cache_ttl[key]).total_seconds() < CACHE_DURATION:
-            return _cache[key]
+    """Thread-safe cache with TTL and version-based invalidation."""
+    global _cache_version
+    versioned_key = f"{key}_v{_cache_version}"
     
+    with _cache_lock:
+        now = datetime.now()
+        if versioned_key in _cache and versioned_key in _cache_ttl:
+            if (now - _cache_ttl[versioned_key]).total_seconds() < CACHE_DURATION:
+                return _cache[versioned_key]
+    
+    # Compute outside lock to avoid blocking
     result = compute_fn()
-    _cache[key] = result
-    _cache_ttl[key] = now
+    
+    with _cache_lock:
+        _cache[versioned_key] = result
+        _cache_ttl[versioned_key] = datetime.now()
     return result
+
+
+def invalidate_analytics_cache():
+    """FIX B4: Call this when employee/plan/financial data changes to bust cache."""
+    global _cache_version
+    with _cache_lock:
+        _cache_version += 1
+        _cache.clear()
+        _cache_ttl.clear()
 
 
 def get_allowed_unit_ids(db: Session, user: User):
@@ -164,6 +184,9 @@ def get_branch_comparison(
     allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
+        # FIX B1: Pre-build hierarchy map ONCE instead of N+1 recursive queries
+        children_map = build_children_map(db)
+        
         # Get ALL organizational units (head_office, branches, departments)
         query = db.query(OrganizationUnit)
         
@@ -174,28 +197,8 @@ def get_branch_comparison(
         results = []
         
         for unit in all_units:
-            # Get all child units recursively for this unit
-            children = db.query(OrganizationUnit).filter(
-                OrganizationUnit.parent_id == unit.id
-            ).all()
-            child_ids = [c.id for c in children]
-            
-            # Recursively get all descendants (for multi-level hierarchy)
-            all_descendant_ids = set(child_ids)
-            to_process = list(child_ids)
-            
-            while to_process:
-                current_id = to_process.pop(0)
-                grandchildren = db.query(OrganizationUnit).filter(
-                    OrganizationUnit.parent_id == current_id
-                ).all()
-                for gc in grandchildren:
-                    if gc.id not in all_descendant_ids:
-                        all_descendant_ids.add(gc.id)
-                        to_process.append(gc.id)
-            
-            # All unit IDs (unit itself + all descendants)
-            unit_ids_list = [unit.id] + list(all_descendant_ids)
+            # Use pre-built map instead of recursive db.query
+            unit_ids_list = get_unit_with_descendants(unit.id, children_map)
             if allowed_ids is not None:
                 unit_ids_list = [uid for uid in unit_ids_list if uid in allowed_ids]
             
@@ -364,6 +367,9 @@ def get_cost_distribution(
     allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
+        # FIX B1: Pre-build hierarchy map ONCE instead of N+1 recursive queries
+        children_map = build_children_map(db)
+        
         # Get all top-level units (branches and head_office)
         query = db.query(OrganizationUnit).filter(OrganizationUnit.type.in_(['branch', 'head_office']))
         if allowed_ids is not None:
@@ -382,28 +388,8 @@ def get_cost_distribution(
         results = []
         
         for unit in top_units:
-            # Get all child units (recursively)
-            children = db.query(OrganizationUnit).filter(
-                OrganizationUnit.parent_id == unit.id
-            ).all()
-            
-            child_ids = [c.id for c in children]
-            
-            # Recursively get all descendants
-            all_descendant_ids = set(child_ids)
-            to_process = list(child_ids)
-            
-            while to_process:
-                current_id = to_process.pop(0)
-                grandchildren = db.query(OrganizationUnit).filter(
-                    OrganizationUnit.parent_id == current_id
-                ).all()
-                for gc in grandchildren:
-                    if gc.id not in all_descendant_ids:
-                        all_descendant_ids.add(gc.id)
-                        to_process.append(gc.id)
-            
-            unit_ids_list = [unit.id] + list(all_descendant_ids)  # Unit + all its descendants
+            # Use pre-built map instead of recursive db.query
+            unit_ids_list = get_unit_with_descendants(unit.id, children_map)
             if allowed_ids is not None:
                 unit_ids_list = [uid for uid in unit_ids_list if uid in allowed_ids]
                 
@@ -443,11 +429,10 @@ def get_cost_distribution(
     return get_cached_or_compute(f'cost_distribution_{current_user.id}_{date}', compute)
 
 
-@router.post("/clear-cache")
+@router.post("/clear-cache", dependencies=[Depends(require_admin)])
 def clear_analytics_cache(current_user: User = Depends(get_current_active_user)):
-    """Clear analytics cache (admin only)"""
-    _cache.clear()
-    _cache_ttl.clear()
+    """FIX A3: Clear analytics cache (admin only)"""
+    invalidate_analytics_cache()
     return {"message": "Cache cleared", "cleared_at": datetime.now().isoformat()}
 
 @router.get("/retention-risk", response_model=RetentionDashboardResponse)
@@ -663,27 +648,39 @@ def get_turnover_analytics(
         
         gaps_data = []
         
+        # FIX B2: Pre-fetch all data to avoid N+1 queries
+        children_map = build_children_map(db)
+        
+        # Bulk fetch plan counts per unit
+        plan_rows = db.query(
+            PlanningPosition.branch_id,
+            PlanningPosition.department_id,
+            func.sum(PlanningPosition.count).label('total_count')
+        ).filter(
+            PlanningPosition.scenario_id == None
+        ).group_by(PlanningPosition.branch_id, PlanningPosition.department_id).all()
+        
+        # Build plan count map: unit_id -> plan_count
+        plan_map = {}
+        for row in plan_rows:
+            if row.branch_id:
+                plan_map[row.branch_id] = plan_map.get(row.branch_id, 0) + (row.total_count or 0)
+            if row.department_id:
+                plan_map[row.department_id] = plan_map.get(row.department_id, 0) + (row.total_count or 0)
+        
+        # Bulk fetch fact counts per unit
+        fact_rows = db.query(
+            Employee.org_unit_id,
+            func.count(Employee.id).label('emp_count')
+        ).filter(
+            Employee.status != 'Dismissed'
+        ).group_by(Employee.org_unit_id).all()
+        
+        fact_map = {row.org_unit_id: row.emp_count for row in fact_rows}
+        
         for u in units:
-            # Plan Headcount (for this unit and children?) 
-            # Let's keep it simple: positions directly assigned to this unit OR descendants?
-            # Usually gaps are best seen at Department level.
-            # Logic: Get Plan count for this unit. Get Active Employee count for this unit.
-            
-            # Recursive ID fetch
-            child_ids = [c.id for c in db.query(OrganizationUnit).filter(OrganizationUnit.parent_id == u.id).all()]
-            all_unit_ids = [u.id] + child_ids # Simplified 1-level for now or use recursive helper if needed
-            
-            # Plan Count
-            plan_count = db.query(func.sum(PlanningPosition.count)).filter(
-                PlanningPosition.scenario_id == None,
-                or_(PlanningPosition.branch_id == u.id, PlanningPosition.department_id == u.id)
-            ).scalar() or 0
-            
-            # Fact Count (Active)
-            fact_count = db.query(func.count(Employee.id)).filter(
-                Employee.org_unit_id == u.id,
-                Employee.status != 'Dismissed'
-            ).scalar() or 0
+            plan_count = plan_map.get(u.id, 0)
+            fact_count = fact_map.get(u.id, 0)
             
             gap = plan_count - fact_count
             if gap > 0: # Only show gaps i.e. vacancies

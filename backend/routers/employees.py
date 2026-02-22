@@ -193,11 +193,20 @@ def export_employees_excel(
 def get_employee_history(
     emp_id: int, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    scope_ids: list = Depends(get_user_scope)
 ):
     """
     Returns the audit log for a specific employee, formatted for the frontend HistoryModal.
+    FIX #19: Now checks user scope before returning data.
     """
+    # Scope check
+    emp = db.query(Employee).filter(Employee.id == emp_id).first()
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    if scope_ids is not None and emp.org_unit_id not in scope_ids:
+        raise HTTPException(403, "Access denied to this employee's audit logs")
+
     logs = (
         db.query(AuditLog)
         .filter(AuditLog.target_entity == "employee", AuditLog.target_entity_id == emp_id)

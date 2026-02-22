@@ -1,11 +1,14 @@
 /**
  * Centralized API error handling and utilities
+ * FIX #22: Replaced `any` with proper types
  */
 
-export type ApiError = {
+import { AxiosError } from 'axios';
+
+export type ApiErrorResponse = {
     message: string;
     status?: number;
-    details?: any;
+    details?: Record<string, unknown>;
 };
 
 /**
@@ -13,9 +16,11 @@ export type ApiError = {
  * @param error - Error object from API call
  * @returns Formatted error object
  */
-export const handleApiError = (error: any): ApiError => {
+export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | unknown): ApiErrorResponse => {
+    const axiosErr = error as AxiosError<{ detail?: string }>;
+
     // Network error
-    if (!error.response) {
+    if (!axiosErr.response) {
         return {
             message: 'Ошибка сети. Проверьте подключение к интернету.',
             status: 0,
@@ -23,15 +28,15 @@ export const handleApiError = (error: any): ApiError => {
     }
 
     // HTTP error
-    const status = error.response?.status || 500;
-    const data = error.response?.data;
+    const status = axiosErr.response?.status || 500;
+    const data = axiosErr.response?.data;
 
     switch (status) {
         case 400:
             return {
                 message: data?.detail || 'Неверный запрос',
                 status: 400,
-                details: data,
+                details: data as Record<string, unknown>,
             };
         case 401:
             return {
@@ -52,13 +57,13 @@ export const handleApiError = (error: any): ApiError => {
             return {
                 message: data?.detail || 'Конфликт данных',
                 status: 409,
-                details: data,
+                details: data as Record<string, unknown>,
             };
         case 422:
             return {
                 message: data?.detail || 'Ошибка валидации данных',
                 status: 422,
-                details: data,
+                details: data as Record<string, unknown>,
             };
         case 500:
             return {
@@ -69,23 +74,23 @@ export const handleApiError = (error: any): ApiError => {
             return {
                 message: data?.detail || `Ошибка сервера (${status})`,
                 status,
-                details: data,
+                details: data as Record<string, unknown>,
             };
     }
 };
 
 /**
  * Show user-friendly error message
- * @param error - Error object or ApiError
+ * @param error - Error object or ApiErrorResponse
  * @returns User-friendly error message
  */
-export const getErrorMessage = (error: any): string => {
+export const getErrorMessage = (error: AxiosError<{ detail?: string }> | Error | ApiErrorResponse | string | unknown): string => {
     if (typeof error === 'string') {
         return error;
     }
 
-    if (error?.message) {
-        return error.message;
+    if (error && typeof error === 'object' && 'message' in error) {
+        return (error as Error).message;
     }
 
     const apiError = handleApiError(error);
@@ -97,8 +102,9 @@ export const getErrorMessage = (error: any): string => {
  * @param error - Error object
  * @returns true if 401 error
  */
-export const isAuthError = (error: any): boolean => {
-    return error?.response?.status === 401 || error?.status === 401;
+export const isAuthError = (error: AxiosError | ApiErrorResponse | unknown): boolean => {
+    const axiosErr = error as AxiosError;
+    return axiosErr?.response?.status === 401 || (error as ApiErrorResponse)?.status === 401;
 };
 
 /**
@@ -106,8 +112,9 @@ export const isAuthError = (error: any): boolean => {
  * @param error - Error object
  * @returns true if 403 error
  */
-export const isPermissionError = (error: any): boolean => {
-    return error?.response?.status === 403 || error?.status === 403;
+export const isPermissionError = (error: AxiosError | ApiErrorResponse | unknown): boolean => {
+    const axiosErr = error as AxiosError;
+    return axiosErr?.response?.status === 403 || (error as ApiErrorResponse)?.status === 403;
 };
 
 /**
@@ -122,7 +129,7 @@ export const retryWithBackoff = async <T>(
     maxRetries: number = 3,
     delay: number = 1000
 ): Promise<T> => {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let i = 0; i < maxRetries; i++) {
         try {
@@ -131,7 +138,7 @@ export const retryWithBackoff = async <T>(
             lastError = error;
 
             // Don't retry on client errors (4xx)
-            const status = (error as any)?.response?.status || 0;
+            const status = (error as AxiosError)?.response?.status || 0;
             if (status >= 400 && status < 500) {
                 throw error;
             }
@@ -151,7 +158,7 @@ export const retryWithBackoff = async <T>(
  * @param params - Object with query parameters
  * @returns Query string (e.g., "?key1=value1&key2=value2")
  */
-export const buildQueryString = (params: Record<string, any>): string => {
+export const buildQueryString = (params: Record<string, string | number | boolean | null | undefined>): string => {
     const entries = Object.entries(params).filter(([_, value]) => value !== null && value !== undefined);
 
     if (entries.length === 0) {

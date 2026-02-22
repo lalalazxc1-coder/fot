@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { UserCreatePayload, UserUpdatePayload, RoleCreatePayload, RoleUpdatePayload, ApiError } from '../types';
 
 // --- Types ---
 export type User = {
@@ -89,7 +90,7 @@ export function useRoles() {
 export function useCreateUser() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: UserCreatePayload) => {
             const res = await api.post('/users', data);
             return res.data;
         },
@@ -98,7 +99,7 @@ export function useCreateUser() {
             queryClient.invalidateQueries({ queryKey: ['users'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при создании: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -107,7 +108,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        mutationFn: async ({ id, data }: { id: number; data: UserUpdatePayload }) => {
             const res = await api.put(`/users/${id}`, data);
             return res.data;
         },
@@ -115,7 +116,7 @@ export function useUpdateUser() {
             toast.success("Пользователь обновлен");
             queryClient.invalidateQueries({ queryKey: ['users'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при обновлении: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -132,7 +133,7 @@ export function useDeleteUser() {
             queryClient.invalidateQueries({ queryKey: ['users'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при удалении: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -145,7 +146,7 @@ export function useToggleBlockUser() {
             const res = await api.patch(`/users/${id}/toggle_block`);
             return res.data;
         },
-        onSuccess: (data) => {
+        onSuccess: (data: { is_active: boolean }) => {
             if (data.is_active) {
                 toast.success("Пользователь разблокирован");
             } else {
@@ -153,7 +154,7 @@ export function useToggleBlockUser() {
             }
             queryClient.invalidateQueries({ queryKey: ['users'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при блокировке: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -162,7 +163,7 @@ export function useToggleBlockUser() {
 export function useCreateRole() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: RoleCreatePayload) => {
             const res = await api.post('/roles', data);
             return res.data;
         },
@@ -170,7 +171,7 @@ export function useCreateRole() {
             toast.success("Роль создана");
             queryClient.invalidateQueries({ queryKey: ['roles'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при создании роли: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -179,7 +180,7 @@ export function useCreateRole() {
 export function useUpdateRole() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        mutationFn: async ({ id, data }: { id: number; data: RoleUpdatePayload }) => {
             const res = await api.put(`/roles/${id}`, data);
             return res.data;
         },
@@ -187,7 +188,7 @@ export function useUpdateRole() {
             toast.success("Роль обновлена");
             queryClient.invalidateQueries({ queryKey: ['roles'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при обновлении роли: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -203,7 +204,7 @@ export function useDeleteRole() {
             toast.success("Роль удалена");
             queryClient.invalidateQueries({ queryKey: ['roles'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при удалении роли: " + (err.response?.data?.detail || err.message));
         }
     });

@@ -1,4 +1,7 @@
 import secrets
+import time
+from collections import defaultdict
+import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -18,9 +21,8 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=403, detail="Forbidden")
 
     token = secrets.token_urlsafe(16)
-    # Generate a 4-digit access code (PIN)
-    import random
-    access_code = "".join([str(random.randint(0, 9)) for _ in range(4)])
+    # FIX #6: Use cryptographically secure random, 6 digits
+    access_code = "".join([str(secrets.choice(range(10))) for _ in range(6)])
     
     new_offer = JobOffer(
         token=token,
@@ -102,11 +104,37 @@ def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_
     db.refresh(offer)
     return offer
 
+# --- FIX #6: Rate limiting for public PIN attempts ---
+_pin_attempts: dict[str, list[float]] = defaultdict(list)
+_pin_lock = threading.Lock()
+PIN_RATE_LIMIT_WINDOW = 900  # 15 minutes
+PIN_RATE_LIMIT_MAX = 5  # max attempts per token
+
+def _check_pin_rate_limit(token: str) -> bool:
+    """Returns True if rate limited."""
+    now = time.time()
+    with _pin_lock:
+        _pin_attempts[token] = [
+            t for t in _pin_attempts[token] if now - t < PIN_RATE_LIMIT_WINDOW
+        ]
+        if len(_pin_attempts[token]) >= PIN_RATE_LIMIT_MAX:
+            return True
+        _pin_attempts[token].append(now)
+        # Cap dictionary size
+        if len(_pin_attempts) > 5000:
+            oldest_key = next(iter(_pin_attempts))
+            del _pin_attempts[oldest_key]
+    return False
+
 @router.get("/public/{token}")
 def get_public_offer(token: str, pin: str = None, db: Session = Depends(get_db)):
     offer = db.query(JobOffer).filter(JobOffer.token == token).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
+    
+    # FIX #6: Rate limit PIN attempts
+    if pin is not None and _check_pin_rate_limit(token):
+        raise HTTPException(status_code=429, detail="Слишком много попыток. Попробуйте позже.")
     
     # If PIN is not provided or incorrect, return partial "locked" response
     if pin != offer.access_code:
@@ -145,18 +173,27 @@ def get_public_offer(token: str, pin: str = None, db: Session = Depends(get_db))
         "signatories": offer.signatories
     }
 
+from pydantic import BaseModel as _BaseModel
+class JobOfferActionRequest(_BaseModel):
+    action: str
+    pin: str
+
 @router.post("/public/{token}/action")
-def job_offer_action(token: str, action: str, db: Session = Depends(get_db)):
+def job_offer_action(token: str, data: JobOfferActionRequest, db: Session = Depends(get_db)):
     offer = db.query(JobOffer).filter(JobOffer.token == token).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     
+    # FIX #7: Require PIN verification before action
+    if data.pin != offer.access_code:
+        raise HTTPException(status_code=403, detail="Неверный PIN-код")
+    
     if offer.status != "pending":
         raise HTTPException(status_code=400, detail="Offer is already closed")
     
-    if action == "accept":
+    if data.action == "accept":
         offer.status = "accepted"
-    elif action == "reject":
+    elif data.action == "reject":
         offer.status = "rejected"
     else:
         raise HTTPException(status_code=400, detail="Invalid action")

@@ -2,13 +2,16 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-  const url = (import.meta as any).env.VITE_API_URL || 'http://127.0.0.1:8000';
+  // Use relative path by default to leverage Vite's proxy and avoid cross-origin cookie issues
+  const url = (import.meta as any).env.VITE_API_URL || '';
+  if (!url) return '/api';
   if (url.endsWith('/api')) return url;
   return `${url}/api`;
 };
 
 const api = axios.create({
   baseURL: getBaseUrl(),
+  withCredentials: true, // FIX #19: Enable HttpOnly cookies
   headers: {
     'Content-Type': 'application/json',
   },

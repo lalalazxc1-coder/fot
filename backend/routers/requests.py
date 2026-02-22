@@ -90,12 +90,13 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
     return req
 
 @router.get("")
-@router.get("")
 def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100), status: str = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Admin sees all. 
-    # Approvers (anyone with a role that is in any approval step) should see pending requests assigned to their role.
-    # Requesters see their own.
-    
+    # FIX #14: Refactored to eliminate N+1 queries using eager loading + pre-fetch maps
+    from sqlalchemy.orm import joinedload, selectinload
+    from database.models import OrganizationUnit, ApprovalStep, RequestHistory
+    from sqlalchemy import or_, and_
+    import math
+
     is_admin = False
     if current_user.role_rel and current_user.role_rel.permissions.get('admin_access'):
         is_admin = True
@@ -104,40 +105,19 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
     
     # Filter logic
     if not is_admin:
-        # If user is requester, show.
-        # OR if user is current approver, show.
-        # Simple for now: If not admin, verify ownership OR if they have permission to 'manage_requests'
-        # But for workflow, we ideally want "My Pending Approvals".
-        # Let's show:
-        # 1. Requests I created
-        # 2. Requests waiting at a step where role_id == my_role_id
-        
         user_role_id = current_user.role_id
         
-
-        from sqlalchemy import or_, and_ 
-        # 1. Requester (created the request)
-        # 2. Current Approver (User ID match OR Role ID match if no user)
-        # 3. Past Participant (In History)
-        
-        from database.models import RequestHistory, ApprovalStep
-        
-        # Subquery for history participation
-        # Use simple scalar list of IDs or a proper scalar subquery
         history_query = db.query(RequestHistory.request_id).filter(RequestHistory.actor_id == current_user.id).distinct()
         
         query = query.outerjoin(SalaryRequest.current_step).filter(
             or_(
                 SalaryRequest.requester_id == current_user.id,
-                # Current Step Assignment
                 and_(SalaryRequest.status == 'pending', ApprovalStep.user_id == current_user.id),
                 and_(SalaryRequest.status == 'pending', ApprovalStep.role_id == user_role_id, ApprovalStep.user_id == None),
-                # History Participation
                 SalaryRequest.id.in_(history_query)
             )
         )
 
-        
     # Status Filter
     if status == 'pending':
         query = query.filter(SalaryRequest.status == 'pending')
@@ -147,13 +127,31 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
     # Count total
     total = query.count()
     
-    # Paginate
+    # Paginate with eager loading (FIX #14: eliminates N+1)
     offset = (page - 1) * size
-    requests = query.order_by(SalaryRequest.id.desc()).offset(offset).limit(size).all()
+    requests = (
+        query
+        .options(
+            joinedload(SalaryRequest.employee).joinedload(Employee.position),
+            joinedload(SalaryRequest.employee).joinedload(Employee.org_unit).joinedload(OrganizationUnit.parent),
+            joinedload(SalaryRequest.requester).joinedload(User.role_rel),
+            joinedload(SalaryRequest.current_step),
+            selectinload(SalaryRequest.history).joinedload(RequestHistory.actor).joinedload(User.role_rel),
+            selectinload(SalaryRequest.history).joinedload(RequestHistory.step),
+        )
+        .order_by(SalaryRequest.id.desc())
+        .offset(offset)
+        .limit(size)
+        .all()
+    )
+    
+    # Pre-fetch all OrgUnits for scope lookups (replaces db.get() in loop)
+    all_units = db.query(OrganizationUnit).all()
+    unit_map = {u.id: u for u in all_units}
     
     res = []
     for r in requests:
-        # Helper to get emp/req details (same as before)
+        # Employee details (all pre-loaded via joinedload)
         emp_details = {
             "name": r.employee.full_name if r.employee else "Unknown",
             "position": r.employee.position.title if r.employee and r.employee.position else "-",
@@ -168,37 +166,26 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
                 if r.employee.org_unit.parent:
                     emp_details["branch"] = r.employee.org_unit.parent.name
 
-        # Requester Details Logic
+        # Requester Details (pre-loaded via joinedload)
         req_role = "-"
         req_branch = "-"
         req_dept = "-"
-        
-        # Requester Details Logic
-        req_role = "-"
-        req_branch = "-"
-        req_dept = "-"
-        
-        # Import models needed for requester logic
-        from database.models import OrganizationUnit
         
         if r.requester:
-            # Position -> Role
             if r.requester.role_rel:
                 req_role = r.requester.role_rel.name
             
-            # Branch/Dept from Scope
-            # Optimize: avoid too many queries, just show count or first one
+            # Scope lookups via pre-fetched unit_map (O(1) instead of db.get)
             s_br = r.requester.scope_branches or []
             if len(s_br) == 1:
-                # Fetch branch name
-                b_obj = db.get(OrganizationUnit, s_br[0])
+                b_obj = unit_map.get(s_br[0])
                 if b_obj: req_branch = b_obj.name
             elif len(s_br) > 1:
                 req_branch = f"{len(s_br)} филиалов"
                 
             s_dp = r.requester.scope_departments or []
             if len(s_dp) == 1:
-                d_obj = db.get(OrganizationUnit, s_dp[0])
+                d_obj = unit_map.get(s_dp[0])
                 if d_obj: req_dept = d_obj.name
             elif len(s_dp) > 1:
                 req_dept = f"{len(s_dp)} отделов"
@@ -210,33 +197,21 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
             "department": req_dept
         }
         
-        # Workflow info
+        # Workflow info (pre-loaded)
         current_step_label = r.current_step.label if r.current_step else "Finished" if r.status != 'pending' else "No Step"
         
         # Check if current user can approve
         can_approve = False
         if r.status == 'pending' and r.current_step:
             step = r.current_step
-            # By User
             if step.user_id == current_user.id:
                 can_approve = True
-            # By Role (if user match)
             elif step.role_id == current_user.role_id and step.user_id is None:
                 can_approve = True
-        
-        # --- Analytics Context ---
-        analytics_data = None
-        
-        # Analytics lazy loaded separately
-        if can_approve or is_admin:
-            # We set a flag or just leave it None/Empty, frontend will fetch if needed
-            pass
 
-            
-        history = []
+        # History (pre-loaded via selectinload, actors via joinedload)
         history = []
         for h in sorted(r.history, key=lambda x: x.id, reverse=True):
-            # Actor Details
             actor_role = "-"
             actor_branch = "-"
             if h.actor:
@@ -244,7 +219,7 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
                 
                 s_br = h.actor.scope_branches or []
                 if len(s_br) == 1:
-                    b_obj = db.get(OrganizationUnit, s_br[0])
+                    b_obj = unit_map.get(s_br[0])
                     if b_obj: actor_branch = b_obj.name
                 elif len(s_br) > 1:
                     actor_branch = f"{len(s_br)} филиалов"
@@ -271,16 +246,14 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
             "reason": r.reason,
             "status": r.status,
             "created_at": r.created_at,
-            # New fields
             "current_step_label": current_step_label,
             "current_step_type": r.current_step.step_type if r.current_step else "approval",
             "is_final": r.current_step.is_final if r.current_step else False,
             "can_approve": can_approve,
-            "analytics_context": analytics_data,
+            "analytics_context": None,
             "history": history
         })
         
-    import math
     return {
         "items": res,
         "total": total,

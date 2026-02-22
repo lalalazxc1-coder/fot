@@ -6,11 +6,14 @@ from typing import List, Optional
 from datetime import datetime
 from database.database import get_db
 from database.models import PlanningPosition, User, OrganizationUnit, AuditLog
-from routers.auth import get_current_active_user
+from dependencies import get_current_active_user
 from pydantic import BaseModel
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from io import BytesIO
+import logging
+
+logger = logging.getLogger("fot.planning")
 
 router = APIRouter(prefix="/api", tags=["planning"])
 
@@ -211,7 +214,7 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
         # Auto-sync logic moved to helper
         synced = _sync_employee_financials(db, db_plan, changes, current_user, ts)
         if synced > 0:
-            print(f"Auto-synced {synced} employees for plan {plan_id}")
+            logger.info("Auto-synced %d employees for plan %d", synced, plan_id)
 
         db.commit()
         
@@ -239,7 +242,7 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db), current_user: User 
     return {"status": "deleted"}
 
 @router.get("/planning/{plan_id}/history")
-def get_plan_history(plan_id: int, db: Session = Depends(get_db)):
+def get_plan_history(plan_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     logs = db.query(AuditLog).filter_by(target_entity_id=plan_id, target_entity="planning").all()
     logs.reverse()
     formatted_logs = []
@@ -284,7 +287,7 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
             query = query.filter(PlanningPosition.id.in_(req.ids))
         plans = query.all()
         
-        print(f"Found {len(plans)} planning positions to export")
+        logger.info("Found %d planning positions to export", len(plans))
         
         # Create workbook
         wb = Workbook()
@@ -360,7 +363,7 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
         wb.save(excel_file)
         excel_content = excel_file.getvalue()
         
-        print(f"Excel file size: {len(excel_content)} bytes")
+        logger.info("Excel file size: %d bytes", len(excel_content))
         
         filename = f"FOT_Planning_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
@@ -370,7 +373,5 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
-        print(f"Error exporting planning: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error exporting planning: %s", e)
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")

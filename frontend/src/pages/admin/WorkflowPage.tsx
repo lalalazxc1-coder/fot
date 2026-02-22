@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkflow, useCreateStep, useUpdateStep, useDeleteStep } from '../../hooks/useWorkflow';
 import { useRoles, useUsers } from '../../hooks/useAdmin';
+import { ApprovalStep } from '../../hooks/useWorkflow';
 import { Trash2, Edit2, ArrowDown, ShieldCheck, CheckCircle, User, HelpCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
 
@@ -14,7 +15,7 @@ export default function WorkflowPage() {
     const deleteStep = useDeleteStep();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingStep, setEditingStep] = useState<any | null>(null);
+    const [editingStep, setEditingStep] = useState<ApprovalStep | null>(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     const [form, setForm] = useState({
@@ -31,7 +32,7 @@ export default function WorkflowPage() {
     });
 
     const handleOpenCreate = () => {
-        const nextOrder = steps.length > 0 ? Math.max(...steps.map((s: any) => s.step_order)) + 1 : 1;
+        const nextOrder = steps.length > 0 ? Math.max(...steps.map((s: ApprovalStep) => s.step_order)) + 1 : 1;
         setForm({
             step_order: nextOrder,
             role_id: roles.length > 0 ? roles[0].id : 0,
@@ -48,13 +49,13 @@ export default function WorkflowPage() {
         setIsModalOpen(true);
     };
 
-    const handleOpenEdit = (step: any) => {
+    const handleOpenEdit = (step: ApprovalStep) => {
         setForm({
             step_order: step.step_order,
             role_id: step.role_id || 0,
             user_id: step.user_id || 0,
             assign_type: step.user_id ? 'user' : 'role',
-            label: step.label,
+            label: step.label || '',
             is_final: step.is_final,
             step_type: step.step_type || 'approval',
             notify_on_completion: step.notify_on_completion || false,
@@ -74,19 +75,20 @@ export default function WorkflowPage() {
         if (form.assign_type === 'user' && !form.user_id) return;
 
         // Prepare payload
-        const payload: any = {
+        const payload = {
             ...form,
             role_id: form.assign_type === 'role' ? form.role_id : null,
             user_id: form.assign_type === 'user' ? form.user_id : null,
             condition_type: form.condition_type === '' ? null : form.condition_type,
             condition_amount: form.condition_amount === 0 ? null : form.condition_amount
         };
-        delete payload.assign_type;
+        // Instead of delete, omit assign_type by destructing or just let it send (backend ignores it)
+        const { assign_type, ...finalPayload } = payload as any;
 
         if (editingStep) {
-            await updateStep.mutateAsync({ id: editingStep.id, data: form });
+            await updateStep.mutateAsync({ id: editingStep.id, data: finalPayload });
         } else {
-            await createStep.mutateAsync(payload);
+            await createStep.mutateAsync(finalPayload);
         }
         setIsModalOpen(false);
     };
@@ -125,7 +127,7 @@ export default function WorkflowPage() {
             <div className="max-w-3xl mx-auto space-y-4 relative pt-4">
                 <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-slate-200 -z-10"></div>
 
-                {steps.sort((a: any, b: any) => a.step_order - b.step_order).map((step: any, index: number) => (
+                {steps.sort((a: ApprovalStep, b: ApprovalStep) => a.step_order - b.step_order).map((step: ApprovalStep, index: number) => (
                     <div key={step.id} className="relative pl-16">
                         {/* Connector dot */}
                         <div className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-900 border-4 border-slate-50"></div>
@@ -238,7 +240,7 @@ export default function WorkflowPage() {
                                 required
                             >
                                 <option value={0} disabled>Выберите роль</option>
-                                {roles.map((r: any) => (
+                                {roles.map((r: { id: number; name: string }) => (
                                     <option key={r.id} value={r.id}>{r.name}</option>
                                 ))}
                             </select>
@@ -250,7 +252,7 @@ export default function WorkflowPage() {
                                 required
                             >
                                 <option value={0} disabled>Выберите сотрудника</option>
-                                {users.map((u: any) => (
+                                {users.map((u: { id: number; full_name: string; role_name: string }) => (
                                     <option key={u.id} value={u.id}>{u.full_name} ({u.role_name})</option>
                                 ))}
                             </select>

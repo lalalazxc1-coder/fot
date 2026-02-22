@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, ArrowRight } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api';
+import { api } from '../lib/api';
+import { AxiosError } from 'axios';
 
-export default function LoginPage({ onLogin }: { onLogin: (user: any, rememberMe: boolean) => void }) {
+type AuthUser = {
+    id: number;
+    full_name: string;
+    role: string;
+    permissions: Record<string, boolean>;
+    scope_branches?: number[];
+    scope_departments?: number[];
+    access_token?: string;
+};
+
+export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, rememberMe: boolean) => void }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
@@ -37,24 +48,12 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any, rememberMe
         setIsLoading(true);
 
         try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, remember_me: rememberMe })
+            // FIX #18: Use centralized api client instead of hardcoded URL
+            const res = await api.post('/auth/login', {
+                username, password, remember_me: rememberMe
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                let errMsg = err.detail || 'Ошибка авторизации';
-
-                // Translate common backend errors
-                if (errMsg === 'User not found') errMsg = 'Пользователь не найден';
-                if (errMsg === 'Incorrect password') errMsg = 'Неверный пароль';
-
-                throw new Error(errMsg);
-            }
-
-            const data = await res.json();
+            const data = res.data;
             const userData = {
                 id: data.user_id,
                 full_name: data.full_name,
@@ -75,8 +74,10 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any, rememberMe
                 onLogin(userData, rememberMe);
             }, 500);
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            const axiosErr = e as AxiosError<{ detail?: string }>;
+            const errMsg = axiosErr.response?.data?.detail || axiosErr.message || 'Ошибка авторизации';
+            setError(errMsg);
             setIsLoading(false);
         }
     };

@@ -64,7 +64,7 @@ def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(
     return db.query(MarketData).options(joinedload(MarketData.entries)).all()
 
 @router.get("/{id}/entries", response_model=list[MarketEntryResponse])
-def get_market_entries(id: int, db: Session = Depends(get_db)):
+def get_market_entries(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     return db.query(MarketEntry).filter(MarketEntry.market_id == id).all()
 
 @router.post("")
@@ -123,7 +123,14 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
     return new_entry
 
 @router.delete("/entries/{id}")
-def delete_market_entry(id: int, db: Session = Depends(get_db)):
+def delete_market_entry(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    # FIX #8: Permission check for market entry deletion
+    has_perm = False
+    if current_user.role_rel:
+        permissions = current_user.role_rel.permissions or {}
+        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
+    if not has_perm:
+        raise HTTPException(403, "Permission 'edit_market' required")
     entry = db.get(MarketEntry, id)
     if not entry:
         raise HTTPException(404, "Entry not found")
@@ -137,7 +144,13 @@ def delete_market_entry(id: int, db: Session = Depends(get_db)):
 
 @router.delete("/{id}")
 def delete_market_data(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # ... Permission check ...
+    # FIX #8: Permission check for market data deletion
+    has_perm = False
+    if current_user.role_rel:
+        permissions = current_user.role_rel.permissions or {}
+        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
+    if not has_perm:
+        raise HTTPException(403, "Permission 'edit_market' required")
     item = db.get(MarketData, id)
     if not item: raise HTTPException(404, "Not found")
     

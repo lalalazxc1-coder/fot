@@ -183,7 +183,9 @@ def mass_update_scenario(
         query = query.filter(PlanningPosition.department_id == input.target_department_id)
         
     if input.position_filter:
-        query = query.filter(PlanningPosition.position_title.ilike(f"%{input.position_filter}%"))
+        # FIX #12: Escape SQL LIKE wildcards in user input
+        safe_filter = input.position_filter.replace('%', r'\%').replace('_', r'\_')
+        query = query.filter(PlanningPosition.position_title.ilike(f"%{safe_filter}%"))
         
     positions = query.all()
     config = db.query(SalaryConfiguration).first()

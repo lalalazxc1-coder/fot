@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { ApiError } from '../types';
 
 // --- Types ---
+
 export type Details = {
     name: string;
     position: string;
@@ -84,16 +86,18 @@ export function useRequestAnalytics(reqId: number, enabled: boolean = false) {
     });
 }
 
+export type CreateRequestPayload = {
+    employee_id: number;
+    type: string;
+    current_value: number;
+    requested_value: number;
+    reason: string;
+};
+
 export function useCreateRequest() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: {
-            employee_id: number;
-            type: string;
-            current_value: number;
-            requested_value: number;
-            reason: string;
-        }) => {
+        mutationFn: async (data: CreateRequestPayload) => {
             const res = await api.post('/requests', data);
             return res.data;
         },
@@ -101,7 +105,7 @@ export function useCreateRequest() {
             toast.success("Заявка успешно создана");
             queryClient.invalidateQueries({ queryKey: ['requests'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка при создании заявки: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -118,7 +122,7 @@ export function useUpdateRequestStatus() {
             toast.success(variables.status === 'approved' ? "Заявка одобрена" : "Заявка отклонена");
             queryClient.invalidateQueries({ queryKey: ['requests'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка обновления статуса: " + (err.response?.data?.detail || err.message));
         }
     });

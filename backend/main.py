@@ -72,17 +72,62 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-# --- Rate Limiting Middleware (simple in-memory) ---
+# --- Security Headers Middleware (FIX #27) ---
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+# --- Rate Limiting Middleware (FIX #2: memory-safe, proxy-aware) ---
 import time
 from collections import defaultdict
+import threading
 
 _login_attempts: dict[str, list[float]] = defaultdict(list)
+_rate_limit_lock = threading.Lock()
 RATE_LIMIT_WINDOW = 300  # 5 minutes
 RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "10"))  # max attempts per window
+RATE_LIMIT_MAX_IPS = 10000  # Cap to prevent memory exhaustion
+_last_cleanup = time.time()
+
+def _get_client_ip(request: Request) -> str:
+    """Extract real client IP, respecting proxy headers."""
+    # Only trust X-Forwarded-For if behind a known proxy
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # Take the first (leftmost) IP — the original client
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def _cleanup_stale_entries():
+    """Remove all expired entries and cap dictionary size."""
+    global _last_cleanup
+    now = time.time()
+    # Only run cleanup every 60 seconds
+    if now - _last_cleanup < 60:
+        return
+    _last_cleanup = now
+    stale_keys = [
+        ip for ip, timestamps in _login_attempts.items()
+        if not timestamps or all(now - t >= RATE_LIMIT_WINDOW for t in timestamps)
+    ]
+    for key in stale_keys:
+        del _login_attempts[key]
+    # Hard cap: if still too many IPs, drop oldest entries
+    if len(_login_attempts) > RATE_LIMIT_MAX_IPS:
+        excess = len(_login_attempts) - RATE_LIMIT_MAX_IPS
+        keys_to_remove = list(_login_attempts.keys())[:excess]
+        for key in keys_to_remove:
+            del _login_attempts[key]
 
 @app.middleware("http")
 async def rate_limit_login(request: Request, call_next):
@@ -92,19 +137,24 @@ async def rate_limit_login(request: Request, call_next):
         if env == "testing":
             return await call_next(request)
 
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = _get_client_ip(request)
         now = time.time()
-        # Clean old entries
-        _login_attempts[client_ip] = [
-            t for t in _login_attempts[client_ip] if now - t < RATE_LIMIT_WINDOW
-        ]
-        if len(_login_attempts[client_ip]) >= RATE_LIMIT_MAX:
-            logger.warning(f"Rate limit exceeded for {client_ip} on /api/auth/login")
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Слишком много попыток входа. Попробуйте через 5 минут."},
-            )
-        _login_attempts[client_ip].append(now)
+
+        with _rate_limit_lock:
+            # Periodic cleanup of stale entries
+            _cleanup_stale_entries()
+
+            # Clean old entries for this IP
+            _login_attempts[client_ip] = [
+                t for t in _login_attempts[client_ip] if now - t < RATE_LIMIT_WINDOW
+            ]
+            if len(_login_attempts[client_ip]) >= RATE_LIMIT_MAX:
+                logger.warning(f"Rate limit exceeded for {client_ip} on /api/auth/login")
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Слишком много попыток входа. Попробуйте через 5 минут."},
+                )
+            _login_attempts[client_ip].append(now)
 
     response = await call_next(request)
     return response

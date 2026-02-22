@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { ApiError } from '../types';
 import { Position } from '../types';
 
 export function usePositions() {
@@ -24,7 +25,7 @@ export function useCreatePosition() {
             toast.success("Должность добавлена");
             queryClient.invalidateQueries({ queryKey: ['positions'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка добавления: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -41,7 +42,7 @@ export function useUpdatePosition() {
             toast.success("Должность обновлена");
             queryClient.invalidateQueries({ queryKey: ['positions'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка обновления: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -57,7 +58,7 @@ export function useDeletePosition() {
             toast.success("Должность удалена");
             queryClient.invalidateQueries({ queryKey: ['positions'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка удаления: " + (err.response?.data?.detail || err.message));
         }
     });

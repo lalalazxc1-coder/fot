@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
 import { EmployeeRecord } from '../components/payroll/types';
+import { EmployeeCreatePayload, EmployeeUpdatePayload, ApiError } from '../types';
 
 export type Employee = EmployeeRecord;
 
@@ -18,7 +19,7 @@ export function useEmployees() {
 export function useCreateEmployee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: EmployeeCreatePayload) => {
             const res = await api.post('/employees', data);
             return res.data;
         },
@@ -27,7 +28,7 @@ export function useCreateEmployee() {
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             let msg = err.response?.data?.detail || err.message;
             if (typeof msg === 'object') {
                 msg = JSON.stringify(msg, null, 2);
@@ -40,7 +41,7 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        mutationFn: async ({ id, data }: { id: number; data: EmployeeUpdatePayload }) => {
             const res = await api.put(`/employees/${id}`, data);
             return res.data;
         },
@@ -48,7 +49,7 @@ export function useUpdateEmployee() {
             toast.success("Сотрудник обновлен");
             queryClient.invalidateQueries({ queryKey: ['employees'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка обновления: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -66,7 +67,7 @@ export function useDismissEmployee() {
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));
         }
     });

@@ -97,8 +97,10 @@ const StructureNode = ({ node, level, onAdd, onDelete }: { node: TreeNode, level
     );
 };
 
+import { AuthUser } from '../../types';
+
 export default function StructurePage() {
-    const { user } = useOutletContext<{ user: any }>();
+    const { user } = useOutletContext<{ user: AuthUser }>();
     const { snapshotDate } = useSnapshot();
     const [viewMode, setViewMode] = useState<'list' | 'graph'>('list'); // Default to list for editing hierarchy
 

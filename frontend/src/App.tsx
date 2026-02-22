@@ -110,14 +110,11 @@ function App() {
                     try {
                         const response = await api.get('/auth/me');
                         const freshUser = response.data;
-                        // Merge fresh data with existing token
-                        const updatedUser = { ...freshUser, access_token: storedUser.access_token };
-
-                        setUser(updatedUser);
+                        setUser(freshUser);
                         if (localStorage.getItem('fot_user')) {
-                            localStorage.setItem('fot_user', JSON.stringify(updatedUser));
+                            localStorage.setItem('fot_user', JSON.stringify({ id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role }));
                         } else {
-                            sessionStorage.setItem('fot_user', JSON.stringify(updatedUser));
+                            sessionStorage.setItem('fot_user', JSON.stringify({ id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role }));
                         }
                     } catch (err) {
                         console.error("Failed to refresh user data from server", err);
@@ -140,14 +137,24 @@ function App() {
     const handleLogin = (userData: AuthUser, rememberMe: boolean = false) => {
         setUser(userData);
         setIsAuthenticated(true);
+        // FIX #5: Store minimal info, JWT is now in HttpOnly cookie
+        const storageData = {
+            id: userData.id,
+            full_name: userData.full_name,
+            role: userData.role
+            // JWT intentionally not stored
+        };
         if (rememberMe) {
-            localStorage.setItem('fot_user', JSON.stringify(userData));
+            localStorage.setItem('fot_user', JSON.stringify(storageData));
         } else {
-            sessionStorage.setItem('fot_user', JSON.stringify(userData));
+            sessionStorage.setItem('fot_user', JSON.stringify(storageData));
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (e) { console.error('Logout error', e); }
         localStorage.removeItem('fot_user');
         sessionStorage.removeItem('fot_user');
         setIsAuthenticated(false);

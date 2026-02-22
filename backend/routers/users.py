@@ -6,6 +6,7 @@ from database.models import User, OrganizationUnit
 from schemas import UserCreate, UserUpdate
 from dependencies import require_admin
 from security import get_password_hash  # Single source of truth
+from services.auth_service import AuthService  # FIX A4/A5: Password validation
 
 router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(require_admin)])
 
@@ -50,6 +51,9 @@ def create_user(u: UserCreate, db: Session = Depends(get_db)):
     if db.scalars(select(User).filter_by(email=u.email)).first():
         raise HTTPException(400, "Email already registered")
     
+    # FIX A4: Validate password strength before hashing
+    AuthService._validate_password_strength(u.password)
+    
     # Secure: Hash password before saving
     hashed = get_password_hash(u.password)
         
@@ -80,6 +84,8 @@ def update_user(user_id: int, u: UserUpdate, db: Session = Depends(get_db)):
     user.is_active = u.is_active
 
     if u.password:
+        # FIX A5: Validate password strength before hashing
+        AuthService._validate_password_strength(u.password)
         # Secure: Hash new password
         user.hashed_password = get_password_hash(u.password)
     

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { StructureUpdatePayload, ApiError } from '../types';
 
 export type StructureItem = {
     id: number;
@@ -57,7 +58,7 @@ export function useCreateBranch() {
             queryClient.invalidateQueries({ queryKey: ['structure'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -76,7 +77,7 @@ export function useCreateDepartment() {
             toast.success("Подразделение создано");
             queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -85,9 +86,9 @@ export function useCreateDepartment() {
 export function useUpdateUnit() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: Partial<FlatStructureItem> }) => {
+        mutationFn: async ({ id, data }: { id: number; data: StructureUpdatePayload }) => {
             // Only send what's needed
-            const payload: any = {};
+            const payload: StructureUpdatePayload = {};
             if (data.name) payload.name = data.name;
             if (data.parent_id !== undefined) payload.parent_id = data.parent_id;
             if (data.head_id !== undefined) payload.head_id = data.head_id;
@@ -99,7 +100,7 @@ export function useUpdateUnit() {
             toast.success("Структура обновлена");
             queryClient.invalidateQueries({ queryKey: ['structure'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка обновления: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -116,7 +117,7 @@ export function useDeleteStructure() {
             queryClient.invalidateQueries({ queryKey: ['structure'] });
             queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка удаления: " + (err.response?.data?.detail || err.message));
         }
     });

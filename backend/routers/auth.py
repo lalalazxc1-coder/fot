@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from database.database import get_db
 from database.models import User
@@ -11,16 +11,25 @@ from security import verify_password, create_access_token
 from datetime import timedelta
 
 @router.post("/login", response_model=LoginResponse)
-def login(creds: LoginRequest, db: Session = Depends(get_db)):
+def login(creds: LoginRequest, response: Response, db: Session = Depends(get_db)):
     """
-    Login endpoint. Returns JWT token and user info.
+    Login endpoint. Returns JWT token and user info, and sets HttpOnly cookie.
     """
-    # 1. Delegate Logic to Service
     try:
-        response = AuthService.login(db, creds.username, creds.password, getattr(creds, 'remember_me', False))
-        return response
+        auth_data = AuthService.login(db, creds.username, creds.password, getattr(creds, 'remember_me', False))
+        
+        # FIX #19: Security - HttpOnly cookie
+        max_age = 30 * 24 * 60 * 60 if getattr(creds, 'remember_me', False) else None
+        response.set_cookie(
+            key="access_token",
+            value=auth_data["access_token"],
+            httponly=True,
+            secure=False,  # Set to True in HTTPS prod
+            samesite="lax",
+            max_age=max_age 
+        )
+        return auth_data
     except Exception as e:
-        # Re-raise HTTPException as is, or wrap generic
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -40,6 +49,19 @@ def change_password(
     """
     # Delegate logic to Service
     return AuthService.change_password(db, current_user, data.old_password, data.new_password)
+
+@router.post("/logout")
+def logout(response: Response, current_user: User = Depends(get_current_active_user)):
+    """
+    Logout endpoint. Clears HttpOnly cookie.
+    """
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax",
+        secure=False
+    )
+    return {"status": "logged_out", "message": "Cookie cleared"}
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_active_user)):

@@ -9,6 +9,7 @@ from database.models import OrganizationUnit, Employee, User, FinancialRecord
 from schemas import OrgUnitCreate, OrgUnitUpdate
 
 from dependencies import get_current_active_user, PermissionChecker
+from services.org_unit_service import build_children_map, get_all_descendant_ids
 
 router = APIRouter(prefix="/api/structure", tags=["structure"])
 
@@ -32,21 +33,14 @@ def get_structure(db: Session = Depends(get_db), current_user: User = Depends(ge
             except (ValueError, TypeError): pass
         branches = [b for b in branches if b.id in allowed_bids]
         
-    # Pre-fetch ALL units to build hierarchy in memory (avoid N+1)
+    # Pre-fetch ALL units and use shared hierarchy service
     all_units = db.query(OrganizationUnit).all()
-    children_map = {}
-    for u in all_units:
-        if u.parent_id:
-            if u.parent_id not in children_map: children_map[u.parent_id] = []
-            children_map[u.parent_id].append(u)
+    unit_map = {u.id: u for u in all_units}
+    children_map_ids = build_children_map(db)
 
     def get_all_descendants(unit_id):
-        descendants = []
-        if unit_id in children_map:
-            for child in children_map[unit_id]:
-                descendants.append(child)
-                descendants.extend(get_all_descendants(child.id))
-        return descendants
+        desc_ids = get_all_descendant_ids(unit_id, children_map_ids)
+        return [unit_map[uid] for uid in desc_ids if uid in unit_map]
 
     result = []
     user_dept_ids = set()
@@ -280,26 +274,11 @@ def update_unit(id: int, item: OrgUnitUpdate, db: Session = Depends(get_db)):
         if item.parent_id == id:
              raise HTTPException(status_code=400, detail="Cannot be parent to itself")
              
-        # Check 2: Advanced Circular Dependency (Cannot move under its own descendant)
-        # Build hierarchy map to check descendants
-        all_units = db.query(OrganizationUnit.id, OrganizationUnit.parent_id).all()
-        children_map = {}
-        for uid, pid in all_units:
-            if pid:
-                if pid not in children_map: children_map[pid] = []
-                children_map[pid].append(uid)
-        
-        def is_descendant(target_id, current_root):
-            if current_root == target_id: return True
-            children = children_map.get(current_root, [])
-            for child in children:
-                if is_descendant(target_id, child):
-                   return True
-            return False
+        # Check 2: Advanced Circular Dependency — use shared service
+        children_map = build_children_map(db)
+        descendant_ids = get_all_descendant_ids(id, children_map)
 
-        # If we are moving 'unit' (id) to 'item.parent_id', 
-        # check if 'item.parent_id' is one of the descendants of 'id'
-        if is_descendant(item.parent_id, id):
+        if item.parent_id in descendant_ids:
              raise HTTPException(status_code=400, detail="Circular dependency detected: Cannot move unit under its own descendant")
 
         unit.parent_id = item.parent_id

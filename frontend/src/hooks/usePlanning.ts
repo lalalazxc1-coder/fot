@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { PlanCreatePayload, PlanUpdatePayload, ApiError } from '../types';
 
 export type PlanRow = {
     id: number;
@@ -30,7 +31,7 @@ export function usePlanningData() {
 export function useCreatePlanItem() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: PlanCreatePayload) => {
             const res = await api.post('/planning', data);
             return res.data;
         },
@@ -38,7 +39,7 @@ export function useCreatePlanItem() {
             toast.success("Позиция добавлена");
             queryClient.invalidateQueries({ queryKey: ['planning'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -47,7 +48,7 @@ export function useCreatePlanItem() {
 export function useUpdatePlanItem() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: number; data: any }) => {
+        mutationFn: async ({ id, data }: { id: number; data: PlanUpdatePayload }) => {
             const res = await api.patch(`/planning/${id}`, data);
             return res.data;
         },
@@ -55,7 +56,7 @@ export function useUpdatePlanItem() {
             toast.success("Позиция обновлена");
             queryClient.invalidateQueries({ queryKey: ['planning'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка: " + (err.response?.data?.detail || err.message));
         }
     });
@@ -71,18 +72,26 @@ export function useDeletePlanItem() {
             toast.success("Позиция удалена");
             queryClient.invalidateQueries({ queryKey: ['planning'] });
         },
-        onError: (err: any) => {
+        onError: (err: ApiError) => {
             toast.error("Ошибка удаления: " + (err.response?.data?.detail || err.message));
         }
     });
 }
+
+export type PlanHistoryItem = {
+    date: string;
+    user: string;
+    field: string;
+    oldVal: string;
+    newVal: string;
+};
 
 export function usePlanningHistory(id: number, isOpen: boolean) {
     return useQuery({
         queryKey: ['planning', id, 'history'],
         queryFn: async () => {
             const res = await api.get(`/planning/${id}/history`);
-            return res.data;
+            return res.data as PlanHistoryItem[];
         },
         enabled: isOpen && id > 0
     });

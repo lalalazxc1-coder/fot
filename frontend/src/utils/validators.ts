@@ -51,7 +51,7 @@ export const validatePositiveNumber = (value: number, fieldName: string = 'Зн�
  * @param fieldName - Name of field for error message
  * @returns Error message if empty, empty string if valid
  */
-export const validateRequired = (value: any, fieldName: string = 'Поле'): string => {
+export const validateRequired = (value: unknown, fieldName: string = 'Поле'): string => {
     if (value === null || value === undefined || value === '') {
         return `${fieldName} обязательно для заполнения`;
     }

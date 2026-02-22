@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from database.models import IntegrationSettings
-from dependencies import get_db, get_current_active_user
+from dependencies import get_db, get_current_active_user, require_admin
 
-router = APIRouter(prefix="/api/integrations", tags=["integrations"])
+router = APIRouter(prefix="/api/integrations", tags=["integrations"], dependencies=[Depends(require_admin)])
 
 # --- Schemas ---
 class IntegrationSettingsUpdate(BaseModel):
@@ -187,7 +187,7 @@ def test_connection(
             else:
                 try:
                     error_detail = resp.json().get('error', {}).get('message', f"HTTP {resp.status_code}")
-                except:
+                except Exception:
                     error_detail = f"HTTP {resp.status_code}"
                 return {"success": False, "message": f"Ошибка {resp.status_code}: {error_detail}"}
                 

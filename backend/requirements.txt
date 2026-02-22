@@ -1,21 +1,16 @@
-fastapi
-uvicorn
-sqlalchemy
-alembic
-pydantic
-python-jose[cryptography]
-passlib[bcrypt]
-bcrypt<4.0.0
-
-python-multipart
-python-dateutil
-python-dotenv
-openpyxl
-
-# PostgreSQL driver
-psycopg2-binary
-
-# Testing
-pytest
-pytest-asyncio
-httpx
+# FIX #16: Pinned minimum versions for security and reproducibility
+fastapi>=0.109.0
+uvicorn>=0.27.0
+sqlalchemy>=2.0.25
+alembic>=1.13.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=3.2.0,<4.1.0
+psycopg2-binary>=2.9.9
+pydantic>=2.5.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+openpyxl>=3.1.2
+httpx>=0.26.0
+requests>=2.31.0
+aiofiles>=23.2.1

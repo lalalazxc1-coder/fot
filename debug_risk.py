@@ -8,6 +8,11 @@ sys.path.append(os.path.join(os.getcwd(), 'backend'))
 
 load_dotenv()
 
+# FIX #17: Prevent accidental execution in production
+if os.environ.get("ENVIRONMENT", "development") == "production":
+    print("ERROR: This debug script cannot be run in production environment!")
+    sys.exit(1)
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     print("DATABASE_URL not found in .env")
