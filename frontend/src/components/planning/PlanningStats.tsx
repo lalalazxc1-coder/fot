@@ -8,8 +8,15 @@ type PlanningStatsProps = {
 };
 
 export const PlanningStats: React.FC<PlanningStatsProps> = ({ data }) => {
-    const totalNet = useMemo(() => data.reduce((acc, r) => acc + ((r.base_net + r.kpi_net + r.bonus_net) * r.count), 0), [data]);
-    const totalGross = useMemo(() => data.reduce((acc, r) => acc + ((r.base_gross + r.kpi_gross + r.bonus_gross) * r.count), 0), [data]);
+    const totalNet = useMemo(() => data.reduce((acc, r) => {
+        const bonusCount = r.bonus_count !== null && r.bonus_count !== undefined ? r.bonus_count : r.count;
+        return acc + ((r.base_net + r.kpi_net) * r.count) + (r.bonus_net * bonusCount);
+    }, 0), [data]);
+
+    const totalGross = useMemo(() => data.reduce((acc, r) => {
+        const bonusCount = r.bonus_count !== null && r.bonus_count !== undefined ? r.bonus_count : r.count;
+        return acc + ((r.base_gross + r.kpi_gross) * r.count) + (r.bonus_gross * bonusCount);
+    }, 0), [data]);
 
     return (
         <div className="flex gap-4">
