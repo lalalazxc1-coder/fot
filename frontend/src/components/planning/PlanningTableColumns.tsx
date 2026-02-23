@@ -160,7 +160,7 @@ export const createColumns = (
                 const net = (r.base_net + r.kpi_net) * r.count + (r.bonus_net * bonusCount);
                 const gross = (r.base_gross + r.kpi_gross) * r.count + (r.bonus_gross * bonusCount);
                 return (
-                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm min-w-[100px] flex flex-col justify-center">
+                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm flex flex-col justify-center">
                         <FinancialCell value={{ net, gross }} isTotal={true} />
                     </div>
                 );
@@ -173,7 +173,7 @@ export const createColumns = (
             cell: ({ row }) => {
                 if (!canManage) return null;
                 return (
-                    <div className="flex justify-end items-center gap-1 h-full pr-2 min-w-[90px]">
+                    <div className="flex justify-end items-center gap-1 h-full pr-2">
                         <button onClick={() => onHistory(row.original.id)} className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors" title="История">
                             <History className="w-4 h-4" />
                         </button>
