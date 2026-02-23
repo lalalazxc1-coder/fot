@@ -43,6 +43,6 @@ def test_delete_planning_position(client, auth_headers, planning_position):
 
 
 def test_planning_export_excel(client, auth_headers, planning_position):
-    resp = client.get("/api/planning/export", headers=auth_headers)
+    resp = client.post("/api/planning/export", headers=auth_headers, json={})
     assert resp.status_code == 200
     assert "spreadsheet" in resp.headers.get("content-type", "")

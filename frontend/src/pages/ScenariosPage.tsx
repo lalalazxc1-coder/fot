@@ -35,7 +35,22 @@ interface ComparisonResult {
 
 // --- Components ---
 
-const ComparisonCard = ({ title, live, scenario, type = 'money', icon: Icon }: { title: string, live: number, scenario: number, type?: 'money' | 'percent', icon?: any }) => {
+interface HierarchicalNode {
+    id: number;
+    name: string;
+    type: string;
+    parent_id: number | null;
+}
+
+interface MassUpdatePayload {
+    field: string;
+    change_type: string;
+    value: number;
+    target_branch_id?: number | null;
+    target_department_id?: number | null;
+}
+
+const ComparisonCard = ({ title, live, scenario, type = 'money', icon: Icon }: { title: string, live: number, scenario: number, type?: 'money' | 'percent', icon?: React.ElementType }) => {
     const diff = scenario - live;
     const percent = live ? (diff / live) * 100 : 0;
     const isPositive = diff > 0;
@@ -122,7 +137,7 @@ export default function ScenariosPage() {
     });
 
     const massUpdateMutation = useMutation({
-        mutationFn: (data: any) => api.post(`/scenarios/${selectedScenarioId}/apply-change`, data),
+        mutationFn: (data: MassUpdatePayload) => api.post(`/scenarios/${selectedScenarioId}/apply-change`, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['scenario-comparison', selectedScenarioId] });
             // Optional: Show toast
@@ -152,7 +167,7 @@ export default function ScenariosPage() {
     const handleMassUpdate = () => {
         if (!selectedScenarioId) return;
 
-        let payload: any = {
+        let payload: MassUpdatePayload = {
             field: massUpdateField,
             change_type: massUpdateType,
             value: Number(massUpdateValue),
@@ -177,7 +192,7 @@ export default function ScenariosPage() {
 
         const options: JSX.Element[] = [];
 
-        const renderNode = (node: any, level: number) => {
+        const renderNode = (node: HierarchicalNode, level: number) => {
             const prefix = '\u00A0\u00A0\u00A0\u00A0'.repeat(level); // 4 spaces
             const icon = node.type === 'head_office' ? '🏢 ' : node.type === 'branch' ? '🏢 ' : '📁 ';
             const value = JSON.stringify({ type: node.type === 'head_office' ? 'branch' : node.type, id: node.id });

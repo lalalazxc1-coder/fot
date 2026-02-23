@@ -140,6 +140,7 @@ class PlanningPosition(Base):
     
     schedule = Column(String)
     count = Column(Integer, default=1)
+    bonus_count = Column(Integer, nullable=True) # Кол-во получателей доплаты (null = всем)
     
     # Financials (Per Unit)
     base_net = Column(Integer, default=0)

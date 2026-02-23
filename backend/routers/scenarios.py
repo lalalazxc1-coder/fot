@@ -66,7 +66,8 @@ def create_scenario(
             kpi_net=pos.kpi_net,
             kpi_gross=pos.kpi_gross,
             bonus_net=pos.bonus_net,
-            bonus_gross=pos.bonus_gross
+            bonus_gross=pos.bonus_gross,
+            bonus_count=pos.bonus_count
         )
         db.add(new_pos)
         cloned_count += 1
@@ -98,10 +99,12 @@ def compare_scenario(id: int, db: Session = Depends(get_db)):
         return db.query(
             func.sum(PlanningPosition.count).label('headcount'),
             func.sum(
-                (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
+                (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + \
+                PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
             ).label('total_net'),
             func.sum(
-                (PlanningPosition.base_gross + PlanningPosition.kpi_gross + PlanningPosition.bonus_gross) * PlanningPosition.count
+                (PlanningPosition.base_gross + PlanningPosition.kpi_gross) * PlanningPosition.count + \
+                PlanningPosition.bonus_gross * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
             ).label('total_gross')
         ).filter(PlanningPosition.scenario_id == scenario_id).first()
 
@@ -127,18 +130,23 @@ def compare_scenario(id: int, db: Session = Depends(get_db)):
             # Taxes = (Gross - Net) [Employee Side] + Employer Side
             
             # Recalc line tax to be sure?
-            line_gross = r.base_gross + r.kpi_gross + r.bonus_gross
-            line_net = r.base_net + r.kpi_net + r.bonus_net
+            line_gross = r.base_gross + r.kpi_gross
+            line_net = r.base_net + r.kpi_net
+            # we also need the full per-person line info to calculate taxes correctly...
+            # This logic is tricky, let's keep it simple: multiply by count
+            actual_bonus_count = r.bonus_count if r.bonus_count is not None else r.count
+            line_total_net = line_net * r.count + r.bonus_net * actual_bonus_count
+            line_total_gross = line_gross * r.count + r.bonus_gross * actual_bonus_count
             
-            # Rough employer tax calc
-            res = calculate_taxes(line_gross, config)
-            employer_taxes = res['osms'] + res['so'] + res['sn'] + res['opvr']
+            # Rough employer tax calc (we have to apply it proportionally if sizes differ, but this is an estimate anyway)
+            res = calculate_taxes(line_total_gross / r.count if r.count else 0, config) 
+            employer_taxes_per_emp = res['osms'] + res['so'] + res['sn'] + res['opvr']
             
-            line_total_cost = line_gross + employer_taxes
+            line_total_cost = line_total_gross + (employer_taxes_per_emp * r.count) 
             
-            total_net += line_net * r.count
-            total_gross += line_gross * r.count
-            total_taxes += (line_total_cost - line_net) * r.count
+            total_net += line_total_net
+            total_gross += line_total_gross
+            total_taxes += (line_total_cost - line_total_net)
             
         return {
             "total_net": total_net,
@@ -265,7 +273,8 @@ def commit_scenario(
             count=live.count,
             base_net=live.base_net, base_gross=live.base_gross,
             kpi_net=live.kpi_net, kpi_gross=live.kpi_gross,
-            bonus_net=live.bonus_net, bonus_gross=live.bonus_gross
+            bonus_net=live.bonus_net, bonus_gross=live.bonus_gross,
+            bonus_count=live.bonus_count
         )
         db.add(backup_pos)
     
@@ -309,6 +318,7 @@ def commit_scenario(
             update_if_diff('kpi_gross', row.kpi_gross)
             update_if_diff('bonus_net', row.bonus_net)
             update_if_diff('bonus_gross', row.bonus_gross)
+            update_if_diff('bonus_count', row.bonus_count)
             
             if changes:
                 # Audit Log for Preservation
@@ -339,7 +349,8 @@ def commit_scenario(
                 count=row.count,
                 base_net=row.base_net, base_gross=row.base_gross,
                 kpi_net=row.kpi_net, kpi_gross=row.kpi_gross,
-                bonus_net=row.bonus_net, bonus_gross=row.bonus_gross
+                bonus_net=row.bonus_net, bonus_gross=row.bonus_gross,
+                bonus_count=row.bonus_count
             )
             db.add(new_live)
             db.flush()

@@ -1,5 +1,5 @@
-
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const getBaseUrl = () => {
   // Use relative path by default to leverage Vite's proxy and avoid cross-origin cookie issues
@@ -34,12 +34,36 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Handle unauthorized, possibly redirect to login or clear storage in future
-      // For now, let the component handle it or clear storage if needed.
-      localStorage.removeItem('fot_user');
-      // window.location.href = '/login'; -> commented out for now as App.tsx handles auth state
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Attempt refresh on 401 (Unauthorized)
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+      originalRequest._retry = true;
+      try {
+        await axios.post(getBaseUrl() + '/auth/refresh', {}, { withCredentials: true });
+        // Retry original request if refresh is successful
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        if (!window.location.pathname.includes('/login')) {
+          localStorage.removeItem('fot_user');
+          sessionStorage.removeItem('fot_user');
+          toast.error('Сессия истекла. Пожалуйста, войдите снова.');
+          window.dispatchEvent(new CustomEvent('session-expired'));
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // For 403 or other 401s where refresh already failed
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('fot_user');
+        sessionStorage.removeItem('fot_user');
+        toast.error('Возникла ошибка авторизации. Пожалуйста, войдите снова.');
+        window.dispatchEvent(new CustomEvent('session-expired'));
+      }
     }
     return Promise.reject(error);
   }

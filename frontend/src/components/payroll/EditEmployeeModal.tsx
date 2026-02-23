@@ -23,6 +23,21 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     const updateMutation = useUpdateEmployee();
     const [editDetails, setEditDetails] = useState<any>(null);
 
+    // Bonus logic
+    const [applyBonus, setApplyBonus] = useState(false);
+    const [planBonusAmount, setPlanBonusAmount] = useState({ net: 0, gross: 0 });
+
+    const handleApplyBonusToggle = (checked: boolean) => {
+        setApplyBonus(checked);
+        if (editDetails) {
+            setEditDetails({
+                ...editDetails,
+                bonus_net: checked ? planBonusAmount.net : 0,
+                bonus_gross: checked ? planBonusAmount.gross : 0
+            });
+        }
+    };
+
     // Tree State
     const [isTreeOpen, setIsTreeOpen] = useState(false);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
@@ -30,6 +45,19 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     // Initialize state when employee changes
     useEffect(() => {
         if (employee) {
+            const planPositions = planningData.filter(p =>
+                p.branch_id?.toString() === employee.branch_id?.toString() &&
+                p.department_id?.toString() === employee.department_id?.toString()
+            );
+            const planItem = planPositions.find((p: any) => p.position === employee.position);
+
+            const pNet = planItem?.bonus_net || 0;
+            const pGross = planItem?.bonus_gross || 0;
+            setPlanBonusAmount({ net: pNet, gross: pGross });
+
+            const hasBonus = (employee.bonus?.net > 0 || employee.bonus?.gross > 0) || false;
+            setApplyBonus(hasBonus);
+
             setEditDetails({
                 id: employee.id,
                 full_name: employee.full_name,
@@ -47,7 +75,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 bonus_gross: employee.bonus.gross
             });
         }
-    }, [employee]);
+    }, [employee, planningData]);
 
     // Tree Logic
     const toggleNode = (id: number, e: React.MouseEvent) => {
@@ -156,14 +184,18 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     const handleSyncPlan = () => {
         const planItem = editPositions.find((p: any) => p.position === editDetails.position_title);
         if (planItem) {
+            const pNet = planItem?.bonus_net || 0;
+            const pGross = planItem?.bonus_gross || 0;
+            setPlanBonusAmount({ net: pNet, gross: pGross });
+
             setEditDetails({
                 ...editDetails,
                 base_net: planItem.base_net,
                 base_gross: planItem.base_gross,
                 kpi_net: planItem.kpi_net,
                 kpi_gross: planItem.kpi_gross,
-                bonus_net: planItem.bonus_net,
-                bonus_gross: planItem.bonus_gross
+                bonus_net: applyBonus ? pNet : 0,
+                bonus_gross: applyBonus ? pGross : 0
             });
         } else {
             alert('Позиция не найдена в плане для выбранного отдела');
@@ -263,8 +295,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                     </div>
                     {[
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
-                        { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] },
-                        { label: 'Доплаты', fields: ['bonus_net', 'bonus_gross'] },
+                        { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] }
                     ].map((group, i) => (
                         <div key={i} className="grid grid-cols-3 gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>
@@ -282,6 +313,36 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                             />
                         </div>
                     ))}
+
+                    {/* Бонусы (Доплаты) с переключателем */}
+                    <div className="grid grid-cols-3 gap-2 items-center mt-2 pt-2 border-t border-slate-200">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-600">Доплаты</span>
+                            {(planBonusAmount.net > 0 || planBonusAmount.gross > 0) && (
+                                <label className="flex items-center gap-1.5 mt-1 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={applyBonus}
+                                        onChange={e => handleApplyBonusToggle(e.target.checked)}
+                                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 group-hover:border-indigo-400 transition-colors"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-medium select-none group-hover:text-slate-700 transition-colors">Назначить ({planBonusAmount.net.toLocaleString()} ₸)</span>
+                                </label>
+                            )}
+                        </div>
+                        <MoneyInput
+                            className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                            value={editDetails.bonus_net || 0}
+                            onChange={() => { }}
+                            disabled
+                        />
+                        <MoneyInput
+                            className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                            value={editDetails.bonus_gross || 0}
+                            onChange={() => { }}
+                            disabled
+                        />
+                    </div>
                 </div>
 
                 <Button className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl mt-4">Сохранить изменения</Button>

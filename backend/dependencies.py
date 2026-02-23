@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 from database.models import User
 from security import SECRET_KEY, ALGORITHM
+from database.redis_client import is_token_blacklisted
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -27,6 +28,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
         
     if not token:
         raise credentials_exception
+        
+    if is_token_blacklisted(token):
+        raise credentials_exception
+        
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id_str: str = payload.get("sub")

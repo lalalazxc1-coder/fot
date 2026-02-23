@@ -26,6 +26,52 @@ import Modal from '../components/Modal';
 import { formatMoney } from '../utils';
 import { toast } from 'sonner';
 
+interface OfferTemplate {
+    id: number;
+    name: string;
+    company_name?: string;
+    benefits?: string[];
+    welcome_text?: string;
+    description_text?: string;
+    theme_color?: string;
+    custom_sections?: { title: string, content: string }[];
+    probation_period?: string;
+    working_hours?: string;
+    lunch_break?: string;
+    non_compete_text?: string;
+    signatories?: { title: string, name: string }[];
+}
+
+interface JobOffer {
+    id: number;
+    candidate_name: string;
+    candidate_email?: string;
+    position_title: string;
+    base_net: number;
+    kpi_net: number;
+    bonus_net?: number;
+    valid_until?: string;
+    benefits?: string[];
+    company_name?: string;
+    welcome_text?: string;
+    description_text?: string;
+    theme_color?: string;
+    custom_sections?: { title: string, content: string }[];
+    probation_period?: string;
+    working_hours?: string;
+    lunch_break?: string;
+    non_compete_text?: string;
+    start_date?: string;
+    signatories?: { title: string, name: string }[];
+    status: string;
+    access_code?: string;
+    token: string;
+}
+
+interface Employee {
+    id: number;
+    full_name: string;
+}
 export default function JobOffersPage() {
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -74,7 +120,7 @@ export default function JobOffersPage() {
     });
 
     const createMutation = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: Partial<JobOffer>) => {
             if (editingId) {
                 const res = await api.put(`/offers/${editingId}`, data);
                 return res.data;
@@ -104,14 +150,14 @@ export default function JobOffersPage() {
         window.open(url, '_blank');
     };
 
-    const openEdit = (offer: any) => {
+    const openEdit = (offer: JobOffer) => {
         setFormData({
             ...initialForm,
             ...offer,
             candidate_email: offer.candidate_email || '',
             valid_until: offer.valid_until || '',
             start_date: offer.start_date || initialForm.start_date,
-            signatories: offer.signatories?.length > 0 ? offer.signatories : initialForm.signatories
+            signatories: (offer.signatories && offer.signatories.length > 0) ? offer.signatories : initialForm.signatories
         });
         setEditingId(offer.id);
         setIsAddOpen(true);
@@ -169,7 +215,7 @@ export default function JobOffersPage() {
     });
 
     const applyTemplate = (templateId: string) => {
-        const template = templates.find((t: any) => t.id.toString() === templateId);
+        const template = templates.find((t: OfferTemplate) => t.id.toString() === templateId);
         if (!template) return;
 
         setFormData({
@@ -206,7 +252,7 @@ export default function JobOffersPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offers.map((offer: any) => (
+                {offers.map((offer: JobOffer) => (
                     <div key={offer.id} className="bg-white rounded-3xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all flex flex-col group">
                         <div className="flex justify-between items-start mb-4">
                             <div className="p-3 bg-slate-50 rounded-2xl">
@@ -272,7 +318,7 @@ export default function JobOffersPage() {
                                 defaultValue=""
                             >
                                 <option value="" disabled>Выберите шаблон...</option>
-                                {templates.map((t: any) => (
+                                {templates.map((t: OfferTemplate) => (
                                     <option key={t.id} value={t.id}>{t.name}</option>
                                 ))}
                             </select>
@@ -331,7 +377,7 @@ export default function JobOffersPage() {
                                             onChange={e => updateSignatory(idx, 'name', e.target.value)}
                                         >
                                             <option value="">Выберите сотрудника...</option>
-                                            {employees.map((emp: any) => <option key={emp.id} value={emp.full_name}>{emp.full_name}</option>)}
+                                            {employees.map((emp: Employee) => <option key={emp.id} value={emp.full_name}>{emp.full_name}</option>)}
                                             <option value={sig.name}>{sig.name} (Ручной ввод)</option>
                                         </select>
                                         <input className="w-full bg-white border-b border-dashed border-slate-200 px-3 py-1 text-[11px] outline-none" placeholder="ФИО (если нет в списке)" value={sig.name} onChange={e => updateSignatory(idx, 'name', e.target.value)} />

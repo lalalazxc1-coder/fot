@@ -99,39 +99,56 @@ function App() {
     useEffect(() => {
         const initAuth = async () => {
             const storedUserRaw = localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user');
+
+            // Set initial state from storage for speed and avoid flicker if possible
             if (storedUserRaw) {
                 try {
                     const storedUser = JSON.parse(storedUserRaw);
-                    // Set initial state from local storage for speed
                     setUser(storedUser);
                     setIsAuthenticated(true);
-
-                    // Fetch fresh data from server
-                    try {
-                        const response = await api.get('/auth/me');
-                        const freshUser = response.data;
-                        setUser(freshUser);
-                        if (localStorage.getItem('fot_user')) {
-                            localStorage.setItem('fot_user', JSON.stringify({ id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role }));
-                        } else {
-                            sessionStorage.setItem('fot_user', JSON.stringify({ id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role }));
-                        }
-                    } catch (err) {
-                        console.error("Failed to refresh user data from server", err);
-                    }
-
                 } catch (e) {
                     console.error("Failed to parse user", e);
-                    localStorage.removeItem('fot_user');
-                    sessionStorage.removeItem('fot_user');
-                    setUser(null);
-                    setIsAuthenticated(false);
                 }
             }
+
+            // Always attempt to fetch the fresh user data since the JWT is in an HttpOnly cookie
+            // which can be present in a new tab even if sessionStorage is empty.
+            try {
+                const response = await api.get('/auth/me');
+                const freshUser = response.data;
+                setUser(freshUser);
+                setIsAuthenticated(true);
+
+                // Keep the storage in sync
+                const storageData = { id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role };
+                if (localStorage.getItem('fot_user')) {
+                    localStorage.setItem('fot_user', JSON.stringify(storageData));
+                } else {
+                    sessionStorage.setItem('fot_user', JSON.stringify(storageData));
+                }
+            } catch (err) {
+                // If we get an error (e.g., 401 Unauthorized), the cookie is invalid or missing
+                console.error("Failed to refresh user data from server / Session invalid", err);
+                localStorage.removeItem('fot_user');
+                sessionStorage.removeItem('fot_user');
+                setUser(null);
+                setIsAuthenticated(false);
+            }
+
             setLoading(false);
         };
 
         initAuth();
+
+        const handleSessionExpired = () => {
+            setIsAuthenticated(false);
+            setUser(null);
+            localStorage.removeItem('fot_user');
+            sessionStorage.removeItem('fot_user');
+        };
+
+        window.addEventListener('session-expired', handleSessionExpired);
+        return () => window.removeEventListener('session-expired', handleSessionExpired);
     }, []);
 
     const handleLogin = (userData: AuthUser, rememberMe: boolean = false) => {

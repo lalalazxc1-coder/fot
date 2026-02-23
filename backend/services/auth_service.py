@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from database.models import User
-from security import verify_password, create_access_token, get_password_hash
+from security import verify_password, create_access_token, create_refresh_token, get_password_hash
 from datetime import timedelta
 import logging
 import hmac
@@ -51,8 +51,12 @@ class AuthService:
 
         # 3. Create Token
         # Extend token life if "remember me" is checked (e.g. 30 days)
+        # Access token acts as short-lived (configured in security.py as 15m)
         expires_delta = timedelta(days=30) if remember_me else None
-        access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=expires_delta)
+        access_token = create_access_token(data={"sub": str(user.id)}) # Default 15 mins
+        
+        refresh_expires_delta = timedelta(days=30) if remember_me else None
+        refresh_token = create_refresh_token(data={"sub": str(user.id)}, expires_delta=refresh_expires_delta)
 
         return {
             "status": "ok",
@@ -63,6 +67,7 @@ class AuthService:
             "scope_branches": user.scope_branches or [],
             "scope_departments": user.scope_departments or [],
             "access_token": access_token,
+            "refresh_token": refresh_token,
         }
 
     @staticmethod

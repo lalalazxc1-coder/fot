@@ -517,9 +517,11 @@ def get_request_analytics(req_id: int, db: Session = Depends(get_db), current_us
 
         # 3. Budget (Plan vs Fact for the Unit)
         if branch_id:
-            # Plan Sum
             plan_sum = db.query(
-                func.sum((PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count)
+                func.sum(
+                    (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + \
+                    PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
+                )
             ).filter(PlanningPosition.branch_id == branch_id).scalar() or 0
             
             # Fact Sum 

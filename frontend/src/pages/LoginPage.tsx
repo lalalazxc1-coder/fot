@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 import { api } from '../lib/api';
 import { AxiosError } from 'axios';
@@ -20,7 +20,11 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
     const [inputErrors, setInputErrors] = useState({ username: false, password: false });
+    const [showPassword, setShowPassword] = useState(false);
+    const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
         const saved = localStorage.getItem('remembered_username');
@@ -28,6 +32,12 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
             setUsername(saved);
             setRememberMe(true);
         }
+
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) setGreeting('Доброе утро');
+        else if (hour >= 12 && hour < 18) setGreeting('Добрый день');
+        else if (hour >= 18 && hour < 23) setGreeting('Добрый вечер');
+        else setGreeting('Доброй ночи');
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -48,7 +58,6 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
         setIsLoading(true);
 
         try {
-            // FIX #18: Use centralized api client instead of hardcoded URL
             const res = await api.post('/auth/login', {
                 username, password, remember_me: rememberMe
             });
@@ -64,7 +73,10 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                 access_token: data.access_token
             };
 
-            // Small delay for better UX
+            setLoggedInUser(data.full_name);
+            setIsSuccess(true);
+            setIsLoading(false);
+
             setTimeout(() => {
                 if (rememberMe) {
                     localStorage.setItem('remembered_username', username);
@@ -72,7 +84,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                     localStorage.removeItem('remembered_username');
                 }
                 onLogin(userData, rememberMe);
-            }, 500);
+            }, 1500);
 
         } catch (e: unknown) {
             const axiosErr = e as AxiosError<{ detail?: string }>;
@@ -83,113 +95,176 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 font-sans bg-slate-50 relative overflow-hidden">
-            {/* Background Decorations */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-100/40 blur-[100px]" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-100/40 blur-[100px]" />
-            </div>
+        <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans bg-slate-100 relative overflow-hidden">
+            {/* Split Layout Container */}
+            <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl shadow-slate-300/60 overflow-hidden flex flex-col md:flex-row relative z-10 min-h-[600px] border border-slate-100/50">
 
-            <div className="w-full max-w-md bg-white/70 backdrop-blur-xl rounded-2xl shadow-2xl shadow-slate-200/50 border border-white/50 p-8 sm:p-10 relative z-10 animate-in fade-in zoom-in-95 duration-500">
+                {/* Left Side - Info */}
+                <div className="md:w-5/12 bg-slate-50 p-8 sm:p-12 flex flex-col justify-center relative border-r border-slate-100/50">
+                    <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-100/40 blur-[80px] rounded-full pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-indigo-100/40 blur-[80px] rounded-full pointer-events-none" />
 
-                {/* Logo Section */}
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-xl shadow-slate-900/20 flex items-center justify-center mb-6 transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                        <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight text-center">HR & Payroll Hub</h1>
-                    <p className="text-slate-500 text-sm mt-2 text-center font-medium">Корпоративный портал управления персоналом</p>
-                </div>
-
-                <form onSubmit={handleLogin} className="space-y-5">
-                    <div className="space-y-1.5">
-                        <label className={`block text-xs font-bold uppercase tracking-widest pl-1 ${inputErrors.username ? 'text-red-500' : 'text-slate-500'}`}>Логин или Email</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => {
-                                setUsername(e.target.value);
-                                if (inputErrors.username) setInputErrors(prev => ({ ...prev, username: false }));
-                            }}
-                            className={`w-full h-11 px-4 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-900 placeholder:text-slate-400 text-sm font-medium shadow-sm ${inputErrors.username
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                                }`}
-                            placeholder="Введите ваш логин"
-                            disabled={isLoading}
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className={`block text-xs font-bold uppercase tracking-widest pl-1 ${inputErrors.password ? 'text-red-500' : 'text-slate-500'}`}>Пароль</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                if (inputErrors.password) setInputErrors(prev => ({ ...prev, password: false }));
-                            }}
-                            className={`w-full h-11 px-4 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-900 placeholder:text-slate-400 text-sm font-medium shadow-sm ${inputErrors.password
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
-                                }`}
-                            placeholder="••••••••"
-                            disabled={isLoading}
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                            <div className="relative flex items-center justify-center">
-                                <input
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-slate-900/20 checked:bg-slate-900 checked:border-slate-900 transition-all"
-                                    disabled={isLoading}
-                                />
-                                <svg
-                                    className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
-                                    viewBox="0 0 14 10"
-                                    fill="none"
-                                >
-                                    <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <div className="relative z-10 mb-auto">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-md">
+                                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                             </div>
-                            <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">Запомнить меня</span>
-                        </label>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                                HR & Payroll<span className="font-medium text-slate-400">Hub</span>
+                            </h1>
+                        </div>
                     </div>
 
-                    {error && (
-                        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 flex items-center justify-center font-medium animate-in fade-in slide-in-from-top-1">
-                            {error}
+                    <div className="relative z-10 mt-12 mb-12">
+                        <h2 className="text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight">
+                            Управление<br />персоналом<br />нового уровня
+                        </h2>
+                        <p className="text-slate-500 font-medium leading-relaxed max-w-sm text-sm sm:text-base">
+                            Единая платформа для автоматизации и расчета фонда оплаты труда (ФОТ), глубокой аналитики, управления заявками и моделирования зарплатных сценариев.
+                        </p>
+                    </div>
+
+                    <div className="relative z-10 mt-auto">
+                        {/* Placeholder to keep alignment balanced */}
+                    </div>
+                </div>
+
+                {/* Right Side - Form */}
+                <div className="md:w-7/12 p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-white relative">
+                    {/* Success Animation Overlay */}
+                    <div className={`absolute inset-0 bg-white z-20 flex flex-col items-center justify-center transition-all duration-500 ${isSuccess ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'}`}>
+                        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-100/50">
+                            <CheckCircle className="w-10 h-10 text-emerald-500" />
                         </div>
-                    )}
+                        <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Успешно!</h2>
+                        <p className="text-slate-500 font-medium">С возвращением, {loggedInUser}</p>
+                        <div className="mt-8">
+                            <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
+                        </div>
+                    </div>
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30 hover:-translate-y-0.5 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin text-white/70" />
-                        ) : (
-                            <>
-                                Войти в систему
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </button>
-                </form>
+                    {/* Form Content */}
+                    <div className={`max-w-md mx-auto w-full transition-all duration-500 ${isSuccess ? 'opacity-0 blur-sm translate-y-4' : 'opacity-100 blur-0 translate-y-0'}`}>
+                        <div className="mb-10">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 tracking-tight">{greeting}</h2>
+                            <p className="text-slate-500 text-sm font-medium">Пожалуйста, введите ваши данные для входа в систему.</p>
+                        </div>
 
-                <div className="mt-8 text-center">
-                    <p className="text-xs text-slate-400 font-medium">
-                        &copy; {new Date().getFullYear()} Доступ только для авторизованных сотрудников.
-                    </p>
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className={`block text-xs font-bold uppercase tracking-wider pl-1 ${inputErrors.username ? 'text-red-500' : 'text-slate-700'}`}>Логин или Email</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Mail className={`h-5 w-5 ${inputErrors.username ? 'text-red-400' : 'text-slate-400'}`} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={(e) => {
+                                            setUsername(e.target.value);
+                                            if (inputErrors.username) setInputErrors(prev => ({ ...prev, username: false }));
+                                        }}
+                                        className={`w-full h-12 pl-12 pr-4 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-900 placeholder:text-slate-400 text-sm font-medium ${inputErrors.username
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                            : 'border-slate-200 focus:ring-slate-900/10 focus:border-slate-900/40 hover:border-slate-300'
+                                            }`}
+                                        placeholder="Введите ваш логин"
+                                        disabled={isLoading || isSuccess}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`block text-xs font-bold uppercase tracking-wider pl-1 ${inputErrors.password ? 'text-red-500' : 'text-slate-700'}`}>Пароль</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className={`h-5 w-5 ${inputErrors.password ? 'text-red-400' : 'text-slate-400'}`} />
+                                    </div>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        value={password}
+                                        onChange={(e) => {
+                                            setPassword(e.target.value);
+                                            if (inputErrors.password) setInputErrors(prev => ({ ...prev, password: false }));
+                                        }}
+                                        className={`w-full h-12 pl-12 pr-12 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all text-slate-900 placeholder:text-slate-400 text-sm font-medium ${inputErrors.password
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                            : 'border-slate-200 focus:ring-slate-900/10 focus:border-slate-900/40 hover:border-slate-300'
+                                            }`}
+                                        placeholder="••••••••"
+                                        disabled={isLoading || isSuccess}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                                        tabIndex={-1}
+                                        disabled={isLoading || isSuccess}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600 transition-colors" />
+                                        ) : (
+                                            <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600 transition-colors" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center pt-2">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative flex items-center justify-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={rememberMe}
+                                            onChange={(e) => setRememberMe(e.target.checked)}
+                                            className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-slate-900/20 checked:bg-slate-900 checked:border-slate-900 transition-all hover:border-slate-400"
+                                            disabled={isLoading || isSuccess}
+                                        />
+                                        <svg
+                                            className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
+                                            viewBox="0 0 14 10"
+                                            fill="none"
+                                        >
+                                            <path d="M1 5L5 9L13 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">Запомнить меня</span>
+                                </label>
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 text-red-600 text-sm p-3.5 rounded-xl border border-red-100 flex items-center justify-center font-medium shadow-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={isLoading || isSuccess}
+                                className="w-full bg-black hover:bg-slate-800 text-white font-bold h-12 rounded-xl transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg mt-4"
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="w-5 h-5 animate-spin text-white/70" />
+                                ) : (
+                                    <>
+                                        Войти в систему
+                                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="mt-10 pt-8 border-t border-slate-100 text-center">
+                            <p className="text-xs font-medium text-slate-400">
+                                &copy; {new Date().getFullYear()} Доступ только для авторизованных сотрудников.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+

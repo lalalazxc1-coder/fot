@@ -18,7 +18,7 @@ def test_get_employees_unauthorized(client):
 
 
 def test_export_employees_excel(client, auth_headers, employee):
-    resp = client.get("/api/employees/export", headers=auth_headers)
+    resp = client.post("/api/employees/export", headers=auth_headers, json={})
     assert resp.status_code == 200
     assert "spreadsheet" in resp.headers.get("content-type", "")
     assert len(resp.content) > 0

@@ -101,7 +101,7 @@ export const RetentionDashboard = () => {
                         <tr>
                             <th className="pb-3 pt-3 pl-4 font-semibold text-slate-500 border-b">Сотрудник</th>
                             <th className="pb-3 pt-3 font-semibold text-slate-500 border-b">Должность</th>
-                            <th className="pb-3 pt-3 text-right font-semibold text-slate-500 border-b">Текущая ЗП</th>
+                            <th className="pb-3 pt-3 text-right font-semibold text-slate-500 border-b">Текущая ЗП (нетто)</th>
                             <th className="pb-3 pt-3 text-right font-semibold text-slate-500 border-b">Рынок (Медиана)</th>
                             <th className="pb-3 pt-3 text-right font-semibold text-slate-500 border-b">Отставание</th>
                             <th className="pb-3 pt-3 text-right pr-4 font-semibold text-slate-500 border-b">Без повышений</th>

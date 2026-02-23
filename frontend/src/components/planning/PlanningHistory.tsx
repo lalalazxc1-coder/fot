@@ -33,6 +33,7 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
                 base_net: "Оклад (Net)", base_gross: "Оклад (Gross)",
                 kpi_net: "KPI (Net)", kpi_gross: "KPI (Gross)",
                 bonus_net: "Доплаты (Net)", bonus_gross: "Доплаты (Gross)",
+                bonus_count: "Кол-во получателей доплаты",
                 "Бонусы (Net)": "Доплаты (Net)", "Бонусы (Gross)": "Доплаты (Gross)",
                 position_title: "Должность", count: "Количество",
                 branch_id: "Филиал (ID)", department_id: "Отдел (ID)",
@@ -51,7 +52,8 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
                 "KPI (Net)", "kpi_net",
                 "KPI (Gross)", "kpi_gross",
                 "Доплаты (Net)", "bonus_net", "Бонусы (Net)",
-                "Доплаты (Gross)", "bonus_gross", "Бонусы (Gross)"
+                "Доплаты (Gross)", "bonus_gross", "Бонусы (Gross)",
+                "Кол-во получателей доплаты", "bonus_count"
             ];
 
             const sortedChanges = [...group.changes].sort((a: any, b: any) => {

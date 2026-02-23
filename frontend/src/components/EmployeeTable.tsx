@@ -262,25 +262,14 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         <Button
           onClick={async () => {
             try {
-              const userStr = localStorage.getItem('fot_user');
-              if (!userStr) {
-                alert('Не авторизован');
-                return;
-              }
-              const user = JSON.parse(userStr);
-              const token = user.access_token;
-              if (!token) {
-                alert('Токен не найден');
-                return;
-              }
               const filteredIds = table.getRowModel().rows.map(r => r.original.id);
 
               const response = await fetch('/api/employees/export', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${token}`,
                   'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({ ids: filteredIds })
               });
               if (!response.ok) throw new Error('Export failed');

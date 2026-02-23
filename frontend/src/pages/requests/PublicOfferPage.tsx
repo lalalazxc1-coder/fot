@@ -67,7 +67,7 @@ export default function PublicOfferPage() {
     const handleAction = async (action: 'accept' | 'reject') => {
         setIsSubmitting(true);
         try {
-            await api.post(`/offers/public/${token}/action?action=${action}`);
+            await api.post(`/offers/public/${token}/action`, { action, pin });
             setOffer({ ...offer, status: action === 'accept' ? 'accepted' : 'rejected' });
             if (action === 'accept') {
                 toast.success('Предложение принято успешно.');
@@ -106,13 +106,13 @@ export default function PublicOfferPage() {
                         <Shield className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Защищенный доступ</h1>
-                    <p className="text-slate-500 text-sm mb-8 font-medium italic">Для просмотра оффера введите 4-значный код доступа.</p>
+                    <p className="text-slate-500 text-sm mb-8 font-medium italic">Для просмотра оффера введите 6-значный код доступа.</p>
 
                     <form onSubmit={handleVerifyPin} className="space-y-4">
                         <input
                             type="text"
-                            maxLength={4}
-                            placeholder="0 0 0 0"
+                            maxLength={6}
+                            placeholder="0 0 0 0 0 0"
                             value={pin}
                             onChange={e => {
                                 setPin(e.target.value);
@@ -128,7 +128,7 @@ export default function PublicOfferPage() {
                         )}
                         <button
                             type="submit"
-                            disabled={pin.length < 4 || isVerifying}
+                            disabled={pin.length < 6 || isVerifying}
                             className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-50 transition-all"
                         >
                             {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Открыть <ArrowRight className="w-4 h-4" /></>}

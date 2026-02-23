@@ -40,6 +40,19 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         last_raise_date: ''
     });
 
+    // --- Bonus Apply Logic ---
+    const [applyBonus, setApplyBonus] = useState(true);
+    const [planBonusAmount, setPlanBonusAmount] = useState({ net: 0, gross: 0 });
+
+    const handleApplyBonusToggle = (checked: boolean) => {
+        setApplyBonus(checked);
+        setNewEmployee(prev => ({
+            ...prev,
+            bonus_net: checked ? planBonusAmount.net : 0,
+            bonus_gross: checked ? planBonusAmount.gross : 0
+        }));
+    };
+
     // --- Tree Select Logic ---
     const [isTreeOpen, setIsTreeOpen] = useState(false);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
@@ -206,6 +219,11 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             return totalB - totalA;
         })[0];
 
+        const pNet = planItem?.bonus_net || 0;
+        const pGross = planItem?.bonus_gross || 0;
+
+        setPlanBonusAmount({ net: pNet, gross: pGross });
+
         setNewEmployee({
             ...newEmployee,
             position_title: posTitle,
@@ -213,8 +231,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             base_gross: planItem?.base_gross || 0,
             kpi_net: planItem?.kpi_net || 0,
             kpi_gross: planItem?.kpi_gross || 0,
-            bonus_net: planItem?.bonus_net || 0,
-            bonus_gross: planItem?.bonus_gross || 0
+            bonus_net: applyBonus ? pNet : 0,
+            bonus_gross: applyBonus ? pGross : 0
         });
     };
 
@@ -390,8 +408,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center mb-2">Финансовые условия</div>
                     {[
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
-                        { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] },
-                        { label: 'Бонусы', fields: ['bonus_net', 'bonus_gross'] },
+                        { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] }
                     ].map((group, i) => (
                         <div key={i} className="grid grid-cols-3 gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>
@@ -411,6 +428,38 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                             />
                         </div>
                     ))}
+
+                    {/* Бонусы (Доплаты) с переключателем */}
+                    <div className="grid grid-cols-3 gap-2 items-center mt-2 pt-2 border-t border-slate-200">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-600">Доплаты</span>
+                            {(planBonusAmount.net > 0 || planBonusAmount.gross > 0) && (
+                                <label className="flex items-center gap-1.5 mt-1 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={applyBonus}
+                                        onChange={e => handleApplyBonusToggle(e.target.checked)}
+                                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 group-hover:border-indigo-400 transition-colors"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-medium select-none group-hover:text-slate-700 transition-colors">Назначить</span>
+                                </label>
+                            )}
+                        </div>
+                        <MoneyInput
+                            value={newEmployee.bonus_net}
+                            onChange={() => { }}
+                            placeholder="Net"
+                            disabled
+                            className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                        />
+                        <MoneyInput
+                            value={newEmployee.bonus_gross}
+                            onChange={() => { }}
+                            placeholder="Gross"
+                            disabled
+                            className="bg-slate-100 text-slate-500 cursor-not-allowed"
+                        />
+                    </div>
                 </div>
 
                 <Button className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl mt-4">Создать сотрудника</Button>

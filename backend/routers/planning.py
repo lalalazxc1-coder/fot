@@ -31,6 +31,7 @@ class PlanCreate(BaseModel):
     kpi_gross: int = 0
     bonus_net: int = 0
     bonus_gross: int = 0
+    bonus_count: int | None = None
 
 class PlanUpdate(BaseModel):
     position: str | None = None
@@ -45,6 +46,7 @@ class PlanUpdate(BaseModel):
     kpi_gross: int | None = None
     bonus_net: int | None = None
     bonus_gross: int | None = None
+    bonus_count: int | None = None
 
 # --- Helpers ---
 def check_manage_permission(user: User):
@@ -97,7 +99,8 @@ def get_planning(db: Session = Depends(get_db), current_user: User = Depends(get
             "kpi_net": p.kpi_net,
             "kpi_gross": p.kpi_gross,
             "bonus_net": p.bonus_net,
-            "bonus_gross": p.bonus_gross
+            "bonus_gross": p.bonus_gross,
+            "bonus_count": p.bonus_count
         })
     return res
 
@@ -129,7 +132,8 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
         kpi_net=plan.kpi_net,
         kpi_gross=plan.kpi_gross,
         bonus_net=plan.bonus_net,
-        bonus_gross=plan.bonus_gross
+        bonus_gross=plan.bonus_gross,
+        bonus_count=plan.bonus_count
     )
     db.add(new_plan)
     db.commit()
@@ -158,7 +162,8 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
             "KPI (Net)": plan.kpi_net,
             "KPI (Gross)": plan.kpi_gross,
             "Доплаты (Net)": plan.bonus_net,
-            "Доплаты (Gross)": plan.bonus_gross
+            "Доплаты (Gross)": plan.bonus_gross,
+            "Кол-во получателей доплаты": plan.bonus_count
         }
     )
     db.add(audit)
@@ -302,7 +307,7 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
         headers = [
             "Позиция", "Филиал", "Отдел", "График", "Кол-во",
             "Оклад (Нет)", "Оклад (Брут)", "KPI (Нет)", "KPI (Брут)",
-            "Бонус (Нет)", "Бонус (Брут)", "Всего (Нет)", "Всего (Брут)"
+            "Бонус (Нет)", "Бонус (Брут)", "Кол-во доплат", "Всего (Нет)", "Всего (Брут)"
         ]
         
         for col_num, header in enumerate(headers, 1):
@@ -325,8 +330,9 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
                 dept = unit_map.get(plan.department_id)
                 if dept: dept_name = dept.name
             
-            total_net = plan.base_net + plan.kpi_net + plan.bonus_net
-            total_gross = plan.base_gross + plan.kpi_gross + plan.bonus_gross
+            actual_bonus_count = plan.bonus_count if plan.bonus_count is not None else plan.count
+            total_net = (plan.base_net + plan.kpi_net) * plan.count + (plan.bonus_net * actual_bonus_count)
+            total_gross = (plan.base_gross + plan.kpi_gross) * plan.count + (plan.bonus_gross * actual_bonus_count)
             
             data = [
                 plan.position_title,
@@ -340,6 +346,7 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
                 plan.kpi_gross,
                 plan.bonus_net,
                 plan.bonus_gross,
+                actual_bonus_count,
                 total_net,
                 total_gross
             ]

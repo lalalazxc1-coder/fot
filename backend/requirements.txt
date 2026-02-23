@@ -14,3 +14,5 @@ openpyxl>=3.1.2
 httpx>=0.26.0
 requests>=2.31.0
 aiofiles>=23.2.1
+redis>=5.0.1
+python-dateutil>=2.8.2

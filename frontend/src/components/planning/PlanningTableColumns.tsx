@@ -108,13 +108,46 @@ export const createColumns = (
             }} />,
         },
         {
+            header: 'Доплаты (Net/Gross)',
+            id: 'bonus',
+            cell: ({ row }) => {
+                const r = row.original;
+                return (
+                    <div className="flex flex-col items-center justify-center">
+                        <FinancialCell value={{
+                            net: r.bonus_net,
+                            gross: r.bonus_gross
+                        }} />
+                        {r.bonus_count !== null && r.bonus_count !== undefined && r.bonus_count < r.count && (r.bonus_net > 0 || r.bonus_gross > 0) && (
+                            <span className="text-[9px] text-slate-400 mt-0.5 leading-tight text-center">
+                                для {r.bonus_count} ед.
+                            </span>
+                        )}
+                    </div>
+                );
+            }
+        },
+        {
             header: 'Итого на ед.',
             id: 'total_per_unit',
             cell: ({ row }) => {
                 const r = row.original;
                 const net = r.base_net + r.kpi_net + r.bonus_net;
                 const gross = r.base_gross + r.kpi_gross + r.bonus_gross;
-                return <FinancialCell value={{ net, gross }} />;
+
+                const bonusCount = r.bonus_count !== null && r.bonus_count !== undefined ? r.bonus_count : r.count;
+                const hasPartialBonus = bonusCount > 0 && bonusCount < r.count && (r.bonus_net > 0 || r.bonus_gross > 0);
+
+                return (
+                    <div className="flex flex-col items-center justify-center">
+                        <FinancialCell value={{ net, gross }} />
+                        {hasPartialBonus && (
+                            <span className="text-[9px] text-slate-400 mt-0.5 leading-tight text-center">
+                                доплата для {bonusCount} ед.
+                            </span>
+                        )}
+                    </div>
+                );
             }
         },
         {
@@ -123,10 +156,11 @@ export const createColumns = (
             size: 140,
             cell: ({ row }) => {
                 const r = row.original;
-                const net = (r.base_net + r.kpi_net + r.bonus_net) * r.count;
-                const gross = (r.base_gross + r.kpi_gross + r.bonus_gross) * r.count;
+                const bonusCount = r.bonus_count !== null && r.bonus_count !== undefined ? r.bonus_count : r.count;
+                const net = (r.base_net + r.kpi_net) * r.count + (r.bonus_net * bonusCount);
+                const gross = (r.base_gross + r.kpi_gross) * r.count + (r.bonus_gross * bonusCount);
                 return (
-                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm min-w-[100px]">
+                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm min-w-[100px] flex flex-col justify-center">
                         <FinancialCell value={{ net, gross }} isTotal={true} />
                     </div>
                 );

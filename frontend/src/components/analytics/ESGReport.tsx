@@ -51,7 +51,7 @@ export const ESGReport = () => {
                             <XAxis dataKey="category" tickFormatter={translateCategory} />
                             <YAxis tickFormatter={(val) => `${val / 1000}k`} />
                             <Tooltip
-                                formatter={(val: number) => [formatMoney(val), 'Ср. Гросс ЗП']}
+                                formatter={(val: number) => [formatMoney(val), 'Ср. Нетто ЗП']}
                                 labelFormatter={translateCategory}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             />
@@ -72,7 +72,7 @@ export const ESGReport = () => {
                             <XAxis dataKey="category" tickFormatter={translateCategory} tick={{ fontSize: 10 }} interval={0} />
                             <YAxis tickFormatter={(val) => `${val / 1000}k`} />
                             <Tooltip
-                                formatter={(val: number) => [formatMoney(val), 'Ср. Гросс ЗП']}
+                                formatter={(val: number) => [formatMoney(val), 'Ср. Нетто ЗП']}
                                 labelFormatter={translateCategory}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             />

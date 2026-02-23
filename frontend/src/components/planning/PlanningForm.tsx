@@ -42,7 +42,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
             setEditingRow({ ...initialData });
         } else {
             setEditingRow({
-                id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: ''
+                id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: '', bonus_count: null
             } as any);
         }
     }, [initialData, isOpen]);
@@ -282,10 +282,25 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                     {[
                         { label: 'Оклад', net: 'base_net', gross: 'base_gross' },
                         { label: 'KPI', net: 'kpi_net', gross: 'kpi_gross' },
-                        { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross' }
+                        { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross', hasCount: true }
                     ].map((group, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-2 items-center">
-                            <div className="text-sm font-bold text-slate-700">{group.label}</div>
+                        <div key={i} className="grid grid-cols-3 gap-2 items-start pt-1">
+                            <div>
+                                <div className="text-sm font-bold text-slate-700 mt-2">{group.label}</div>
+                                {group.hasCount && (
+                                    <div className="flex items-center gap-1 mt-1 mb-1">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Кол-во:</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            className="w-12 text-xs border border-slate-200 rounded px-1 outline-none focus:border-indigo-400 disabled:opacity-50"
+                                            value={editingRow.bonus_count ?? editingRow.count}
+                                            onChange={e => setEditingRow({ ...editingRow, bonus_count: parseInt(e.target.value) || 0 })}
+                                            disabled={!canEditFinancials}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                             <MoneyInput
                                 className="bg-white"
                                 value={(editingRow as any)[group.net]}

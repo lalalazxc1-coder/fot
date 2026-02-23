@@ -1,7 +1,79 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronRight, ChevronDown, Building2, LayoutGrid } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useMemo } from 'react';
+
+interface StaffingGapItem {
+    id: number;
+    parent_id: number | null;
+    unit_name: string;
+    unit_type: string;
+    plan: number;
+    fact: number;
+    gap: number;
+}
+
+interface GapTreeNode extends StaffingGapItem {
+    children: GapTreeNode[];
+}
+
+// Tree row component with individual expansion state management
+const GapTreeRows = ({ node, level, expandedNodes, onToggle }: {
+    node: GapTreeNode;
+    level: number;
+    expandedNodes: Set<number>;
+    onToggle: (id: number) => void
+}) => {
+    const isExpanded = expandedNodes.has(node.id);
+    const hasChildren = node.children.length > 0;
+
+    return (
+        <React.Fragment key={node.id}>
+            <tr className={`hover:bg-slate-50 transition-colors ${level === 0 ? 'bg-slate-50/50' : ''}`}>
+                <td className="px-4 py-3 font-medium text-slate-700">
+                    <div className="flex items-center gap-2" style={{ paddingLeft: level * 20 }}>
+                        {hasChildren ? (
+                            <button
+                                onClick={() => onToggle(node.id)}
+                                className="p-0.5 hover:bg-slate-200 rounded transition-colors"
+                            >
+                                {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                            </button>
+                        ) : (
+                            <div className="w-5" />
+                        )}
+
+                        {node.unit_type === 'head_office' ? (
+                            <Building2 className="w-4 h-4 text-indigo-600" />
+                        ) : node.unit_type === 'branch' ? (
+                            <Building2 className="w-4 h-4 text-slate-500" />
+                        ) : (
+                            <LayoutGrid className="w-4 h-4 text-slate-400" />
+                        )}
+
+                        <span className={level === 0 ? 'font-bold' : ''}>{node.unit_name}</span>
+                        {level === 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400">ROLLUP</span>}
+                    </div>
+                </td>
+                <td className="px-4 py-3 text-slate-600">{node.plan}</td>
+                <td className="px-4 py-3 text-slate-600">{node.fact}</td>
+                <td className={`px-4 py-3 font-bold ${node.gap > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                    {node.gap > 0 ? `-${node.gap}` : node.gap < 0 ? `+${Math.abs(node.gap)}` : '0'}
+                </td>
+            </tr>
+            {hasChildren && isExpanded && node.children.map(child => (
+                <GapTreeRows
+                    key={child.id}
+                    node={child}
+                    level={level + 1}
+                    expandedNodes={expandedNodes}
+                    onToggle={onToggle}
+                />
+            ))}
+        </React.Fragment>
+    );
+};
 
 export const StaffingGapsView = () => {
     const { data, isLoading } = useQuery({
@@ -12,42 +84,79 @@ export const StaffingGapsView = () => {
         }
     });
 
+    const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+
+    const toggleNode = (id: number) => {
+        setExpandedNodes(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const treeData = useMemo(() => {
+        if (!data?.staffing_gaps) return [];
+
+        const map = new Map<number, GapTreeNode>();
+        const roots: GapTreeNode[] = [];
+
+        data.staffing_gaps.forEach((item: StaffingGapItem) => {
+            map.set(item.id, { ...item, children: [] });
+        });
+
+        data.staffing_gaps.forEach((item: StaffingGapItem) => {
+            const node = map.get(item.id)!;
+            if (item.parent_id && map.has(item.parent_id)) {
+                map.get(item.parent_id)!.children.push(node);
+            } else {
+                roots.push(node);
+            }
+        });
+
+        return roots;
+    }, [data?.staffing_gaps]);
+
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     if (!data) return <div>Нет данных</div>;
 
-    const { staffing_gaps, turnover_rate, dismissed_count, reasons_distribution } = data;
+    const { turnover_rate, dismissed_count, reasons_distribution } = data;
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* 1. Staffing Gaps */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-amber-500" />
-                    Кадровые разрывы (План vs Факт)
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                        Кадровые разрывы (План vs Факт)
+                    </h3>
+                    <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Иерархический вид</div>
+                </div>
 
-                {staffing_gaps.length === 0 ? (
+                {treeData.length === 0 ? (
                     <div className="text-slate-500 text-sm">Все плановые позиции заполнены!</div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left border-collapse">
                             <thead className="bg-slate-50 text-slate-500 font-bold">
                                 <tr>
-                                    <th className="px-4 py-2 rounded-l-lg">Подразделение</th>
-                                    <th className="px-4 py-2">План</th>
-                                    <th className="px-4 py-2">Факт</th>
-                                    <th className="px-4 py-2 text-red-600 rounded-r-lg">Вакансия (Разрыв)</th>
+                                    <th className="px-4 py-3 rounded-l-lg border-b border-slate-100">Подразделение (Иерархия)</th>
+                                    <th className="px-4 py-3 border-b border-slate-100">План (Агр.)</th>
+                                    <th className="px-4 py-3 border-b border-slate-100">Факт (Агр.)</th>
+                                    <th className="px-4 py-3 rounded-r-lg border-b border-slate-100">Вакансия (Разрыв)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {staffing_gaps.map((item: any, idx: number) => (
-                                    <tr key={idx} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-medium text-slate-700">{item.unit_name}</td>
-                                        <td className="px-4 py-3">{item.plan}</td>
-                                        <td className="px-4 py-3">{item.fact}</td>
-                                        <td className="px-4 py-3 font-bold text-red-600">-{item.gap}</td>
-                                    </tr>
+                            <tbody className="divide-y divide-slate-100/50">
+                                {treeData.map(node => (
+                                    <GapTreeRows
+                                        key={node.id}
+                                        node={node}
+                                        level={0}
+                                        expandedNodes={expandedNodes}
+                                        onToggle={toggleNode}
+                                    />
                                 ))}
                             </tbody>
                         </table>

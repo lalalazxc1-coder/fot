@@ -20,6 +20,72 @@ import Modal from '../components/Modal';
 import { CandidateSearch } from '../components/market/CandidateSearch';
 import { toast } from 'sonner';
 
+interface MarketEntry {
+    id: number;
+    market_id: number;
+    company_name: string;
+    salary: number;
+    url?: string;
+    updated_at?: string;
+    source?: string;
+}
+
+interface MarketDataPoint {
+    id: number;
+    position_title: string;
+    points?: MarketEntry[];
+    median_salary: number;
+    min_salary: number;
+    max_salary: number;
+    source?: string;
+    updated_at?: string;
+}
+
+interface Employee {
+    id: number;
+    branch?: string;
+    position?: string;
+    total: {
+        net: number;
+        gross: number;
+    };
+}
+
+interface AuthUser {
+    id: number;
+    full_name: string;
+    role: string;
+    permissions: Record<string, boolean>;
+}
+
+interface HierarchicalNode {
+    id: number;
+    name: string;
+    parent_id: number | null;
+}
+
+interface HierarchicalOption {
+    id: number;
+    label: string;
+}
+
+interface ComparisonData {
+    id: number;
+    position: string;
+    points: MarketEntry[];
+    median_salary: number;
+    min_salary: number;
+    max_salary: number;
+    p25: number;
+    employeesCount: number;
+    employeeSalaries: number[];
+    avg_internal: number;
+    deviation: number;
+    belowP25: number;
+    updated_at: string;
+    source: string;
+}
+
 // --- Sub-components for Charts ---
 const SalaryRangeChart = ({ min, max, median, employeeSalaries }: { min: number, max: number, median: number, employeeSalaries: number[] }) => {
     // Determine the visualization range
@@ -67,13 +133,13 @@ const SalaryRangeChart = ({ min, max, median, employeeSalaries }: { min: number,
     );
 };
 
-const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[], marketId: number, canEdit: boolean }) => {
+const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: MarketEntry[], marketId: number | undefined, canEdit: boolean }) => {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [newSalary, setNewSalary] = useState('');
     const [newCompany, setNewCompany] = useState('');
 
     // If no entries provided, fetch from backend
-    const { data: fetchedEntries = [] } = useMarketEntries(marketId);
+    const { data: fetchedEntries = [] } = useMarketEntries(marketId || 0);
 
     // Use entries prop if valid and non-empty, otherwise use fetched entries
     const displayEntries = (entries && entries.length > 0) ? entries : fetchedEntries;
@@ -98,6 +164,7 @@ const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[],
     };
 
     const handleDelete = async (pointId: number) => {
+        if (!marketId) return;
         if (confirm('Удалить эту запись?')) {
             deleteMutation.mutate({ id: pointId, marketId });
         }
@@ -114,6 +181,7 @@ const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[],
                     <div className="flex gap-2">
                         <button
                             onClick={async () => {
+                                if (!marketId) return;
                                 const toastId = toast.loading('Идет синхронизация с HH.kz...');
                                 try {
                                     await useSyncMarketDataHook.mutateAsync(marketId);
@@ -164,7 +232,7 @@ const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[],
                 {displayEntries.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-xs italic">Замеры еще не добавлены</div>
                 ) : (
-                    displayEntries.map((entry: any) => (
+                    displayEntries.map((entry: MarketEntry) => (
                         <div key={entry.id} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-100 text-sm group">
                             <div className="flex items-center gap-2 max-w-[60%]">
                                 <span className="font-medium text-slate-700 truncate" title={entry.company_name}>{entry.company_name}</span>
@@ -200,7 +268,7 @@ const MarketPositionDetails = ({ entries, marketId, canEdit }: { entries: any[],
 }
 
 export default function MarketPage() {
-    const { user } = useOutletContext<{ user: any }>();
+    const { user } = useOutletContext<{ user: AuthUser }>();
 
     const { data: marketData = [], isLoading: isMarketLoading } = useMarket();
     const { data: employees = [], isLoading: isEmployeesLoading } = useEmployees();
@@ -216,7 +284,7 @@ export default function MarketPage() {
     const [isImporting, setIsImporting] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-    const [selectedPosition, setSelectedPosition] = useState<any | null>(null);
+    const [selectedPosition, setSelectedPosition] = useState<ComparisonData | null>(null);
 
     // Lock scroll when any modal is open
     useEffect(() => {
@@ -232,25 +300,25 @@ export default function MarketPage() {
     }, [isAddOpen, selectedPosition, isHelpOpen]);
 
     const branches = useMemo(() => {
-        const unique = new Set(employees.map((e: any) => e.branch).filter((b: any) => b && b !== 'Неизвестно'));
+        const unique = new Set(employees.map((e: Employee) => e.branch).filter((b: string | undefined) => b && b !== 'Неизвестно'));
         return Array.from(unique).sort();
     }, [employees]);
 
     // Comparison Logic
     const comparisonData = useMemo(() => {
         // Group market data by position
-        const grouped = marketData.reduce((acc: any, curr: any) => {
+        const grouped = marketData.reduce((acc: Record<string, MarketDataPoint[]>, curr: MarketDataPoint) => {
             if (!acc[curr.position_title]) acc[curr.position_title] = [];
             acc[curr.position_title].push(curr);
             return acc;
-        }, {});
+        }, {} as Record<string, MarketDataPoint[]>);
 
         const processed = Object.keys(grouped).map(pos => {
             const items = grouped[pos];
-            const allPoints = items.flatMap((i: any) => i.points || []);
+            const allPoints = items.flatMap((i: MarketDataPoint) => i.points || []);
 
             // 1. Calculate Market Stats
-            const salaries = allPoints.map((p: any) => p.salary).sort((a: any, b: any) => a - b);
+            const salaries = allPoints.map((p: MarketEntry) => p.salary).sort((a: number, b: number) => a - b);
 
             let median = 0, min = 0, max = 0;
 
@@ -263,11 +331,11 @@ export default function MarketPage() {
             } else {
                 // Fallback to pre-calculated values if points are missing
                 // We aggregate values if there are multiple items for the same position title
-                const validItems = items.filter((i: any) => i.median_salary > 0);
+                const validItems = items.filter((i: MarketDataPoint) => i.median_salary > 0);
                 if (validItems.length > 0) {
-                    const mins = validItems.map((i: any) => i.min_salary).filter((v: number) => v > 0);
-                    const maxs = validItems.map((i: any) => i.max_salary).filter((v: number) => v > 0);
-                    const medians = validItems.map((i: any) => i.median_salary).filter((v: number) => v > 0);
+                    const mins = validItems.map((i: MarketDataPoint) => i.min_salary).filter((v: number) => v > 0);
+                    const maxs = validItems.map((i: MarketDataPoint) => i.max_salary).filter((v: number) => v > 0);
+                    const medians = validItems.map((i: MarketDataPoint) => i.median_salary).filter((v: number) => v > 0);
 
                     min = mins.length ? Math.min(...mins) : 0;
                     max = maxs.length ? Math.max(...maxs) : 0;
@@ -284,14 +352,14 @@ export default function MarketPage() {
             }
 
             // 2. Find internal employees
-            const internal = employees.filter((e: any) => e.position === pos && (filterBranch === 'all' || e.branch === filterBranch));
-            const internalSals = internal.map((e: any) => e.total.net);
+            const internal = employees.filter((e: Employee) => e.position === pos && (filterBranch === 'all' || e.branch === filterBranch));
+            const internalSals = internal.map((e: Employee) => e.total.net);
             const internalMedian = internalSals.length > 0 ? (internalSals.reduce((a, b) => a + b, 0) / internalSals.length) : 0;
 
             // 3. Last update
             const validDates = items
-                .map((i: any) => i.updated_at)
-                .filter((d: any) => d && !isNaN(new Date(d).getTime()))
+                .map((i: MarketDataPoint) => i.updated_at)
+                .filter((d: string | undefined) => d && !isNaN(new Date(d).getTime()))
                 .sort()
                 .reverse();
 
@@ -311,7 +379,7 @@ export default function MarketPage() {
                 deviation: median > 0 ? ((internalMedian - median) / median) * 100 : 0,
                 belowP25: internalSals.filter(s => p25 > 0 && s < p25).length,
                 updated_at: lastUpdated ? new Date(lastUpdated).toLocaleDateString() : '—',
-                source: items.map((i: any) => i.source).join(', ')
+                source: items.map((i: MarketDataPoint) => i.source).join(', ')
             };
         });
 
@@ -320,7 +388,7 @@ export default function MarketPage() {
 
         // Sorting
         filtered.sort((a, b) => {
-            let valA: any, valB: any;
+            let valA: string | number, valB: string | number;
             if (sortBy === 'position') { valA = a.position; valB = b.position; }
             else if (sortBy === 'median') { valA = a.median_salary; valB = b.median_salary; }
             else { valA = a.updated_at; valB = b.updated_at; }
@@ -392,15 +460,15 @@ export default function MarketPage() {
     // Tree options for modal
     const hierarchicalOptions = useMemo(() => {
         if (!flatStructure) return [];
-        const processed: any[] = [];
-        const roots = flatStructure.filter(i => !i.parent_id);
+        const processed: HierarchicalOption[] = [];
+        const roots = flatStructure.filter((i: HierarchicalNode) => !i.parent_id);
 
-        const renderNode = (node: any, level: number) => {
+        const renderNode = (node: HierarchicalNode, level: number) => {
             const prefix = '\u00A0\u00A0\u00A0\u00A0'.repeat(level);
             processed.push({ id: node.id, label: `${prefix}${node.name}` });
-            flatStructure.filter(i => i.parent_id === node.id).forEach(c => renderNode(c, level + 1));
+            flatStructure.filter((i: HierarchicalNode) => i.parent_id === node.id).forEach((c: HierarchicalNode) => renderNode(c, level + 1));
         };
-        roots.forEach(r => renderNode(r, 0));
+        roots.forEach((r: HierarchicalNode) => renderNode(r, 0));
         return processed;
     }, [flatStructure]);
 
@@ -474,7 +542,7 @@ export default function MarketPage() {
                             <div>
                                 <div className="text-sm text-slate-500 font-medium uppercase">Сотрудников в оценке</div>
                                 <div className="text-2xl font-bold text-slate-900">
-                                    {comparisonData.reduce((acc: number, curr: any) => acc + curr.employeesCount, 0)}
+                                    {comparisonData.reduce((acc: number, curr: ComparisonData) => acc + curr.employeesCount, 0)}
                                 </div>
                             </div>
                         </div>
@@ -641,7 +709,7 @@ export default function MarketPage() {
                             placeholder="Выберите или введите название"
                         />
                         <datalist id="positions-list">
-                            {positions.map((p: any) => (
+                            {positions.map((p: { id: number, title: string }) => (
                                 <option key={p.id} value={p.title} />
                             ))}
                         </datalist>
@@ -654,7 +722,7 @@ export default function MarketPage() {
                             onChange={e => setForm({ ...form, branch_id: e.target.value ? Number(e.target.value) : null })}
                         >
                             <option value="">Все подразделения (Глобально)</option>
-                            {hierarchicalOptions.map((opt: any) => (
+                            {hierarchicalOptions.map((opt: HierarchicalOption) => (
                                 <option key={opt.id} value={opt.id}>{opt.label}</option>
                             ))}
                         </select>
@@ -702,7 +770,7 @@ export default function MarketPage() {
                             </div>
                         </div>
 
-                        <div className={`p-6 rounded-2xl border ${selectedPosition?.deviation < 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                        <div className={`p-6 rounded-2xl border ${(selectedPosition?.deviation || 0) < 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
                             <div className="text-xs font-bold text-slate-400 uppercase mb-2 tracking-widest">Ваша компания</div>
                             <div className="flex justify-between items-center mb-4">
                                 <div>
@@ -711,13 +779,13 @@ export default function MarketPage() {
                                 </div>
                                 <div className="text-right">
                                     <div className="text-xs text-slate-400 font-medium">Отклонение</div>
-                                    <div className={`text-xl font-bold ${selectedPosition?.deviation < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                        {selectedPosition?.deviation > 0 ? '+' : ''}{selectedPosition?.deviation.toFixed(1)}%
+                                    <div className={`text-xl font-bold ${(selectedPosition?.deviation || 0) < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                                        {(selectedPosition?.deviation || 0) > 0 ? '+' : ''}{(selectedPosition?.deviation || 0).toFixed(1)}%
                                     </div>
                                 </div>
                             </div>
                             <p className="text-xs text-slate-500 leading-relaxed italic">
-                                {selectedPosition?.deviation < 0
+                                {(selectedPosition?.deviation || 0) < 0
                                     ? 'Ваши зарплаты ниже рыночной медианы. Возможен риск оттока сотрудников.'
                                     : 'Ваши зарплаты превышают рыночную медиану. Вы обладаете преимуществом в найме.'}
                             </p>

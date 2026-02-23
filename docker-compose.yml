@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: fot_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fot_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fot_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-fot_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: fot_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fot_backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-fot_admin}:${POSTGRES_PASSWORD:-fot_pass}@db:5432/${POSTGRES_DB:-fot_db}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-secure-secret-key-change-in-prod}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - ALLOWED_ORIGINS=*
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fot_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

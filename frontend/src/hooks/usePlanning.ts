@@ -16,6 +16,7 @@ export type PlanRow = {
     kpi_gross: number;
     bonus_net: number;
     bonus_gross: number;
+    bonus_count?: number | null;
 };
 
 export function usePlanningData() {

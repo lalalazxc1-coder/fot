@@ -191,25 +191,14 @@ export default function PlanningTable({ user }: { user: any }) {
                     <Button
                         onClick={async () => {
                             try {
-                                const userStr = localStorage.getItem('fot_user');
-                                if (!userStr) {
-                                    alert('Не авторизован');
-                                    return;
-                                }
-                                const user = JSON.parse(userStr);
-                                const token = user.access_token;
-                                if (!token) {
-                                    alert('Токен не найден');
-                                    return;
-                                }
                                 const filteredIds = table.getRowModel().rows.map((r: any) => r.original.id);
 
                                 const response = await fetch('/api/planning/export', {
                                     method: 'POST',
                                     headers: {
-                                        'Authorization': `Bearer ${token}`,
                                         'Content-Type': 'application/json'
                                     },
+                                    credentials: 'include',
                                     body: JSON.stringify({ ids: filteredIds })
                                 });
                                 if (!response.ok) {

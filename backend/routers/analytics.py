@@ -112,7 +112,7 @@ def get_analytics_summary(
         ).join(
             Employee,
             Employee.id == FinancialRecord.employee_id
-        ).filter(Employee.status != 'Dismissed')
+        ).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
         
         if allowed_ids is not None:
             fact_query = fact_query.filter(Employee.org_unit_id.in_(allowed_ids))
@@ -125,7 +125,8 @@ def get_analytics_summary(
         plan_query = db.query(
             func.sum(PlanningPosition.count).label('count'),
             func.sum(
-                (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
+                (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + \
+                PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
             ).label('total_net')
         ).filter(PlanningPosition.scenario_id == None)
         
@@ -208,7 +209,8 @@ def get_branch_comparison(
             # Plan aggregation for this unit (any position linked to this unit or its descendants)
             plan_query = db.query(
                 func.sum(
-                    (PlanningPosition.base_net + PlanningPosition.kpi_net + PlanningPosition.bonus_net) * PlanningPosition.count
+                    (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + \
+                    PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
                 )
             ).filter(
                 PlanningPosition.scenario_id == None,
@@ -242,8 +244,8 @@ def get_branch_comparison(
                 Employee.id == FinancialRecord.employee_id
             ).filter(
                 and_(
-                    Employee.org_unit_id.in_(unit_ids_list),
-                    Employee.status != 'Dismissed'
+                    or_(Employee.org_unit_id.in_(unit_ids_list), Employee.org_unit_id == None), # NULL check just in case but units matter here
+                    or_(Employee.status != 'Dismissed', Employee.status == None)
                 )
             )
             
@@ -324,7 +326,7 @@ def get_top_employees(
         ).filter(
             and_(
                 FinancialRecord.id == fact_subquery.c.max_id,
-                Employee.status != 'Dismissed'
+                or_(Employee.status != 'Dismissed', Employee.status == None)
             )
         )
         
@@ -411,7 +413,7 @@ def get_cost_distribution(
             ).filter(
                 and_(
                     Employee.org_unit_id.in_(unit_ids_list),
-                    Employee.status != 'Dismissed'
+                    or_(Employee.status != 'Dismissed', Employee.status == None)
                 )
             ).scalar()
             
@@ -450,7 +452,7 @@ def get_retention_risk(
         query = db.query(Employee).options(
             joinedload(Employee.position),
             joinedload(Employee.org_unit)
-        ).filter(Employee.status != 'Dismissed')
+        ).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
         
         if allowed_ids:
             query = query.filter(Employee.org_unit_id.in_(allowed_ids))
@@ -506,7 +508,7 @@ def get_retention_risk(
             # Try specific branch match, then global
             median = market_map.get((pos_title, emp.org_unit_id)) or market_map.get((pos_title, None)) or 0
             
-            current_salary = fr.total_gross
+            current_salary = fr.total_net
             gap_percent = 0
             if median > 0 and current_salary < median:
                 gap_percent = ((median - current_salary) / median) * 100
@@ -563,7 +565,7 @@ def get_esg_metrics(
     
     def compute():
         # Fetch active emps
-        query = db.query(Employee).filter(Employee.status != 'Dismissed')
+        query = db.query(Employee).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
         if allowed_ids: query = query.filter(Employee.org_unit_id.in_(allowed_ids))
         
         employees = query.all()
@@ -571,7 +573,7 @@ def get_esg_metrics(
         # Latest financials map
         fact_subquery = db.query(FinancialRecord.employee_id, func.max(FinancialRecord.id).label('max_id')).group_by(FinancialRecord.employee_id).subquery()
         fin_records = db.query(FinancialRecord).join(fact_subquery, and_(FinancialRecord.employee_id == fact_subquery.c.employee_id, FinancialRecord.id == fact_subquery.c.max_id)).all()
-        fin_map = {fr.employee_id: fr.total_gross for fr in fin_records}
+        fin_map = {fr.employee_id: fr.total_net for fr in fin_records}
 
         gender_stats = {} # Gender -> [salaries]
         age_stats = {}    # Bucket -> [salaries]
@@ -660,39 +662,49 @@ def get_turnover_analytics(
             PlanningPosition.scenario_id == None
         ).group_by(PlanningPosition.branch_id, PlanningPosition.department_id).all()
         
-        # Build plan count map: unit_id -> plan_count
+        # Build plan count map: unit_id -> direct_plan_count
         plan_map = {}
         for row in plan_rows:
-            if row.branch_id:
-                plan_map[row.branch_id] = plan_map.get(row.branch_id, 0) + (row.total_count or 0)
-            if row.department_id:
-                plan_map[row.department_id] = plan_map.get(row.department_id, 0) + (row.total_count or 0)
+            # FIX: Use the most specific unit ID to avoid double counting in hierarchy
+            target_id = row.department_id or row.branch_id
+            if target_id:
+                plan_map[target_id] = plan_map.get(target_id, 0) + (row.total_count or 0)
         
         # Bulk fetch fact counts per unit
         fact_rows = db.query(
             Employee.org_unit_id,
             func.count(Employee.id).label('emp_count')
         ).filter(
-            Employee.status != 'Dismissed'
+            or_(
+                Employee.status != 'Dismissed',
+                Employee.status == None
+            )
         ).group_by(Employee.org_unit_id).all()
         
         fact_map = {row.org_unit_id: row.emp_count for row in fact_rows}
         
         for u in units:
-            plan_count = plan_map.get(u.id, 0)
-            fact_count = fact_map.get(u.id, 0)
+            # Aggregate plan and fact for this unit AND all descendants
+            desc_ids = get_unit_with_descendants(u.id, children_map)
             
-            gap = plan_count - fact_count
-            if gap > 0: # Only show gaps i.e. vacancies
+            agg_plan = sum(plan_map.get(uid, 0) for uid in desc_ids)
+            agg_fact = sum(fact_map.get(uid, 0) for uid in desc_ids)
+            
+            gap = agg_plan - agg_fact
+            # We include all units that have some data or are part of the hierarchy that has gaps
+            if agg_plan > 0 or agg_fact > 0:
                 gaps_data.append({
+                    "id": u.id,
+                    "parent_id": u.parent_id,
                     "unit_name": u.name,
                     "unit_type": u.type,
-                    "plan": int(plan_count),
-                    "fact": int(fact_count),
+                    "plan": int(agg_plan),
+                    "fact": int(agg_fact),
                     "gap": int(gap)
                 })
         
-        # Sort gaps descending
+        # Sort gaps: prioritize ones with gaps, but keep hierarchy in mind if possible
+        # For now, sort by gap descending as before, but the frontend will handle hierarchy
         gaps_data.sort(key=lambda x: x['gap'], reverse=True)
         
         # 2. Turnover Rate
@@ -712,7 +724,7 @@ def get_turnover_analytics(
         # Avg Headcount
         # Approx: (Start + End) / 2? Or just current active?
         # Let's use current active as denominator for simplicity, or slightly better: current active + dismissed/2
-        active_query = db.query(Employee).filter(Employee.status != 'Dismissed')
+        active_query = db.query(Employee).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
         if allowed_ids: active_query = active_query.filter(Employee.org_unit_id.in_(allowed_ids))
         current_active = active_query.count()
         
