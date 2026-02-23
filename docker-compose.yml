@@ -8,20 +8,23 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-fot_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fot_pass}
       POSTGRES_DB: ${POSTGRES_DB:-fot_db}
-    # ports:
-    #   - "5433:5432"
+      TZ: Asia/Almaty
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: fot_redis
-    # ports:
-    #   - "6379:6379"
+    environment:
+      TZ: Asia/Almaty
     restart: unless-stopped
     volumes:
       - redis_data:/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     command: ["redis-server", "--appendonly", "yes"]
 
   backend:
@@ -36,6 +39,10 @@ services:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - TZ=Asia/Almaty
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - db
       - redis
@@ -46,6 +53,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: fot_frontend
+    environment:
+      - TZ=Asia/Almaty
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -53,6 +65,8 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: fot_caddy
+    environment:
+      - TZ=Asia/Almaty
     restart: unless-stopped
     ports:
       - "80:80"
@@ -61,6 +75,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - frontend
       - backend
