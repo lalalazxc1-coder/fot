@@ -1,0 +1,4 @@
+hr-payroll.quest {
+    reverse_proxy /api/* fot_backend:8000
+    reverse_proxy /* fot_frontend:80
+}
