@@ -175,6 +175,8 @@ class AnalyticsSummaryResponse(BaseModel):
 
 class BranchComparisonItem(BaseModel):
     id: int
+    parent_id: Optional[int] = None
+    type: Optional[str] = None
     name: str
     plan: float
     fact: float
