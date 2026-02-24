@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(re
 def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     # Check if user can view finances
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    can_view_finance = current_user.role == 'Administrator' or perms.get('admin_access') or perms.get('view_financial_reports')
+    can_view_finance = (current_user.role_rel and current_user.role_rel.name == 'Administrator') or perms.get('admin_access') or perms.get('view_financial_reports')
 
     # 1. System Counts
     total_employees = db.query(Employee).count()
