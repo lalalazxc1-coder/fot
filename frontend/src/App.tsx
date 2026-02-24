@@ -111,6 +111,13 @@ function App() {
                 }
             }
 
+            // If we have no record of the user at all, we shouldn't even attempt to fetch /auth/me
+            // This prevents expected 401 "Unauthorized" network errors in the console for fresh visitors.
+            if (!storedUserRaw) {
+                setLoading(false);
+                return;
+            }
+
             // Always attempt to fetch the fresh user data since the JWT is in an HttpOnly cookie
             // which can be present in a new tab even if sessionStorage is empty.
             try {
