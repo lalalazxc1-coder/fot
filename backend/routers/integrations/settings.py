@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from database.models import IntegrationSettings
 from dependencies import get_db, get_current_active_user, require_admin
 
-router = APIRouter(prefix="/api/integrations", tags=["integrations"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 
 # --- Schemas ---
 class IntegrationSettingsUpdate(BaseModel):
@@ -48,7 +48,7 @@ class AnalyzeResponse(BaseModel):
 # --- Endpoints ---
 
 @router.get("/settings", response_model=List[IntegrationSettingsResponse])
-def get_integration_settings(db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
+def get_integration_settings(db: Session = Depends(get_db), current_user = Depends(require_admin)):
     """Get all integration settings (masked)"""
     # Check if admin (optional, for now open to active users or restrict to admin)
     
@@ -84,7 +84,7 @@ def get_integration_settings(db: Session = Depends(get_db), current_user = Depen
 def update_integration_settings(
     data: IntegrationSettingsUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_active_user)
+    current_user = Depends(require_admin)
 ):
     """Update settings for a service"""
     # In real app: Add permission check!
@@ -123,7 +123,7 @@ def update_integration_settings(
 def test_connection(
     data: TestConnectionRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_active_user)
+    current_user = Depends(require_admin)
 ):
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == data.service_name).first()
     if not setting:
@@ -200,7 +200,7 @@ def test_connection(
 def ai_analyze(
     data: AnalyzeRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_active_user)
+    current_user = Depends(require_admin) # Keep it simple? Or change back to get_current_active_user if managers need it!
 ):
     """Real AI Analysis using configured provider"""
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == 'openai').first()
