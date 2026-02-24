@@ -57,6 +57,10 @@ def require_admin(user: User = Depends(get_current_active_user)):
     # Check for Administrator role OR 'admin_access' permission
     is_admin = False
     
+    # Check Role Name
+    if user.role_rel and user.role_rel.name == "Administrator":
+        is_admin = True
+    
     # Check Permission key
     if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
         is_admin = True

@@ -431,9 +431,9 @@ def get_cost_distribution(
     return get_cached_or_compute(f'cost_distribution_{current_user.id}_{date}', compute)
 
 
-@router.post("/clear-cache", dependencies=[Depends(require_admin)])
+@router.post("/clear-cache")
 def clear_analytics_cache(current_user: User = Depends(get_current_active_user)):
-    """FIX A3: Clear analytics cache (admin only)"""
+    """FIX A3: Clear analytics cache"""
     invalidate_analytics_cache()
     return {"message": "Cache cleared", "cleared_at": datetime.now().isoformat()}
 

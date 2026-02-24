@@ -59,8 +59,8 @@ api.interceptors.response.use(
       }
     }
 
-    // For 403 or other 401s where refresh already failed
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    // For 401s where refresh already failed (we don't logout on 403, 403 just means no permission for a specific action)
+    if (error.response && error.response.status === 401) {
       if (!window.location.pathname.includes('/login')) {
         const hadSession = !!(localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user'));
         localStorage.removeItem('fot_user');
@@ -70,6 +70,9 @@ api.interceptors.response.use(
         }
         window.dispatchEvent(new CustomEvent('session-expired'));
       }
+    } else if (error.response && error.response.status === 403) {
+      // Just show a permission error toast, don't logout
+      toast.error('У вас нет прав для этого действия');
     }
     return Promise.reject(error);
   }
