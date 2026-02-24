@@ -47,9 +47,12 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, logout user
         if (!window.location.pathname.includes('/login')) {
+          const hadSession = !!(localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user'));
           localStorage.removeItem('fot_user');
           sessionStorage.removeItem('fot_user');
-          toast.error('Сессия истекла. Пожалуйста, войдите снова.');
+          if (hadSession) {
+            toast.error('Сессия истекла. Пожалуйста, войдите снова.');
+          }
           window.dispatchEvent(new CustomEvent('session-expired'));
         }
         return Promise.reject(refreshError);
@@ -59,9 +62,12 @@ api.interceptors.response.use(
     // For 403 or other 401s where refresh already failed
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       if (!window.location.pathname.includes('/login')) {
+        const hadSession = !!(localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user'));
         localStorage.removeItem('fot_user');
         sessionStorage.removeItem('fot_user');
-        toast.error('Возникла ошибка авторизации. Пожалуйста, войдите снова.');
+        if (hadSession) {
+          toast.error('Возникла ошибка авторизации. Пожалуйста, войдите снова.');
+        }
         window.dispatchEvent(new CustomEvent('session-expired'));
       }
     }
