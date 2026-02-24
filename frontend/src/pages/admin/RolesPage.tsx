@@ -26,6 +26,7 @@ const PERMISSION_GROUPS = [
         permissions: [
             { key: 'view_employees', label: 'Просмотр базы сотрудников' },
             { key: 'add_employees', label: 'Управление сотрудниками (Добавление/Удаление/Редактирование)' },
+            { key: 'manage_offers', label: 'Просмотр и редактирование Job офферов' },
         ]
     },
     {

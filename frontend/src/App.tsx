@@ -90,6 +90,12 @@ const ProtectedScenariosRoute = ({ user, children }: { user: AuthUser, children:
     return children;
 };
 
+const ProtectedOffersRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
+    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.manage_planning || user.permissions?.manage_offers;
+    if (!hasAccess) return <Navigate to="/requests" replace />;
+    return children;
+};
+
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<AuthUser | null>(null);
@@ -213,7 +219,7 @@ function App() {
                         <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
                         <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
                         <Route path="/requests" element={<RequestsPage />} />
-                        <Route path="/offers" element={<JobOffersPage />} />
+                        <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
                         <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
 
                         <Route path="/market" element={

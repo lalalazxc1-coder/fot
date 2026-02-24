@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/offers", tags=["job-offers"])
 def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     # Simple permissions check - admin or manager
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    if not (perms.get('admin_access') or perms.get('manage_planning')):
+    if not (perms.get('admin_access') or perms.get('manage_planning') or perms.get('manage_offers')):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     token = secrets.token_urlsafe(16)
@@ -62,7 +62,7 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
 @router.get("/", response_model=List[JobOfferResponse])
 def list_offers(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    if not (perms.get('admin_access') or perms.get('manage_planning')):
+    if not (perms.get('admin_access') or perms.get('manage_planning') or perms.get('manage_offers')):
         raise HTTPException(status_code=403, detail="Forbidden")
     
     return db.query(JobOffer).order_by(JobOffer.id.desc()).all()
@@ -70,7 +70,7 @@ def list_offers(db: Session = Depends(get_db), current_user: User = Depends(get_
 @router.put("/{offer_id}", response_model=JobOfferResponse)
 def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    if not (perms.get('admin_access') or perms.get('manage_planning')):
+    if not (perms.get('admin_access') or perms.get('manage_planning') or perms.get('manage_offers')):
         raise HTTPException(status_code=403, detail="Forbidden")
     
     offer = db.query(JobOffer).filter(JobOffer.id == offer_id).first()

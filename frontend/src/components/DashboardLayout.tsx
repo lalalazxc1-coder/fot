@@ -215,6 +215,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         const canViewPayroll = hasAdminAccess || user.permissions?.view_payroll;
         const canViewEmployees = hasAdminAccess || user.permissions?.view_employees;
         const canViewScenarios = hasAdminAccess || user.permissions?.view_scenarios;
+        const canViewOffers = hasAdminAccess || user.permissions?.manage_planning || user.permissions?.manage_offers;
         // Assume requests can be viewed if you can view employees or payroll (or just true for now, letting backend filter)
         // Wait, the user asked "На каждую страницу сделай права, если их нету то она не отображается"
         // Let's hide what they explicitly cannot see. If requests lack a permission, let's just make it visible if they have basic access or add a specific request check. A safe assumption is basic users can see their own requests.
@@ -224,7 +225,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
             ...(canViewPayroll ? [{ name: 'ФОТ', url: '/payroll', icon: FileText }] : []),
             ...(canViewEmployees ? [{ name: 'Сотрудники', url: '/employees', icon: Users }] : []),
             { name: 'Заявки', url: '/requests', icon: FileText }, // basic functionality
-            { name: 'Офферы', url: '/offers', icon: Send },
+            ...(canViewOffers ? [{ name: 'Офферы', url: '/offers', icon: Send }] : []),
             ...(canViewMarket ? [{ name: 'Рынок', url: '/market', icon: ShoppingBag }] : []),
             ...(canViewScenarios ? [{ name: 'Песочница', url: '/scenarios', icon: Layout }] : []),
         ];
