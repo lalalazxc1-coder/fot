@@ -113,6 +113,10 @@ def export_employees_excel(
         fin_records = db.scalars(stmt).all()
         financials_map = {r.employee_id: r for r in fin_records}
 
+    # Pre-fetch unit map
+    org_units = db.scalars(select(OrganizationUnit)).all()
+    unit_map = {u.id: u for u in org_units}
+
     # Create workbook
     wb = Workbook()
     ws = wb.active
@@ -136,22 +140,21 @@ def export_employees_excel(
     for row_idx, emp in enumerate(employees, 2):
         fin = financials_map.get(emp.id)
         
-        # Resolve Branch/Dept
-        # If org_unit is loaded (which it is via joinedload), traverse up
         branch_name = "-"
         dept_name = "-"
         
-        if emp.org_unit:
-            if emp.org_unit.type == 'branch':
-                branch_name = emp.org_unit.name
-            elif emp.org_unit.type == 'department':
-                dept_name = emp.org_unit.name
-                # Try to find branch (parent) - note: standard joinedload might not recursive load parent
-                # If structure is small, we could have pre-fetched all units map.
-                if emp.org_unit.parent_id:
-                     # This might trigger N+1 if not careful, but usually acceptable for just parents.
-                     # Better: Pre-fetch all units map at start of function
-                     pass
+        if emp.org_unit_id and emp.org_unit_id in unit_map:
+            u = unit_map[emp.org_unit_id]
+            if u.type in ['branch', 'head_office']:
+                branch_name = u.name
+            else:
+                dept_name = u.name
+                p = unit_map.get(u.parent_id)
+                while p:
+                    if p.type in ['branch', 'head_office']:
+                        branch_name = p.name
+                        break
+                    p = unit_map.get(p.parent_id)
         
         # Financials
         b_n = fin.base_net if fin else 0

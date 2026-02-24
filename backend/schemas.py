@@ -107,6 +107,7 @@ class EmployeeUpdate(BaseModel):
     dob: Optional[str] = None
     status: Optional[str] = "Активен"
     hire_date: Optional[str] = None
+    last_raise_date: Optional[str] = None
     
 class DismissEmployeeRequest(BaseModel):
     reason: str

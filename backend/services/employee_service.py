@@ -106,7 +106,8 @@ class EmployeeService:
                 "bonus": {"net": bonus_n, "gross": bonus_g},
                 "total": {"net": total_n, "gross": total_g},
                 "status": emp.status or "Активен",
-                "hire_date": emp.hire_date
+                "hire_date": emp.hire_date,
+                "last_raise_date": fin.created_at.split('T')[0] if fin and fin.created_at else None
             })
         return results
 
@@ -319,6 +320,19 @@ class EmployeeService:
             fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
             fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
             fin.base_salary = fin.base_net; fin.kpi_amount = fin.kpi_net; fin.total_payment = fin.total_net
+
+        if data.last_raise_date:
+            created_at_val = datetime.now().isoformat()
+            if len(data.last_raise_date) == 10:
+                 created_at_val = f"{data.last_raise_date}T12:00:00.000000"
+            else:
+                 created_at_val = data.last_raise_date
+
+            old_str = fin.created_at.split('T')[0] if fin.created_at else ''
+            new_str = created_at_val.split('T')[0]
+            if old_str != new_str:
+                 changes['Дата изменения ЗП'] = {'old': old_str, 'new': new_str}
+                 fin.created_at = created_at_val
 
         if changes:
              EmployeeService._log_changes_dict(db, user, emp_id, changes)

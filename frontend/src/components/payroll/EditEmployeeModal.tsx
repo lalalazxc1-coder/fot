@@ -72,7 +72,9 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 kpi_net: employee.kpi.net,
                 kpi_gross: employee.kpi.gross,
                 bonus_net: employee.bonus.net,
-                bonus_gross: employee.bonus.gross
+                bonus_gross: employee.bonus.gross,
+                hire_date: employee.hire_date || '',
+                last_raise_date: employee.last_raise_date || ''
             });
         }
     }, [employee, planningData]);
@@ -245,6 +247,25 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                             required
                             value={editDetails.dob}
                             onChange={e => setEditDetails({ ...editDetails, dob: e.target.value })}
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 ml-1">Дата приема</label>
+                        <Input
+                            type="date"
+                            value={editDetails.hire_date}
+                            onChange={e => setEditDetails({ ...editDetails, hire_date: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 ml-1">Дата последнего поднятия ЗП</label>
+                        <Input
+                            type="date"
+                            value={editDetails.last_raise_date}
+                            onChange={e => setEditDetails({ ...editDetails, last_raise_date: e.target.value })}
                         />
                     </div>
                 </div>
