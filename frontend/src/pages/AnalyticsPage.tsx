@@ -21,23 +21,53 @@ const COLORS = [
 const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data }) => {
     const maxFact = Math.max(...data.map(d => d.fact), 1); // Avoid div by zero
 
+    // Build hierarchy
+    const itemMap = new Map();
+    data.forEach(item => itemMap.set(item.id, { ...item, children: [] }));
+
+    const rootNodes: any[] = [];
+    itemMap.forEach(item => {
+        if (item.parent_id && itemMap.has(item.parent_id)) {
+            itemMap.get(item.parent_id).children.push(item);
+        } else {
+            rootNodes.push(item);
+        }
+    });
+
+    const sortNodes = (nodes: any[]) => {
+        nodes.sort((a, b) => b.fact - a.fact);
+        nodes.forEach(n => sortNodes(n.children));
+    };
+    sortNodes(rootNodes);
+
+    const flattenNodes = (nodes: any[], depth = 0): any[] => {
+        let result: any[] = [];
+        nodes.forEach(node => {
+            result.push({ ...node, depth });
+            result = result.concat(flattenNodes(node.children, depth + 1));
+        });
+        return result;
+    };
+
+    const flatHierarchy = flattenNodes(rootNodes);
+
     return (
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full text-left text-sm border-separate border-spacing-0">
                 <thead className="sticky top-0 bg-white z-10">
                     <tr>
-                        <th className="pb-3 pt-2 text-slate-400 font-medium pl-4 border-b border-slate-100 bg-white">Подразделение</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white">План</th>
-                        <th className="pb-3 pt-2 text-left pl-8 text-slate-400 font-medium border-b border-slate-100 bg-white min-w-[150px]">Факт</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white">Отклонение</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium pr-4 border-b border-slate-100 bg-white">%</th>
+                        <th className="pb-3 pt-2 text-slate-400 font-medium pl-4 border-b border-slate-100 bg-white relative z-20">Подразделение</th>
+                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white relative z-20">План</th>
+                        <th className="pb-3 pt-2 text-left pl-8 text-slate-400 font-medium border-b border-slate-100 bg-white min-w-[150px] relative z-20">Факт</th>
+                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white relative z-20">Отклонение</th>
+                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium pr-4 border-b border-slate-100 bg-white relative z-20">%</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {data.map((item) => {
+                    {flatHierarchy.map((item) => {
                         // Visual indicators for type
                         const getTypeIcon = (type?: string) => {
-                            if (type === 'head_office') return '🏢';
+                            if (type === 'head_office') return '🏛️';
                             if (type === 'branch') return '🏢';
                             if (type === 'department') return '📁';
                             return '📊';
@@ -50,20 +80,32 @@ const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data })
                             return 'text-slate-700';
                         };
 
-                        const getIndentation = (type?: string) => {
-                            if (type === 'department') return 'pl-8';
-                            return 'pl-4';
-                        };
-
                         return (
                             <tr
                                 key={item.id}
                                 className="group hover:bg-slate-50 transition-colors"
                             >
-                                <td className={`py-3 ${getIndentation(item.type)} font-semibold border-b border-slate-50 ${getTypeColor(item.type)}`}>
-                                    <div className="flex items-center gap-2">
+                                <td
+                                    className={`py-3 font-semibold border-b border-slate-50 relative ${getTypeColor(item.type)}`}
+                                    style={{ paddingLeft: `${1 + item.depth * 1.5}rem` }}
+                                >
+                                    {/* Tree Line Connector */}
+                                    {item.depth > 0 && (
+                                        <div
+                                            className="absolute left-[0.25rem] top-0 bottom-0 border-l border-slate-200"
+                                            style={{ left: `${1 + (item.depth - 1) * 1.5 + 0.5}rem` }}
+                                        />
+                                    )}
+                                    {item.depth > 0 && (
+                                        <div
+                                            className="absolute top-1/2 w-3 border-t border-slate-200"
+                                            style={{ left: `${1 + (item.depth - 1) * 1.5 + 0.5}rem` }}
+                                        />
+                                    )}
+
+                                    <div className="flex items-center gap-2 relative z-10 bg-white group-hover:bg-slate-50 w-fit pl-1">
                                         <span className="text-base">{getTypeIcon(item.type)}</span>
-                                        <span>{item.name}</span>
+                                        <span className={item.depth === 0 ? "font-bold text-slate-900" : ""}>{item.name}</span>
                                     </div>
                                 </td>
                                 <td className="py-3 text-right text-slate-500 border-b border-slate-50">{formatMoney(item.plan)}</td>

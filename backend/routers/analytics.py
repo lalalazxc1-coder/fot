@@ -255,6 +255,7 @@ def get_branch_comparison(
             if plan_total > 0 or fact_total > 0:
                 results.append({
                     'id': unit.id,
+                    'parent_id': unit.parent_id,
                     'name': unit.name,
                     'type': unit.type,  # Include type for frontend
                     'plan': float(plan_total),

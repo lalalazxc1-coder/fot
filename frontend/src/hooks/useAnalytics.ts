@@ -18,6 +18,7 @@ export type SummaryData = {
 
 export type BranchComparison = {
     id: number;
+    parent_id?: number | null;
     name: string;
     type?: 'head_office' | 'branch' | 'department';  // Type of organizational unit
     plan: number;

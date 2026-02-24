@@ -30,7 +30,7 @@ export const MoneyInput: React.FC<MoneyInputProps> = ({
     return (
         <input
             type="text"
-            className={`h-10 px-3 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-all ${className}`}
+            className={`w-full min-w-0 h-10 px-3 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 transition-all ${className}`}
             placeholder={placeholder}
             value={value === 0 ? '' : value.toLocaleString('ru-RU')}
             onChange={handleChange}
