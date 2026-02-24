@@ -107,6 +107,8 @@ class EmployeeService:
                 "total": {"net": total_n, "gross": total_g},
                 "status": emp.status or "Активен",
                 "hire_date": emp.hire_date,
+                "gender": emp.gender,
+                "dob": emp.dob,
                 "last_raise_date": fin.created_at.split('T')[0] if fin and fin.created_at else None
             })
         return results
