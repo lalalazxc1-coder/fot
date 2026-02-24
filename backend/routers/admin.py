@@ -130,3 +130,45 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
             "roles": role_chart
         }
     }
+
+@router.get("/logs")
+def get_extended_logs(page: int = 1, limit: int = 50, db: Session = Depends(get_db)):
+    offset = (page - 1) * limit
+    logs_query = db.query(AuditLog).order_by(desc(AuditLog.id))
+    total_logs = logs_query.count()
+    logs = logs_query.offset(offset).limit(limit).all()
+
+    user_ids = {l.user_id for l in logs}
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {u.id: u.full_name for u in users}
+
+    entity_map = {
+        'employee': 'Сотрудник',
+        'planning': 'План',
+        'auth': 'Система',
+        'users': 'Пользователь',
+        'org_unit': 'Структура',
+        'salary_request': 'Заявка',
+        'salary_config': 'Настройки ФОТ'
+    }
+
+    result = []
+    for log in logs:
+        entity_name = entity_map.get(log.target_entity, log.target_entity.upper() if log.target_entity else "N/A")
+        result.append({
+            "id": log.id,
+            "user": user_map.get(log.user_id, "Unknown"),
+            "entity": entity_name,
+            "target_entity_id": log.target_entity_id,
+            "old_values": log.old_values,
+            "new_values": log.new_values,
+            "timestamp": log.timestamp
+        })
+
+    return {
+        "logs": result,
+        "total": total_logs,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total_logs + limit - 1) // limit
+    }

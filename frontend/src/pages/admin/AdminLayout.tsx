@@ -40,6 +40,12 @@ export default function AdminLayout() {
                     >
                         Интеграции
                     </NavLink>
+                    <NavLink
+                        to="/admin/logs"
+                        className={({ isActive }) => `px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+                    >
+                        Логи аудита
+                    </NavLink>
                 </div>
             </PageHeader>
 

@@ -67,6 +67,22 @@ export function useAdminStats() {
     });
 }
 
+export function useAuditLogs(page: number = 1, limit: number = 50) {
+    return useQuery({
+        queryKey: ['audit-logs', page, limit],
+        queryFn: async () => {
+            const res = await api.get(`/admin/logs?page=${page}&limit=${limit}`);
+            return res.data as {
+                logs: any[];
+                total: number;
+                page: number;
+                limit: number;
+                total_pages: number;
+            };
+        },
+    });
+}
+
 export function useUsers() {
     return useQuery({
         queryKey: ['users'],

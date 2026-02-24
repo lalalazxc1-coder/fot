@@ -21,6 +21,7 @@ import StructurePage from './pages/admin/StructurePage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import WorkflowPage from './pages/admin/WorkflowPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
+import LogsPage from './pages/admin/LogsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import PositionsPage from './pages/settings/PositionsPage';
 import OfferTemplatesPage from './pages/settings/OfferTemplatesPage';
@@ -252,6 +253,7 @@ function App() {
                             <Route path="users" element={<UsersPage />} />
                             <Route path="workflow" element={<WorkflowPage />} />
                             <Route path="integrations" element={<IntegrationsPage />} />
+                            <Route path="logs" element={<LogsPage />} />
                         </Route>
                     </Route>
                 ) : (
