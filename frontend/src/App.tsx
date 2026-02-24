@@ -126,9 +126,12 @@ function App() {
                 } else {
                     sessionStorage.setItem('fot_user', JSON.stringify(storageData));
                 }
-            } catch (err) {
+            } catch (err: any) {
                 // If we get an error (e.g., 401 Unauthorized), the cookie is invalid or missing
-                console.error("Failed to refresh user data from server / Session invalid", err);
+                // In production, we don't need to log expected 401s for guests
+                if (err?.response?.status !== 401) {
+                    console.error("Failed to refresh user data from server / Session invalid", err);
+                }
                 localStorage.removeItem('fot_user');
                 sessionStorage.removeItem('fot_user');
                 setUser(null);
