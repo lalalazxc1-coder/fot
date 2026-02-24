@@ -37,7 +37,7 @@ type AuthUser = {
 
 // Security Wrappers
 const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
+    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.manage_admin_panel;
     if (!hasAdminAccess) {
         return <Navigate to="/" replace />;
     }
@@ -47,6 +47,7 @@ const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX
 const ProtectedSettingsRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
     const hasAccess = user.role === 'Administrator' ||
         user.permissions?.admin_access ||
+        user.permissions?.manage_admin_panel ||
         user.permissions?.view_structure ||
         user.permissions?.edit_structure ||
         user.permissions?.view_positions ||

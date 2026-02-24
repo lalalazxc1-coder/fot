@@ -121,7 +121,7 @@ function UserDropdownContent({ user, hasSettingsAccess, hasAdminAccess, onChange
 export default function DashboardLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
     const { snapshotDate } = useSnapshot();
     const navigate = useNavigate();
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
+    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.manage_admin_panel;
     const canViewMarket = hasAdminAccess || user.permissions?.view_market;
 
     const hasSettingsAccess = hasAdminAccess ||
