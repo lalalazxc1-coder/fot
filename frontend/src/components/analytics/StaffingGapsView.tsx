@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Loader2, AlertCircle, ChevronRight, ChevronDown, Building2, LayoutGrid } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronRight, ChevronDown, Building2, LayoutGrid, User } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import React, { useState, useMemo } from 'react';
 
@@ -48,6 +48,8 @@ const GapTreeRows = ({ node, level, expandedNodes, onToggle }: {
                             <Building2 className="w-4 h-4 text-indigo-600" />
                         ) : node.unit_type === 'branch' ? (
                             <Building2 className="w-4 h-4 text-slate-500" />
+                        ) : node.unit_type === 'position' ? (
+                            <User className="w-4 h-4 text-slate-400" />
                         ) : (
                             <LayoutGrid className="w-4 h-4 text-slate-400" />
                         )}

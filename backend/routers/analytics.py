@@ -658,32 +658,49 @@ def get_turnover_analytics(
         plan_rows = db.query(
             PlanningPosition.branch_id,
             PlanningPosition.department_id,
+            PlanningPosition.position_title,
             func.sum(PlanningPosition.count).label('total_count')
         ).filter(
             PlanningPosition.scenario_id == None
-        ).group_by(PlanningPosition.branch_id, PlanningPosition.department_id).all()
+        ).group_by(PlanningPosition.branch_id, PlanningPosition.department_id, PlanningPosition.position_title).all()
         
-        # Build plan count map: unit_id -> direct_plan_count
+        # Build plan count map: (unit_id, position_title) -> direct_plan_count
+        # AND unit_id -> direct_plan_count
+        plan_pos_map = {}
         plan_map = {}
         for row in plan_rows:
-            # FIX: Use the most specific unit ID to avoid double counting in hierarchy
+            # target_id is the most specific unit
             target_id = row.department_id or row.branch_id
             if target_id:
                 plan_map[target_id] = plan_map.get(target_id, 0) + (row.total_count or 0)
+                key = (target_id, row.position_title or "Без должности")
+                plan_pos_map[key] = plan_pos_map.get(key, 0) + (row.total_count or 0)
         
         # Bulk fetch fact counts per unit
         fact_rows = db.query(
             Employee.org_unit_id,
+            Position.title.label('position_title'),
             func.count(Employee.id).label('emp_count')
+        ).join(
+            Position, Employee.position_id == Position.id, isouter=True
         ).filter(
             or_(
                 Employee.status != 'Dismissed',
                 Employee.status == None
             )
-        ).group_by(Employee.org_unit_id).all()
+        ).group_by(Employee.org_unit_id, Position.title).all()
         
-        fact_map = {row.org_unit_id: row.emp_count for row in fact_rows}
+        fact_pos_map = {}
+        fact_map = {}
+        for row in fact_rows:
+            uid = row.org_unit_id
+            if uid:
+                fact_map[uid] = fact_map.get(uid, 0) + (row.emp_count or 0)
+                key = (uid, row.position_title or "Без должности")
+                fact_pos_map[key] = fact_pos_map.get(key, 0) + (row.emp_count or 0)
         
+        pos_id_counter = 1000000  # Offset to avoid collision with unit IDs
+
         for u in units:
             # Aggregate plan and fact for this unit AND all descendants
             desc_ids = get_unit_with_descendants(u.id, children_map)
@@ -703,6 +720,28 @@ def get_turnover_analytics(
                     "fact": int(agg_fact),
                     "gap": int(gap)
                 })
+                
+                # Check direct positions for this unit
+                unit_positions = set()
+                for (uid, pos) in plan_pos_map.keys():
+                    if uid == u.id: unit_positions.add(pos)
+                for (uid, pos) in fact_pos_map.keys():
+                    if uid == u.id: unit_positions.add(pos)
+                
+                for pos_idx, pos in enumerate(sorted(unit_positions)):
+                    p_plan = plan_pos_map.get((u.id, pos), 0)
+                    p_fact = fact_pos_map.get((u.id, pos), 0)
+                    if p_plan > 0 or p_fact > 0:
+                        pos_id_counter += 1
+                        gaps_data.append({
+                            "id": pos_id_counter,
+                            "parent_id": u.id,
+                            "unit_name": pos,
+                            "unit_type": "position",
+                            "plan": int(p_plan),
+                            "fact": int(p_fact),
+                            "gap": int(p_plan - p_fact)
+                        })
         
         # Sort gaps: prioritize ones with gaps, but keep hierarchy in mind if possible
         # For now, sort by gap descending as before, but the frontend will handle hierarchy
