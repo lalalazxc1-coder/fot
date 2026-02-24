@@ -92,7 +92,7 @@ export function ExpandableTabs({
         <div
             ref={outsideClickRef}
             className={cn(
-                "flex flex-wrap items-center gap-2 rounded-2xl border bg-background/50 p-1 shadow-sm backdrop-blur-md",
+                "flex flex-nowrap items-center gap-1 sm:gap-2 rounded-2xl border bg-background/50 p-1 shadow-sm backdrop-blur-md",
                 className
             )}
         >

@@ -50,7 +50,7 @@ function UserDropdownContent({ user, hasSettingsAccess, hasAdminAccess, onChange
     const initials = user.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
     return (
-        <div className="w-[90vw] md:w-64 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="w-[85vw] md:w-64 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
             {/* User Info Header */}
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
                 <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-slate-800 to-slate-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-md shadow-slate-900/10">
@@ -281,7 +281,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                         {/* Notification Dropdown (Index 0) */}
                         {activeTabIndex === 0 && (
                             <div
-                                className="absolute right-0 top-full mt-4 w-[90vw] md:w-80 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 transform"
+                                className="absolute right-0 top-full mt-2 w-[85vw] md:w-80 max-w-[320px] bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 transform"
                                 style={{ animation: 'dropdownIn 0.15s ease-out' }}
                             >
                                 <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
@@ -330,7 +330,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
 
                         {/* User Dropdown (Index 1) */}
                         {activeTabIndex === 1 && (
-                            <div className="absolute right-0 top-full mt-4 z-50 transform" style={{ animation: 'dropdownIn 0.15s ease-out' }}>
+                            <div className="absolute right-0 top-full mt-2 z-50 transform" style={{ animation: 'dropdownIn 0.15s ease-out' }}>
                                 <UserDropdownContent
                                     user={user}
                                     hasSettingsAccess={hasSettingsAccess}
@@ -357,10 +357,27 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                     </div>
                 </div>
 
-                {/* TubeLight NavBar for Mobile */}
-                <div className="md:hidden">
-                    <NavBar items={tubeNavItems} />
-                </div>
+                {/* Mobile Menu Dropdown */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden border-t border-slate-100 bg-white/95 backdrop-blur-md absolute top-full left-0 w-full shadow-lg z-40">
+                        <div className="flex flex-col py-2">
+                            {tubeNavItems.map(item => {
+                                const Icon = item.icon;
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        to={item.url}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center gap-3 px-6 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <Icon className="w-5 h-5 text-slate-400" />
+                                        <span className="font-medium">{item.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Snapshot Warning Banner */}
