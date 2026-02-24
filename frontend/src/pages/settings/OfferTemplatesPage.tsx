@@ -108,14 +108,14 @@ export default function OfferTemplatesPage() {
 
     return (
         <div className="space-y-6 pb-20">
-            <div className="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-200">
+            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center bg-white p-6 rounded-[2rem] border border-slate-200">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900">Шаблоны офферов</h2>
                     <p className="text-slate-500 font-medium text-sm">Настройте варианты предложений для разных ролей или отделов</p>
                 </div>
                 <button
                     onClick={() => { setFormData(initialForm); setEditingId(null); setIsAddOpen(true); }}
-                    className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
+                    className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 w-full md:w-auto"
                 >
                     <Plus className="w-4 h-4" /> Новый вариант
                 </button>

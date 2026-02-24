@@ -33,16 +33,16 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
     if (!isOpen || !mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center sm:p-4 p-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
             {/* Backdrop click handler */}
             <div className="absolute inset-0" onClick={onClose}></div>
 
             <div
-                className={`bg-white rounded-xl shadow-2xl w-full ${maxWidth} relative animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col z-10`}
+                className={`bg-white shadow-2xl w-full ${maxWidth} relative animate-in zoom-in-95 duration-200 h-full md:h-auto max-h-[100vh] md:max-h-[90vh] flex flex-col z-10 sm:rounded-xl rounded-none md:rounded-xl`}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex justify-between items-center p-5 border-b border-slate-100 flex-shrink-0">
+                <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-100 flex-shrink-0 bg-white sticky top-0 z-20">
                     <h3 className="text-lg font-bold text-slate-800 tracking-tight">{title}</h3>
                     <button
                         onClick={onClose}
@@ -53,7 +53,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
                 </div>
 
                 {/* Body */}
-                <div className="p-6 overflow-y-auto">
+                <div className="p-4 sm:p-6 overflow-y-auto w-full">
                     {children}
                 </div>
             </div>

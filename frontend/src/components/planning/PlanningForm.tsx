@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../Modal';
 import { Input } from '../ui-mocks';
 import { Button } from '../ui-mocks';
-import { HelpCircle, ChevronRight, ChevronDown, Building2, Users } from 'lucide-react';
+import { ChevronRight, ChevronDown, Building2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { MoneyInput } from '../shared';
 import { calculateTaxes, solveGrossFromNet, DEFAULT_CONFIG, SalaryConfig } from '../../utils/salary';
@@ -192,7 +192,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={editingRow.id === 0 ? "Новая позиция" : "Редактирование позиции"}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="text-sm font-bold text-slate-700">Должность</label>
                         <select
@@ -267,28 +267,27 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                                         className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600 cursor-pointer"
                                         disabled={!canEditFinancials}
                                     />
-                                    <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
+                                    <span className="text-[10px] sm:text-xs font-medium text-slate-400 group-hover:text-slate-600 transition-colors flex items-center gap-1">
                                         Вычет (14 МРП)
-                                        <HelpCircle className="w-3 h-3 text-slate-300" />
                                     </span>
                                 </label>
                             </div>
                         )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-slate-400 text-center tracking-wider">
-                        <div></div><div>Net</div><div>Gross</div>
+                    <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-2 text-[10px] font-bold uppercase text-slate-400 text-center tracking-wider px-1">
+                        <div className="text-left">Тип</div><div>Net</div><div>Gross</div>
                     </div>
                     {[
                         { label: 'Оклад', net: 'base_net', gross: 'base_gross' },
                         { label: 'KPI', net: 'kpi_net', gross: 'kpi_gross' },
                         { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross', hasCount: true }
                     ].map((group, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-2 items-start pt-1">
+                        <div key={i} className="grid grid-cols-[1.5fr_2fr_2fr] gap-2 items-start pt-1">
                             <div>
-                                <div className="text-sm font-bold text-slate-700 mt-2">{group.label}</div>
+                                <div className="text-xs sm:text-sm font-bold text-slate-700 mt-2">{group.label}</div>
                                 {group.hasCount && (
-                                    <div className="flex items-center gap-1 mt-1 mb-1">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 mt-1 mb-1">
                                         <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Кол-во:</span>
                                         <input
                                             type="number"
@@ -301,18 +300,22 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                                     </div>
                                 )}
                             </div>
-                            <MoneyInput
-                                className="bg-white"
-                                value={(editingRow as any)[group.net]}
-                                onChange={val => handleMoneyChange(group.net, val, group.gross)}
-                                disabled={!canEditFinancials}
-                            />
-                            <MoneyInput
-                                className="bg-white"
-                                value={(editingRow as any)[group.gross]}
-                                onChange={val => handleMoneyChange(group.gross, val, group.net)}
-                                disabled={!canEditFinancials}
-                            />
+                            <div className="w-full relative">
+                                <MoneyInput
+                                    className="bg-white w-full text-xs sm:text-sm h-10 px-2"
+                                    value={(editingRow as any)[group.net]}
+                                    onChange={val => handleMoneyChange(group.net, val, group.gross)}
+                                    disabled={!canEditFinancials}
+                                />
+                            </div>
+                            <div className="w-full relative">
+                                <MoneyInput
+                                    className="bg-white w-full text-xs sm:text-sm h-10 px-2"
+                                    value={(editingRow as any)[group.gross]}
+                                    onChange={val => handleMoneyChange(group.gross, val, group.net)}
+                                    disabled={!canEditFinancials}
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>

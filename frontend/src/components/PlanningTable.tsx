@@ -179,7 +179,7 @@ export default function PlanningTable({ user }: { user: any }) {
             </PageHeader>
 
             {/* Filters & Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
+            <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
                 <PlanningFilters
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                     branchFilter={branchFilter} setBranchFilter={setBranchFilter}
@@ -187,7 +187,7 @@ export default function PlanningTable({ user }: { user: any }) {
                     structure={structure}
                 />
 
-                <div className="ml-auto flex gap-2">
+                <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row gap-2 mt-2 xl:mt-0">
                     <Button
                         onClick={async () => {
                             try {

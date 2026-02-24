@@ -549,8 +549,8 @@ export default function MarketPage() {
                     </div>
 
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50/50">
-                            <div className="flex items-center gap-4 flex-1 w-full">
+                        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 justify-between md:items-center bg-slate-50/50">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1 w-full">
                                 <div className="relative max-w-sm w-full">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                     <input
@@ -574,8 +574,8 @@ export default function MarketPage() {
                             </div>
 
                             {canEdit && (
-                                <div className="flex items-center gap-2">
-                                    <label className={`flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer ${isImporting ? 'opacity-50 cursor-wait' : ''}`}>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                                    <label className={`flex justify-center items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer w-full sm:w-auto ${isImporting ? 'opacity-50 cursor-wait' : ''}`}>
                                         {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
                                         Импорт CSV
                                         <input
@@ -588,7 +588,7 @@ export default function MarketPage() {
                                     </label>
                                     <button
                                         onClick={() => setIsAddOpen(true)}
-                                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-slate-900/10 whitespace-nowrap"
+                                        className="flex justify-center items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-slate-900/10 whitespace-nowrap w-full sm:w-auto"
                                     >
                                         <Plus className="w-4 h-4" /> Добавить
                                     </button>

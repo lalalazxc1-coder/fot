@@ -190,7 +190,7 @@ export default function AnalyticsPageOptimized() {
             </PageHeader>
 
             {/* Tab Navigation */}
-            <div className="flex p-1 bg-slate-100 rounded-xl w-fit">
+            <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
                 {[
                     { id: 'budget', label: 'Бюджет и ФОТ', icon: Wallet },
                     { id: 'staffing', label: 'Штат и Текучесть', icon: Users },

@@ -50,15 +50,15 @@ function UserDropdownContent({ user, hasSettingsAccess, hasAdminAccess, onChange
     const initials = user.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
     return (
-        <div className="w-64 bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+        <div className="w-[90vw] md:w-64 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
             {/* User Info Header */}
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-slate-800 to-slate-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-md shadow-slate-900/10">
+                <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-slate-800 to-slate-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-md shadow-slate-900/10">
                     {initials}
                 </div>
-                <div>
-                    <div className="font-semibold text-sm text-slate-800">{user.full_name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{user.role}</div>
+                <div className="min-w-0">
+                    <div className="font-semibold text-sm text-slate-800 truncate">{user.full_name}</div>
+                    <div className="text-xs text-slate-400 mt-0.5 truncate">{user.role}</div>
                 </div>
             </div>
 
@@ -281,7 +281,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                         {/* Notification Dropdown (Index 0) */}
                         {activeTabIndex === 0 && (
                             <div
-                                className="absolute right-0 top-full mt-4 w-80 bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 transform"
+                                className="absolute right-0 top-full mt-4 w-[90vw] md:w-80 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 transform"
                                 style={{ animation: 'dropdownIn 0.15s ease-out' }}
                             >
                                 <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">

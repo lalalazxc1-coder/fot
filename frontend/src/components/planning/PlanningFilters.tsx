@@ -23,7 +23,7 @@ export const PlanningFilters: React.FC<PlanningFiltersProps> = ({
 
     return (
         <>
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full xl:w-64 shrink-0">
                 <select
                     className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600"
                     value={branchFilter || 'all'}
@@ -38,7 +38,7 @@ export const PlanningFilters: React.FC<PlanningFiltersProps> = ({
                     ))}
                 </select>
             </div>
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full xl:w-64 shrink-0">
                 <select
                     className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600 disabled:opacity-50"
                     value={departmentFilter || 'all'}
@@ -53,7 +53,7 @@ export const PlanningFilters: React.FC<PlanningFiltersProps> = ({
                     ))}
                 </select>
             </div>
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full xl:w-72 shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                     placeholder="Поиск по должности..."

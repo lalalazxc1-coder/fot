@@ -132,84 +132,86 @@ export default function RequestsPage() {
 
             {/* List Table */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-xs">
-                        <tr>
-                            <th className="px-6 py-4 font-bold">Сотрудник</th>
-                            <th className="px-6 py-4 font-bold">Филиал</th>
-                            <th className="px-6 py-4 font-bold">Тип</th>
-                            <th className="px-6 py-4 font-bold text-right">Сумма</th>
-                            <th className="px-6 py-4 font-bold">Статус</th>
-                            <th className="px-6 py-4 font-bold">Этап</th>
-                            <th className="px-4 py-4"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {filteredRequests.length === 0 && (
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left text-sm min-w-[600px]">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-xs">
                             <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
-                                    Список заявок пуст
-                                </td>
+                                <th className="px-6 py-4 font-bold">Сотрудник</th>
+                                <th className="px-6 py-4 font-bold">Филиал</th>
+                                <th className="px-6 py-4 font-bold">Тип</th>
+                                <th className="px-6 py-4 font-bold text-right">Сумма</th>
+                                <th className="px-6 py-4 font-bold">Статус</th>
+                                <th className="px-6 py-4 font-bold">Этап</th>
+                                <th className="px-4 py-4"></th>
                             </tr>
-                        )}
-                        {filteredRequests.map(req => {
-                            const isRaise = req.type === 'raise';
-                            const diff = req.requested_value - req.current_value;
-                            return (
-                                <tr
-                                    key={req.id}
-                                    onClick={() => setSelectedRequest(req)}
-                                    className="group hover:bg-slate-50 cursor-pointer transition-colors"
-                                >
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{req.employee_details.name}</div>
-                                        <div className="text-xs text-slate-500">{req.employee_details.position}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-slate-600">{req.employee_details.branch}</div>
-                                        <div className="text-xs text-slate-400">{req.employee_details.department}</div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${isRaise ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
-                                            {isRaise ? 'Повышение' : 'Бонус'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className={`font-mono font-bold ${isRaise ? 'text-slate-900' : 'text-slate-900'}`}>
-                                            {formatMoney(isRaise ? req.requested_value : req.requested_value)}
-                                        </div>
-                                        {isRaise && (
-                                            <div className="text-xs text-emerald-600 font-mono font-bold">
-                                                +{formatMoney(diff)}
-                                            </div>
-                                        )}
-                                        {!isRaise && (
-                                            <div className="text-xs text-purple-600 font-mono font-bold">
-                                                бонус
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                                                'bg-red-100 text-red-700'
-                                            }`}>
-                                            {req.status === 'pending' ? 'Ожидает' : req.status === 'approved' ? 'Принято' : 'Отказ'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-slate-600 font-medium text-xs">{req.current_step_label}</div>
-                                    </td>
-                                    <td className="px-4 py-4 text-right">
-                                        <div className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors inline-block">
-                                            <Eye className="w-4 h-4" />
-                                        </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredRequests.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
+                                        Список заявок пуст
                                     </td>
                                 </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                            )}
+                            {filteredRequests.map(req => {
+                                const isRaise = req.type === 'raise';
+                                const diff = req.requested_value - req.current_value;
+                                return (
+                                    <tr
+                                        key={req.id}
+                                        onClick={() => setSelectedRequest(req)}
+                                        className="group hover:bg-slate-50 cursor-pointer transition-colors"
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{req.employee_details.name}</div>
+                                            <div className="text-xs text-slate-500">{req.employee_details.position}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-slate-600">{req.employee_details.branch}</div>
+                                            <div className="text-xs text-slate-400">{req.employee_details.department}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${isRaise ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                                                {isRaise ? 'Повышение' : 'Бонус'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className={`font-mono font-bold ${isRaise ? 'text-slate-900' : 'text-slate-900'}`}>
+                                                {formatMoney(isRaise ? req.requested_value : req.requested_value)}
+                                            </div>
+                                            {isRaise && (
+                                                <div className="text-xs text-emerald-600 font-mono font-bold">
+                                                    +{formatMoney(diff)}
+                                                </div>
+                                            )}
+                                            {!isRaise && (
+                                                <div className="text-xs text-purple-600 font-mono font-bold">
+                                                    бонус
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                                                    'bg-red-100 text-red-700'
+                                                }`}>
+                                                {req.status === 'pending' ? 'Ожидает' : req.status === 'approved' ? 'Принято' : 'Отказ'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-slate-600 font-medium text-xs">{req.current_step_label}</div>
+                                        </td>
+                                        <td className="px-4 py-4 text-right">
+                                            <div className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors inline-block">
+                                                <Eye className="w-4 h-4" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <RequestDetailsModal

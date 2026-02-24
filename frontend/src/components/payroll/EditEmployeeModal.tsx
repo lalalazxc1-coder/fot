@@ -224,7 +224,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="text-xs font-bold text-slate-500 ml-1">Пол</label>
                         <select
@@ -297,7 +297,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
                         { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] }
                     ].map((group, i) => (
-                        <div key={i} className="grid grid-cols-3 gap-2 items-center">
+                        <div key={i} className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>
                             <MoneyInput
                                 className="bg-slate-100 text-slate-500 cursor-not-allowed"
@@ -315,7 +315,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                     ))}
 
                     {/* Бонусы (Доплаты) с переключателем */}
-                    <div className="grid grid-cols-3 gap-2 items-center mt-2 pt-2 border-t border-slate-200">
+                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center mt-2 pt-2 border-t border-slate-200">
                         <div className="flex flex-col">
                             <span className="text-sm font-medium text-slate-600">Доплаты</span>
                             {(planBonusAmount.net > 0 || planBonusAmount.gross > 0) && (

@@ -32,12 +32,12 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
     const selectedFilterBranch = structure.find(b => b.id.toString() === branchFilter);
 
     return (
-        <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
+        <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
             {/* Search */}
 
 
             {/* Branch Filter */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full xl:w-64 shrink-0">
                 <select
                     className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600"
                     value={branchFilter}
@@ -54,7 +54,7 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
             </div>
 
             {/* Department Filter */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full xl:w-64 shrink-0">
                 <select
                     className="h-10 w-full rounded-xl border border-transparent bg-slate-50 px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:bg-white outline-none hover:bg-slate-100 transition-all font-medium text-slate-600 disabled:opacity-50"
                     value={departmentFilter}
@@ -77,7 +77,7 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
                 </select>
             </div>
             {/* Search */}
-            <div className="relative w-full sm:w-72">
+            <div className="relative w-full xl:w-72 shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                     placeholder="Поиск по должности..."
@@ -87,7 +87,7 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
                 />
             </div>
             {/* Actions */}
-            <div className="ml-auto">
+            <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row gap-2 mt-2 xl:mt-0">
                 {children}
             </div>
         </div>

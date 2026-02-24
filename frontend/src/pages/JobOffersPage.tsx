@@ -336,7 +336,7 @@ export default function JobOffersPage() {
 
                         <section className="bg-slate-50/50 p-5 rounded-3xl border border-slate-100 space-y-4">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Wallet className="w-3 h-3" /> Деньги</h4>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <input type="number" placeholder="Оклад" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.base_net} onChange={e => setFormData({ ...formData, base_net: parseInt(e.target.value) || 0 })} />
                                 <input type="number" placeholder="Бонус" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.kpi_net} onChange={e => setFormData({ ...formData, kpi_net: parseInt(e.target.value) || 0 })} />
                                 <div className="col-span-2">
@@ -357,7 +357,7 @@ export default function JobOffersPage() {
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Clock className="w-3 h-3" /> График</h4>
                             <div className="space-y-3">
                                 <input placeholder="Испытательный срок" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.probation_period} onChange={e => setFormData({ ...formData, probation_period: e.target.value })} />
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input placeholder="Часы" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.working_hours} onChange={e => setFormData({ ...formData, working_hours: e.target.value })} />
                                     <input placeholder="Обед" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.lunch_break} onChange={e => setFormData({ ...formData, lunch_break: e.target.value })} />
                                 </div>

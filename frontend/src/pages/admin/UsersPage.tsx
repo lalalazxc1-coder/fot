@@ -97,7 +97,7 @@ export default function UsersPage() {
 
     return (
         <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 animate-in fade-in duration-500">
-            <div className="mb-8 flex justify-between items-center">
+            <div className="mb-8 flex flex-col md:flex-row gap-4 justify-between md:items-center">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3 text-slate-900 tracking-tight">
                         <div className="p-2 bg-slate-100 rounded-lg">
@@ -110,7 +110,7 @@ export default function UsersPage() {
                 <button
                     disabled={isUsersLoading || isRolesLoading || isStructureLoading}
                     onClick={openCreateModal}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50"
+                    className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 w-full md:w-auto text-center"
                 >
                     + Добавить пользователя
                 </button>
@@ -121,8 +121,8 @@ export default function UsersPage() {
                     <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
                 </div>
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-slate-200/60 shadow-sm">
-                    <table className="w-full text-left text-sm">
+                <div className="overflow-x-auto rounded-2xl border border-slate-200/60 shadow-sm custom-scrollbar">
+                    <table className="w-full text-left text-sm min-w-[700px]">
                         <thead className="bg-slate-50/80 border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Пользователь</th>

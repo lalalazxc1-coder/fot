@@ -79,62 +79,64 @@ export default function PositionsPage() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
-                        <tr>
-                            <th className="px-6 py-4">Название должности</th>
-                            <th className="px-6 py-4 w-32 text-center">Грейд</th>
-                            {canEdit && <th className="px-6 py-4 w-20"></th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {filtered.map(pos => (
-                            <tr key={pos.id} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-6 py-4 font-medium text-slate-900">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                            <Briefcase className="w-4 h-4" />
-                                        </div>
-                                        {pos.title}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                                        {pos.grade}
-                                    </span>
-                                </td>
-                                {canEdit && (
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => {
-                                                    setEditId(pos.id);
-                                                    setForm({ title: pos.title, grade: pos.grade });
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(pos.id)}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full text-left min-w-[500px]">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
+                            <tr>
+                                <th className="px-6 py-4">Название должности</th>
+                                <th className="px-6 py-4 w-32 text-center">Грейд</th>
+                                {canEdit && <th className="px-6 py-4 w-20"></th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filtered.map(pos => (
+                                <tr key={pos.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-6 py-4 font-medium text-slate-900">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                                <Briefcase className="w-4 h-4" />
+                                            </div>
+                                            {pos.title}
                                         </div>
                                     </td>
-                                )}
-                            </tr>
-                        ))}
-                        {filtered.length === 0 && (
-                            <tr>
-                                <td colSpan={3} className="px-6 py-12 text-center text-slate-400">
-                                    Должности не найдены
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                                            {pos.grade}
+                                        </span>
+                                    </td>
+                                    {canEdit && (
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditId(pos.id);
+                                                        setForm({ title: pos.title, grade: pos.grade });
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(pos.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="px-6 py-12 text-center text-slate-400">
+                                        Должности не найдены
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Add Modal */}
