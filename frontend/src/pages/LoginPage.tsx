@@ -162,6 +162,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                                     <input
                                         type="text"
                                         value={username}
+                                        autoComplete="username"
                                         onChange={(e) => {
                                             setUsername(e.target.value);
                                             if (inputErrors.username) setInputErrors(prev => ({ ...prev, username: false }));
@@ -185,6 +186,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         value={password}
+                                        autoComplete="current-password"
                                         onChange={(e) => {
                                             setPassword(e.target.value);
                                             if (inputErrors.password) setInputErrors(prev => ({ ...prev, password: false }));
