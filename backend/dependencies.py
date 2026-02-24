@@ -62,7 +62,7 @@ def require_admin(user: User = Depends(get_current_active_user)):
         is_admin = True
     
     # Check Permission key
-    if user.role_rel and user.role_rel.permissions and (user.role_rel.permissions.get('admin_access') or user.role_rel.permissions.get('manage_admin_panel')):
+    if user.role_rel and user.role_rel.permissions and user.role_rel.permissions.get('admin_access'):
         is_admin = True
         
     if not is_admin:

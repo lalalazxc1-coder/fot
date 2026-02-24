@@ -251,61 +251,79 @@ export default function JobOffersPage() {
                 </button>
             </PageHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offers.map((offer: JobOffer) => (
-                    <div key={offer.id} className="bg-white rounded-3xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all flex flex-col group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 bg-slate-50 rounded-2xl">
-                                <FileText className="w-6 h-6 text-slate-400" />
-                            </div>
-                            <div className="flex flex-col items-end gap-2 text-[10px] font-bold text-slate-400">
-                                {getStatusBadge(offer.status)}
-                                <span>{offer.company_name}</span>
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                            <h3 className="font-bold text-slate-900 text-lg mb-1">{offer.candidate_name}</h3>
-                            <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
-                                <Building2 className="w-4 h-4" /> {offer.position_title}
-                            </p>
-                        </div>
-
-                        <div className="space-y-3 mb-8 bg-slate-50 p-4 rounded-2xl">
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-bold uppercase tracking-tighter">Оклад</span>
-                                <span className="font-black text-slate-900">{formatMoney(offer.base_net)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="text-slate-500 font-bold uppercase tracking-tighter">Бонус</span>
-                                <span className="font-black text-slate-900">{formatMoney(offer.kpi_net)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200/50">
-                                <span className="text-blue-500 font-black uppercase tracking-widest text-[9px]">Код доступа:</span>
-                                <span className="font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{offer.access_code || '---'}</span>
-                            </div>
-                        </div>
-
-                        <div className="mt-auto flex flex-wrap gap-2">
-                            <button
-                                onClick={() => handleCopyLink(offer.token, offer.id)}
-                                className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
-                            >
-                                {copiedId === offer.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                Link
-                            </button>
-                            <button
-                                onClick={() => handleDownload(offer.token)}
-                                className="flex-1 bg-blue-50 text-blue-600 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Download className="w-3.5 h-3.5" /> PDF
-                            </button>
-                            <button onClick={() => openEdit(offer)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-xl"><Edit3 className="w-4 h-4" /></button>
-                            <a href={`/public/offer/${offer.token}`} target="_blank" rel="noreferrer" className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-xl"><ExternalLink className="w-4 h-4" /></a>
-                        </div>
+            {offers.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                        <FileText className="w-10 h-10 text-slate-300" />
                     </div>
-                ))}
-            </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">Офферов пока нет</h3>
+                    <p className="text-slate-500 max-w-sm mb-8">
+                        Здесь будут отображаться созданные предложения о работе. Нажмите кнопку ниже, чтобы создать свой первый цифровой оффер.
+                    </p>
+                    <button
+                        onClick={() => { setFormData(initialForm); setEditingId(null); setIsAddOpen(true); }}
+                        className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                    >
+                        <Plus className="w-5 h-5" /> Создать оффер
+                    </button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {offers.map((offer: JobOffer) => (
+                        <div key={offer.id} className="bg-white rounded-3xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all flex flex-col group">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-slate-50 rounded-2xl">
+                                    <FileText className="w-6 h-6 text-slate-400" />
+                                </div>
+                                <div className="flex flex-col items-end gap-2 text-[10px] font-bold text-slate-400">
+                                    {getStatusBadge(offer.status)}
+                                    <span>{offer.company_name}</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="font-bold text-slate-900 text-lg mb-1">{offer.candidate_name}</h3>
+                                <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
+                                    <Building2 className="w-4 h-4" /> {offer.position_title}
+                                </p>
+                            </div>
+
+                            <div className="space-y-3 mb-8 bg-slate-50 p-4 rounded-2xl">
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Оклад</span>
+                                    <span className="font-black text-slate-900">{formatMoney(offer.base_net)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-500 font-bold uppercase tracking-tighter">Бонус</span>
+                                    <span className="font-black text-slate-900">{formatMoney(offer.kpi_net)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200/50">
+                                    <span className="text-blue-500 font-black uppercase tracking-widest text-[9px]">Код доступа:</span>
+                                    <span className="font-mono font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{offer.access_code || '---'}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-auto flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => handleCopyLink(offer.token, offer.id)}
+                                    className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {copiedId === offer.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                    Link
+                                </button>
+                                <button
+                                    onClick={() => handleDownload(offer.token)}
+                                    className="flex-1 bg-blue-50 text-blue-600 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Download className="w-3.5 h-3.5" /> PDF
+                                </button>
+                                <button onClick={() => openEdit(offer)} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-xl"><Edit3 className="w-4 h-4" /></button>
+                                <a href={`/public/offer/${offer.token}`} target="_blank" rel="noreferrer" className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-xl"><ExternalLink className="w-4 h-4" /></a>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); setEditingId(null); }} title={editingId ? "Редактирование" : "Новый цифровой оффер"} maxWidth="max-w-6xl">
                 <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="grid grid-cols-1 md:grid-cols-3 gap-8 p-1">

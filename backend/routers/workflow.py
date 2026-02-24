@@ -29,7 +29,7 @@ def create_approval_step(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_active_user)
 ):
-    if not current_user.role_rel or not (current_user.role_rel.permissions.get("admin_access") or current_user.role_rel.permissions.get("manage_admin_panel")):
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"):
         raise HTTPException(403, "Only Admin")
     
     if not step.role_id and not step.user_id:
@@ -58,7 +58,7 @@ def update_approval_step(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_active_user)
 ):
-    if not current_user.role_rel or not (current_user.role_rel.permissions.get("admin_access") or current_user.role_rel.permissions.get("manage_admin_panel")): 
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): 
         raise HTTPException(403, "Only Admin")
     
     existing = db.get(ApprovalStep, id)
@@ -83,7 +83,7 @@ def delete_approval_step(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_active_user)
 ):
-    if not current_user.role_rel or not (current_user.role_rel.permissions.get("admin_access") or current_user.role_rel.permissions.get("manage_admin_panel")): 
+    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): 
         raise HTTPException(403, "Only Admin")
     
     existing = db.get(ApprovalStep, id)

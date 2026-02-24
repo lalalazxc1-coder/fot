@@ -8,7 +8,6 @@ const PERMISSION_GROUPS = [
         title: 'Система, Аналитика и Песочница',
         permissions: [
             { key: 'admin_access', label: 'Полные административные права (Доступ ко всем разделам)' },
-            { key: 'manage_admin_panel', label: 'Администратор без сумм (Управление пользователями, ролями, орг. структурой БЕЗ ФОТ)' },
             { key: 'view_analytics', label: 'Просмотр страницы Аналитика' },
             { key: 'view_scenarios', label: 'Доступ к разделу Песочница' },
         ]

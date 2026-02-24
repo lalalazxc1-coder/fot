@@ -9,11 +9,7 @@ from dependencies import require_admin
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 @router.get("/stats")
-def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
-    # Check if user can view finances
-    perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    can_view_finance = (current_user.role_rel and current_user.role_rel.name == 'Administrator') or perms.get('admin_access') or perms.get('view_financial_reports')
-
+def get_admin_stats(db: Session = Depends(get_db)):
     # 1. System Counts
     total_employees = db.query(Employee).count()
     total_users = db.query(User).count()
@@ -24,16 +20,12 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
     # Use optimized query from analytics or simple aggregation here
     # Total Active Employees Budget
     max_ids_query = db.query(func.max(FinancialRecord.id)).group_by(FinancialRecord.employee_id)
-    if can_view_finance:
-        budget_query = db.query(func.sum(FinancialRecord.total_net)).join(Employee).filter(
-            Employee.status != 'Dismissed',
-            FinancialRecord.id.in_(max_ids_query)
-        )
-        total_budget = budget_query.scalar() or 0
-        avg_salary = total_budget / total_employees if total_employees > 0 else 0
-    else:
-        total_budget = 0
-        avg_salary = 0
+    budget_query = db.query(func.sum(FinancialRecord.total_net)).join(Employee).filter(
+        Employee.status != 'Dismissed',
+        FinancialRecord.id.in_(max_ids_query)
+    )
+    total_budget = budget_query.scalar() or 0
+    avg_salary = total_budget / total_employees if total_employees > 0 else 0
 
     # 3. Recent Activity (Audit Logs)
     # Get last 10 actions
