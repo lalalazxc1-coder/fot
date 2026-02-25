@@ -22,7 +22,7 @@ def upgrade() -> None:
     # 1. Новая таблица login_logs
     op.create_table(
         'login_logs',
-        sa.Column('id', sa.Integer(), primary_key=True, index=True),
+        sa.Column('id', sa.Integer(), primary_key=True),  # index создаётся автоматически через PK
         sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True),
         sa.Column('user_email', sa.String(), nullable=True),
         sa.Column('action', sa.String(), nullable=False),
@@ -30,19 +30,20 @@ def upgrade() -> None:
         sa.Column('user_agent', sa.String(), nullable=True),
         sa.Column('timestamp', sa.String(), nullable=True),
     )
-    op.create_index('ix_login_logs_id', 'login_logs', ['id'], unique=False)
+    # Индексы только для полей поиска — НЕ для id (PK уже имеет индекс)
     op.create_index('ix_login_logs_user_id', 'login_logs', ['user_id'], unique=False)
     op.create_index('ix_login_logs_timestamp', 'login_logs', ['timestamp'], unique=False)
 
     # 2. Расширяем audit_logs (nullable — не ломаем существующие записи)
-    op.add_column('audit_logs', sa.Column('ip_address', sa.String(), nullable=True))
-    op.add_column('audit_logs', sa.Column('user_agent', sa.String(), nullable=True))
+    with op.batch_alter_table('audit_logs') as batch_op:
+        batch_op.add_column(sa.Column('ip_address', sa.String(), nullable=True))
+        batch_op.add_column(sa.Column('user_agent', sa.String(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column('audit_logs', 'user_agent')
-    op.drop_column('audit_logs', 'ip_address')
+    with op.batch_alter_table('audit_logs') as batch_op:
+        batch_op.drop_column('user_agent')
+        batch_op.drop_column('ip_address')
     op.drop_index('ix_login_logs_timestamp', table_name='login_logs')
     op.drop_index('ix_login_logs_user_id', table_name='login_logs')
-    op.drop_index('ix_login_logs_id', table_name='login_logs')
     op.drop_table('login_logs')
