@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from database.models import User
+from database.models import User, LoginLog
 from security import verify_password, create_access_token, create_refresh_token, get_password_hash
 from datetime import timedelta
+from utils.date_utils import now_iso
 import logging
 import hmac
 import re
@@ -10,51 +11,71 @@ import re
 logger = logging.getLogger(__name__)
 
 
+def _write_login_log(db: Session, action: str, user_id=None, user_email=None,
+                     ip_address=None, user_agent=None):
+    """Записать событие входа/выхода в login_logs. Не бросает исключений."""
+    try:
+        log = LoginLog(
+            user_id=user_id,
+            user_email=user_email,
+            action=action,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            timestamp=now_iso()
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        logger.warning("Failed to write login log: %s", e)
+        db.rollback()
+
+
 class AuthService:
     @staticmethod
-    def login(db: Session, username: str, password: str, remember_me: bool = False):
+    def login(db: Session, username: str, password: str, remember_me: bool = False,
+              ip_address: str = None, user_agent: str = None):
         # 1. Fetch User
         user = db.query(User).filter_by(email=username).first()
 
-        # FIX #25: Unified error message prevents user enumeration
         if not user:
+            _write_login_log(db, "login_failed", user_email=username,
+                             ip_address=ip_address, user_agent=user_agent)
             raise HTTPException(status_code=400, detail="Неверный логин или пароль")
 
         if not getattr(user, "is_active", True):
+            _write_login_log(db, "login_blocked", user_id=user.id, user_email=username,
+                             ip_address=ip_address, user_agent=user_agent)
             raise HTTPException(status_code=403, detail="Пользователь заблокирован")
 
         # 2. Verify Password
         is_valid = False
 
-        # FIX #10: Legacy plaintext password migration with constant-time comparison
         if not user.hashed_password.startswith("$2"):
-            # Legacy plaintext password — use hmac.compare_digest for constant-time comparison
             if hmac.compare_digest(user.hashed_password.encode('utf-8'), password.encode('utf-8')):
                 is_valid = True
-                # Auto-migrate to bcrypt hash on successful login
                 user.hashed_password = get_password_hash(password)
                 db.commit()
                 logger.info(f"Auto-migrated password to bcrypt for user {user.id}")
             else:
-                logger.warning(f"Legacy plaintext login failed for user {user.id} — consider force-migrating")
+                logger.warning(f"Legacy plaintext login failed for user {user.id}")
         else:
-            # Normal bcrypt verification
             if verify_password(password, user.hashed_password):
                 is_valid = True
 
-        # FIX #25: Same error message whether user exists or password is wrong
         if not is_valid:
+            _write_login_log(db, "login_failed", user_id=user.id, user_email=username,
+                             ip_address=ip_address, user_agent=user_agent)
             raise HTTPException(status_code=400, detail="Неверный логин или пароль")
 
         role_name = user.role_rel.name if user.role_rel else "No Role"
         perms = user.role_rel.permissions if user.role_rel else {}
 
-        # 3. Create Token
-        # Extend token life if "remember me" is checked (e.g. 30 days)
-        # Access token acts as short-lived (configured in security.py as 15m)
+        # 3. Записываем успешный вход
+        _write_login_log(db, "login_success", user_id=user.id, user_email=username,
+                         ip_address=ip_address, user_agent=user_agent)
+
         expires_delta = timedelta(days=30) if remember_me else None
-        access_token = create_access_token(data={"sub": str(user.id)}) # Default 15 mins
-        
+        access_token = create_access_token(data={"sub": str(user.id)})
         refresh_expires_delta = timedelta(days=30) if remember_me else None
         refresh_token = create_refresh_token(data={"sub": str(user.id)}, expires_delta=refresh_expires_delta)
 

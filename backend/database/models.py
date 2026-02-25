@@ -111,10 +111,26 @@ class AuditLog(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     target_entity = Column(String)
     target_entity_id = Column(Integer)
-    timestamp = Column(String) 
+    timestamp = Column(String)
     old_values = Column(JSON)
     new_values = Column(JSON)
-    
+    ip_address = Column(String, nullable=True)   # NEW: IP пользователя
+    user_agent = Column(String, nullable=True)   # NEW: браузер/устройство
+
+    user = relationship("User")
+
+
+class LoginLog(Base):
+    """Лог событий входа/выхода — кто, когда, с какого IP и устройства."""
+    __tablename__ = "login_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable — для failed login
+    user_email = Column(String, nullable=True)     # логин при попытке (даже если не нашёл)
+    action = Column(String)                         # 'login_success' | 'login_failed' | 'logout'
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    timestamp = Column(String, default=now_iso)
+
     user = relationship("User")
 
 # NEW: Scenario Planning

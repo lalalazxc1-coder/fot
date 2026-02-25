@@ -16,33 +16,31 @@ from datetime import timedelta
 SECURE_COOKIES = os.environ.get("ENVIRONMENT", "development") == "production"
 
 @router.post("/login", response_model=LoginResponse)
-def login(creds: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(creds: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     """
     Login endpoint. Returns JWT token and user info, and sets HttpOnly cookie.
     """
+    # Извлекаем IP и User-Agent для логирования
+    ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    ua = request.headers.get("User-Agent", "")
+
     try:
-        auth_data = AuthService.login(db, creds.username, creds.password, getattr(creds, 'remember_me', False))
-        
-        # FIX: HttpOnly cookie — secure=True в production (HTTPS), False на dev
+        auth_data = AuthService.login(
+            db, creds.username, creds.password,
+            getattr(creds, 'remember_me', False),
+            ip_address=ip, user_agent=ua
+        )
         max_age = 30 * 24 * 60 * 60 if getattr(creds, 'remember_me', False) else None
-        
         response.set_cookie(
-            key="access_token",
-            value=auth_data["access_token"],
-            httponly=True,
-            secure=SECURE_COOKIES,  # NEW-2: True в продакшне (HTTPS)
-            samesite="lax",
-            max_age=max_age
+            key="access_token", value=auth_data["access_token"],
+            httponly=True, secure=SECURE_COOKIES, samesite="lax", max_age=max_age
         )
         response.set_cookie(
-            key="refresh_token",
-            value=auth_data["refresh_token"],
-            httponly=True,
-            secure=SECURE_COOKIES,  # NEW-2: True в продакшне (HTTPS)
-            samesite="lax",
-            max_age=max_age
+            key="refresh_token", value=auth_data["refresh_token"],
+            httponly=True, secure=SECURE_COOKIES, samesite="lax", max_age=max_age
         )
-        # NEW-1: Не возвращаем токены в теле ответа — только нечувствительные данные пользователя для UI
         safe_auth_data = {k: v for k, v in auth_data.items() if k not in ('access_token', 'refresh_token')}
         return safe_auth_data
     except Exception as e:
@@ -110,14 +108,20 @@ def change_password(
 from database.redis_client import blacklist_token, is_token_blacklisted
 
 @router.post("/logout")
-def logout(request: Request, response: Response, current_user: User = Depends(get_current_active_user)):
+def logout(request: Request, response: Response, db: Session = Depends(get_db),
+           current_user: User = Depends(get_current_active_user)):
     """
     Logout endpoint. Clears HttpOnly cookie and adds tokens to Redis blacklist.
     """
-    # 1. Blacklist token
+    from services.auth_service import _write_login_log
+    ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    ua = request.headers.get("User-Agent", "")
+
     access_token = request.cookies.get("access_token") or request.headers.get("Authorization", "").replace("Bearer ", "")
     refresh_token_cookie = request.cookies.get("refresh_token")
-    
+
     for token in [access_token, refresh_token_cookie]:
         if token:
             try:
@@ -127,19 +131,13 @@ def logout(request: Request, response: Response, current_user: User = Depends(ge
                     blacklist_token(token, exp)
             except JWTError:
                 pass
-                
-    response.delete_cookie(
-        key="access_token",
-        httponly=True,
-        samesite="lax",
-        secure=SECURE_COOKIES  # NEW-2
-    )
-    response.delete_cookie(
-        key="refresh_token",
-        httponly=True,
-        samesite="lax",
-        secure=SECURE_COOKIES  # NEW-2
-    )
+
+    # Записываем logout в лог сессий
+    _write_login_log(db, "logout", user_id=current_user.id,
+                     user_email=current_user.email, ip_address=ip, user_agent=ua)
+
+    response.delete_cookie(key="access_token", httponly=True, samesite="lax", secure=SECURE_COOKIES)
+    response.delete_cookie(key="refresh_token", httponly=True, samesite="lax", secure=SECURE_COOKIES)
     return {"status": "logged_out", "message": "Cookie cleared"}
 
 @router.get("/me")

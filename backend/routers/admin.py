@@ -124,19 +124,21 @@ def get_admin_stats(db: Session = Depends(get_db)):
     }
 
 @router.get("/logs")
-def get_extended_logs(page: int = 1, limit: int = 50, db: Session = Depends(get_db)):
+def get_extended_logs(page: int = 1, limit: int = 50, entity: str = None, db: Session = Depends(get_db)):
     offset = (page - 1) * limit
     logs_query = db.query(AuditLog).order_by(desc(AuditLog.id))
+    if entity:
+        logs_query = logs_query.filter(AuditLog.target_entity == entity)
     total_logs = logs_query.count()
     logs = logs_query.offset(offset).limit(limit).all()
 
     user_ids = {l.user_id for l in logs}
     users = db.query(User).filter(User.id.in_(user_ids)).all()
-    user_map = {u.id: u.full_name for u in users}
+    user_map = {u.id: (u.full_name or u.email) for u in users}
 
     entity_map = {
         'employee': 'Сотрудник',
-        'planning': 'План',
+        'planning': 'Планирование',
         'auth': 'Система',
         'users': 'Пользователь',
         'org_unit': 'Структура',
@@ -149,12 +151,15 @@ def get_extended_logs(page: int = 1, limit: int = 50, db: Session = Depends(get_
         entity_name = entity_map.get(log.target_entity, log.target_entity.upper() if log.target_entity else "N/A")
         result.append({
             "id": log.id,
-            "user": user_map.get(log.user_id, "Unknown"),
+            "user": user_map.get(log.user_id, "Система"),
             "entity": entity_name,
+            "entity_raw": log.target_entity,
             "target_entity_id": log.target_entity_id,
             "old_values": log.old_values,
             "new_values": log.new_values,
-            "timestamp": log.timestamp
+            "timestamp": log.timestamp,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
         })
 
     return {
@@ -163,4 +168,95 @@ def get_extended_logs(page: int = 1, limit: int = 50, db: Session = Depends(get_
         "page": page,
         "limit": limit,
         "total_pages": (total_logs + limit - 1) // limit
+    }
+
+
+def _parse_ua(ua_string: str | None) -> dict:
+    """Простой парсинг User-Agent без внешних библиотек."""
+    if not ua_string:
+        return {"browser": "Неизвестно", "os": "Неизвестно", "device": "Desktop"}
+    ua = ua_string.lower()
+    # Browser
+    if "edg/" in ua or "edge/" in ua:
+        browser = "Edge"
+    elif "chrome" in ua and "safari" in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua and "chrome" not in ua:
+        browser = "Safari"
+    elif "opera" in ua or "opr/" in ua:
+        browser = "Opera"
+    else:
+        browser = "Другой"
+    # OS
+    if "windows" in ua:
+        os_name = "Windows"
+    elif "android" in ua:
+        os_name = "Android"
+    elif "iphone" in ua or "ipad" in ua:
+        os_name = "iOS"
+    elif "mac os" in ua or "macos" in ua:
+        os_name = "macOS"
+    elif "linux" in ua:
+        os_name = "Linux"
+    else:
+        os_name = "Другое"
+    # Device type
+    if "mobile" in ua or "android" in ua or "iphone" in ua:
+        device = "Mobile"
+    elif "tablet" in ua or "ipad" in ua:
+        device = "Tablet"
+    else:
+        device = "Desktop"
+    return {"browser": browser, "os": os_name, "device": device}
+
+
+@router.get("/login-logs")
+def get_login_logs(page: int = 1, limit: int = 50, action: str = None, db: Session = Depends(get_db)):
+    """История входов/выходов пользователей."""
+    from database.models import LoginLog
+    offset = (page - 1) * limit
+    q = db.query(LoginLog).order_by(desc(LoginLog.id))
+    if action:
+        q = q.filter(LoginLog.action == action)
+    total = q.count()
+    logs = q.offset(offset).limit(limit).all()
+
+    user_ids = {l.user_id for l in logs if l.user_id}
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {u.id: (u.full_name or u.email) for u in users}
+
+    action_labels = {
+        "login_success": {"label": "Вход", "color": "green"},
+        "login_failed":  {"label": "Неудача", "color": "red"},
+        "login_blocked": {"label": "Заблокирован", "color": "orange"},
+        "logout":        {"label": "Выход", "color": "slate"},
+    }
+
+    result = []
+    for log in logs:
+        ua_info = _parse_ua(log.user_agent)
+        action_info = action_labels.get(log.action, {"label": log.action, "color": "slate"})
+        result.append({
+            "id": log.id,
+            "user": user_map.get(log.user_id, log.user_email or "Неизвестно"),
+            "user_email": log.user_email,
+            "action": log.action,
+            "action_label": action_info["label"],
+            "action_color": action_info["color"],
+            "ip_address": log.ip_address or "—",
+            "browser": ua_info["browser"],
+            "os": ua_info["os"],
+            "device": ua_info["device"],
+            "user_agent_full": log.user_agent,
+            "timestamp": log.timestamp,
+        })
+
+    return {
+        "logs": result,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total + limit - 1) // limit
     }

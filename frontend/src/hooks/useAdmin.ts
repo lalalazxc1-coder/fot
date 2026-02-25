@@ -67,11 +67,31 @@ export function useAdminStats() {
     });
 }
 
-export function useAuditLogs(page: number = 1, limit: number = 50) {
+export function useAuditLogs(page: number = 1, limit: number = 50, entity?: string) {
     return useQuery({
-        queryKey: ['audit-logs', page, limit],
+        queryKey: ['audit-logs', page, limit, entity],
         queryFn: async () => {
-            const res = await api.get(`/admin/logs?page=${page}&limit=${limit}`);
+            const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+            if (entity) params.set('entity', entity);
+            const res = await api.get(`/admin/logs?${params}`);
+            return res.data as {
+                logs: any[];
+                total: number;
+                page: number;
+                limit: number;
+                total_pages: number;
+            };
+        },
+    });
+}
+
+export function useLoginLogs(page: number = 1, limit: number = 50, action?: string) {
+    return useQuery({
+        queryKey: ['login-logs', page, limit, action],
+        queryFn: async () => {
+            const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+            if (action) params.set('action', action);
+            const res = await api.get(`/admin/login-logs?${params}`);
             return res.data as {
                 logs: any[];
                 total: number;
