@@ -126,28 +126,53 @@ def _check_pin_rate_limit(token: str) -> bool:
             del _pin_attempts[oldest_key]
     return False
 
+
 @router.get("/public/{token}")
-def get_public_offer(token: str, pin: str = None, db: Session = Depends(get_db)):
+def get_public_offer(token: str, db: Session = Depends(get_db)):
+    """
+    FIX #H2: PIN больше не передаётся в GET-параметре (не попадает в логи и историю браузера).
+    GET возвращает только preview (locked view). Для разблокировки — POST /public/{token}/unlock.
+    """
     offer = db.query(JobOffer).filter(JobOffer.token == token).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
-    # FIX #6: Rate limit PIN attempts
-    if pin is not None and _check_pin_rate_limit(token):
+
+    # Всегда возвращаем locked preview — PIN проверяется отдельным POST-запросом
+    return {
+        "id": offer.id,
+        "token": offer.token,
+        "candidate_name": offer.candidate_name,
+        "position_title": offer.position_title,
+        "company_name": offer.company_name,
+        "is_locked": True,
+        "status": offer.status
+    }
+
+
+from pydantic import BaseModel as _BaseModel
+
+class PinVerifyRequest(_BaseModel):
+    pin: str
+
+
+@router.post("/public/{token}/unlock")
+def unlock_offer_with_pin(token: str, data: PinVerifyRequest, db: Session = Depends(get_db)):
+    """
+    FIX #H2: PIN принимается только в POST JSON-теле (не в URL).
+    Возвращает полные данные оффера при корректном PIN.
+    """
+    offer = db.query(JobOffer).filter(JobOffer.token == token).first()
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+
+    # Rate limit
+    if _check_pin_rate_limit(token):
         raise HTTPException(status_code=429, detail="Слишком много попыток. Попробуйте позже.")
-    
-    # If PIN is not provided or incorrect, return partial "locked" response
-    if pin != offer.access_code:
-        return {
-            "id": offer.id,
-            "token": offer.token,
-            "candidate_name": offer.candidate_name,
-            "position_title": offer.position_title,
-            "is_locked": True,
-            "status": offer.status
-        }
-    
-    # If PIN matches, return full object
+
+    if data.pin != offer.access_code:
+        raise HTTPException(status_code=403, detail="Неверный PIN-код")
+
+    # PIN верный — возвращаем полные данные
     return {
         "candidate_name": offer.candidate_name,
         "position_title": offer.position_title,
@@ -173,10 +198,11 @@ def get_public_offer(token: str, pin: str = None, db: Session = Depends(get_db))
         "signatories": offer.signatories
     }
 
-from pydantic import BaseModel as _BaseModel
+
 class JobOfferActionRequest(_BaseModel):
     action: str
     pin: str
+
 
 @router.post("/public/{token}/action")
 def job_offer_action(token: str, data: JobOfferActionRequest, db: Session = Depends(get_db)):

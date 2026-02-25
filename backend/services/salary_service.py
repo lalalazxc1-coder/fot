@@ -162,7 +162,12 @@ def sync_employee_financials(db: Session, plan: PlanningPosition, changes: dict,
             if 'bonus_gross' in changes: apply_change_val('bonus_gross', plan.bonus_gross)
             
             if emp_audit_changes:
-                # Recalc totals
+                # FIX #M1: Корректный пересчёт total с учётом bonus_count
+                # bonus_count в плане = кол-во получателей доплаты (не все).
+                # При синхронизации с конкретным сотрудником мы записываем
+                # ему full bonus_net (как у него персонально), т.к. bonus_net
+                # в FinancialRecord хранится на единицу, а не с умножением.
+                # Итого корректно: base + kpi + bonus (на одного сотрудника).
                 fin.total_net = fin.base_net + fin.kpi_net + fin.bonus_net
                 fin.total_gross = fin.base_gross + fin.kpi_gross + fin.bonus_gross
                 

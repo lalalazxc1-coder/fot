@@ -26,27 +26,13 @@ export default function PublicOfferPage() {
     const [isVerifying, setIsVerifying] = useState(false);
     const [pinError, setPinError] = useState(false);
 
-    const fetchOffer = async (providedPin?: string) => {
+    const fetchOffer = async () => {
         setIsVerifying(true);
         try {
-            const pinParam = providedPin ? `?pin=${providedPin}` : '';
-            const res = await api.get(`/offers/public/${token}${pinParam}`);
-
-            if (res.data.is_locked) {
-                setIsLocked(true);
-                setOffer(res.data);
-                if (providedPin) {
-                    setPinError(true);
-                    toast.error('Неверный код доступа');
-                }
-            } else {
-                setIsLocked(false);
-                setPinError(false);
-                setOffer(res.data);
-                if (searchParams.get('print') === 'true') {
-                    setTimeout(() => window.print(), 1000);
-                }
-            }
+            // FIX #H2: GET больше не принимает pin-параметр — только preview
+            const res = await api.get(`/offers/public/${token}`);
+            setOffer(res.data);
+            setIsLocked(true); // Всегда начинаем как locked
         } catch (e: any) {
             setError("Оффер не найден или срок его действия истек");
         } finally {
@@ -57,11 +43,30 @@ export default function PublicOfferPage() {
 
     useEffect(() => {
         fetchOffer();
-    }, [token, searchParams]);
+    }, [token]);
 
-    const handleVerifyPin = (e: React.FormEvent) => {
+    const handleVerifyPin = async (e: React.FormEvent) => {
         e.preventDefault();
-        fetchOffer(pin);
+        setIsVerifying(true);
+        try {
+            // FIX #H2: PIN передаётся в POST JSON-теле (не в URL)
+            const res = await api.post(`/offers/public/${token}/unlock`, { pin });
+            setIsLocked(false);
+            setPinError(false);
+            setOffer(res.data);
+            if (searchParams.get('print') === 'true') {
+                setTimeout(() => window.print(), 1000);
+            }
+        } catch (e: any) {
+            setPinError(true);
+            if (e?.response?.status === 429) {
+                toast.error('Превышен лимит попыток. Попробуйте через 15 минут.');
+            } else {
+                toast.error('Неверный код доступа');
+            }
+        } finally {
+            setIsVerifying(false);
+        }
     };
 
     const handleAction = async (action: 'accept' | 'reject') => {

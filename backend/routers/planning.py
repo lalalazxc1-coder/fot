@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 from database.database import get_db
 from database.models import PlanningPosition, User, OrganizationUnit, AuditLog
-from dependencies import get_current_active_user
+from dependencies import get_current_active_user, get_user_scope
 from pydantic import BaseModel
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -108,11 +108,13 @@ def get_planning(db: Session = Depends(get_db), current_user: User = Depends(get
 def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     if not check_manage_permission(current_user):
         raise HTTPException(403, "Permission 'manage_planning' required")
-        
-    # Scope Check for Creation: Can user add to this branch?
-    if current_user.scope_branches:
-        if str(plan.branch_id) not in [str(b) for b in current_user.scope_branches]:
-             raise HTTPException(403, "Cannot create plan for this branch (Out of scope)")
+
+    # FIX #M2: Используем единый get_user_scope() вместо ручной проверки по scope_branches
+    allowed_ids = get_user_scope(db, current_user)
+    if allowed_ids is not None:
+        # Пользователь видит только определённые единицы
+        if plan.branch_id not in allowed_ids and (plan.department_id is None or plan.department_id not in allowed_ids):
+            raise HTTPException(403, "Cannot create plan for this branch/department (Out of scope)")
 
     # Validation
     if not plan.schedule:
@@ -186,10 +188,11 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
     db_plan = db.get(PlanningPosition, plan_id)
     if not db_plan: raise HTTPException(404, "Plan not found")
     
-    # Scope Check
-    if current_user.scope_branches:
-        if str(db_plan.branch_id) not in [str(b) for b in current_user.scope_branches]:
-             raise HTTPException(403, "Out of scope")
+    # FIX #M2: Scope Check — единая проверка через get_user_scope()
+    allowed_ids = get_user_scope(db, current_user)
+    if allowed_ids is not None:
+        if db_plan.branch_id not in allowed_ids and (db_plan.department_id is None or db_plan.department_id not in allowed_ids):
+            raise HTTPException(403, "Out of scope")
 
     changes = {}
     update_data = plan.dict(exclude_unset=True)
@@ -233,10 +236,11 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db), current_user: User 
     db_plan = db.get(PlanningPosition, plan_id)
     if not db_plan: raise HTTPException(404, "Plan not found")
     
-    # Scope Check
-    if current_user.scope_branches:
-        if str(db_plan.branch_id) not in [str(b) for b in current_user.scope_branches]:
-             raise HTTPException(403, "Out of scope")
+    # FIX #M2: Scope Check — единая проверка через get_user_scope()
+    allowed_ids = get_user_scope(db, current_user)
+    if allowed_ids is not None:
+        if db_plan.branch_id not in allowed_ids and (db_plan.department_id is None or db_plan.department_id not in allowed_ids):
+            raise HTTPException(403, "Out of scope")
              
     # Delete associated history
     db.query(AuditLog).filter_by(target_entity="planning", target_entity_id=plan_id).delete()

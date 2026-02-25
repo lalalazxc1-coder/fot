@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, List
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict, List, Literal
 
 # Auth & Users
 class LoginRequest(BaseModel):
@@ -77,14 +77,14 @@ class EmployeeCreate(BaseModel):
     last_raise_date: Optional[str] = None
 
 class FinancialUpdate(BaseModel):
-    base_net: Optional[float] = None
-    base_gross: Optional[float] = None
+    base_net: Optional[float] = Field(None, ge=0)
+    base_gross: Optional[float] = Field(None, ge=0)
     
-    kpi_net: Optional[float] = None
-    kpi_gross: Optional[float] = None
+    kpi_net: Optional[float] = Field(None, ge=0)
+    kpi_gross: Optional[float] = Field(None, ge=0)
     
-    bonus_net: Optional[float] = None
-    bonus_gross: Optional[float] = None
+    bonus_net: Optional[float] = Field(None, ge=0)
+    bonus_gross: Optional[float] = Field(None, ge=0)
     
 class EmpDetailsUpdate(BaseModel):
     full_name: str
@@ -118,11 +118,11 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 class SalaryRequestCreate(BaseModel):
-    employee_id: int
-    type: str # 'raise', 'bonus'
-    current_value: float
-    requested_value: float
-    reason: str
+    employee_id: int = Field(..., gt=0)
+    type: Literal['raise', 'bonus']  # Только допустимые значения
+    current_value: float = Field(..., ge=0)
+    requested_value: float = Field(..., ge=0)
+    reason: str = Field(..., min_length=3, max_length=2000)
 
 class SalaryRequestUpdate(BaseModel):
     status: str # 'approved', 'rejected'
@@ -305,33 +305,33 @@ class Signatory(BaseModel):
     name: str
 
 class JobOfferCreate(BaseModel):
-    candidate_name: str
-    candidate_email: Optional[str] = None
-    candidate_phone: Optional[str] = None
-    position_title: str
+    candidate_name: str = Field(..., min_length=1, max_length=200)
+    candidate_email: Optional[str] = Field(None, max_length=254)
+    candidate_phone: Optional[str] = Field(None, max_length=30)
+    position_title: str = Field(..., min_length=1, max_length=200)
     branch_id: Optional[int] = None
     department_id: Optional[int] = None
-    base_net: int
-    kpi_net: int = 0
-    bonus_net: int = 0
+    base_net: int = Field(..., ge=0)
+    kpi_net: int = Field(0, ge=0)
+    bonus_net: int = Field(0, ge=0)
     valid_until: Optional[str] = None
-    company_name: Optional[str] = "Наша Компания"
-    manager_name: Optional[str] = None
+    company_name: Optional[str] = Field("Наша Компания", max_length=200)
+    manager_name: Optional[str] = Field(None, max_length=200)
     benefits: List[str] = []
     
     # Customization
-    welcome_text: Optional[str] = None
-    description_text: Optional[str] = None
-    theme_color: Optional[str] = "#2563eb"
+    welcome_text: Optional[str] = Field(None, max_length=5000)
+    description_text: Optional[str] = Field(None, max_length=5000)
+    theme_color: Optional[str] = Field("#2563eb", max_length=20)
     custom_sections: Optional[List[CustomSection]] = []
     
     # Formal Fields
-    probation_period: Optional[str] = "3 месяца"
-    working_hours: Optional[str] = "09:00 - 18:00"
-    lunch_break: Optional[str] = "13:00 - 14:00"
-    non_compete_text: Optional[str] = None
-    president_name: Optional[str] = None
-    hr_name: Optional[str] = None
+    probation_period: Optional[str] = Field("3 месяца", max_length=100)
+    working_hours: Optional[str] = Field("09:00 - 18:00", max_length=100)
+    lunch_break: Optional[str] = Field("13:00 - 14:00", max_length=100)
+    non_compete_text: Optional[str] = Field(None, max_length=5000)
+    president_name: Optional[str] = Field(None, max_length=200)
+    hr_name: Optional[str] = Field(None, max_length=200)
     start_date: Optional[str] = None
     signatories: Optional[List[Signatory]] = []
 

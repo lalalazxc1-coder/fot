@@ -2,6 +2,11 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
+try:
+    from utils.date_utils import now_iso
+except ImportError:
+    # Fallback если запускается из другого контекста
+    def now_iso(): return datetime.utcnow().isoformat()
 
 class Role(Base):
     __tablename__ = "roles"
@@ -70,8 +75,9 @@ class FinancialRecord(Base):
     __tablename__ = "financial_records"
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"))
-    created_at = Column(String, default=lambda: datetime.now().isoformat()) # New: For timeline reconstruction
-    month = Column(String) 
+    created_at = Column(String, default=lambda: datetime.now().isoformat())
+    last_raise_date = Column(String, nullable=True)  # FIX #M5: отдельное поле для даты повышения зарплаты
+    month = Column(String)
     
     # Base Salary
     base_net = Column(Integer, default=0)
@@ -250,7 +256,7 @@ class MarketEntry(Base):
     market_data = relationship("MarketData", back_populates="entries")
 
 class SalaryConfiguration(Base):
-    __tablename__ = "salary_config_2026"
+    __tablename__ = "salary_configuration"  # FIX #L3: переименовано с salary_config_2026
     id = Column(Integer, primary_key=True, index=True)
     
     # Constants

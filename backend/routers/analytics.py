@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import datetime
 import json
 import threading
+import logging
 
 from dependencies import get_db, get_current_active_user, require_admin
 from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position
@@ -30,42 +31,81 @@ from schemas import (
 )
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+logger = logging.getLogger("fot.analytics")
 
-# FIX A2: Thread-safe cache for heavy computations (5 minutes TTL)
-_cache = {}
-_cache_ttl = {}
-_cache_lock = threading.Lock()
-_cache_version = 0  # FIX B4: Incremented when data changes, invalidating all cache
-CACHE_DURATION = 300  # 5 minutes
+CACHE_DURATION = 300  # 5 minutes (seconds)
+
+# FIX #H1: Redis-based cache (shared across all workers/processes in Docker)
+# Fallback: in-memory per-process cache if Redis is unavailable
+from database.redis_client import redis_client
+
+# In-memory fallback (used only when Redis is unavailable)
+_local_cache: dict = {}
+_local_cache_ttl: dict = {}
+_local_cache_lock = threading.Lock()
 
 
-def get_cached_or_compute(key: str, compute_fn):
-    """Thread-safe cache with TTL and version-based invalidation."""
-    global _cache_version
-    versioned_key = f"{key}_v{_cache_version}"
-    
-    with _cache_lock:
-        now = datetime.now()
-        if versioned_key in _cache and versioned_key in _cache_ttl:
-            if (now - _cache_ttl[versioned_key]).total_seconds() < CACHE_DURATION:
-                return _cache[versioned_key]
-    
-    # Compute outside lock to avoid blocking
+def get_cached_or_compute(key: str, compute_fn, ttl: int = CACHE_DURATION):
+    """
+    FIX #H1: Redis-based cache shared across all worker processes.
+    Falls back to in-memory if Redis is unavailable.
+    """
+    redis_key = f"analytics:{key}"
+
+    # --- Try Redis first ---
+    if redis_client:
+        try:
+            cached = redis_client.get(redis_key)
+            if cached:
+                return json.loads(cached)
+        except Exception as e:
+            logger.warning("Redis get failed for key %s: %s", redis_key, e)
+
+    # --- Compute fresh value ---
     result = compute_fn()
-    
-    with _cache_lock:
-        _cache[versioned_key] = result
-        _cache_ttl[versioned_key] = datetime.now()
+
+    # --- Store in Redis ---
+    if redis_client:
+        try:
+            redis_client.setex(redis_key, ttl, json.dumps(result, default=str))
+        except Exception as e:
+            logger.warning("Redis set failed for key %s: %s", redis_key, e)
+    else:
+        # Fallback: in-memory cache
+        with _local_cache_lock:
+            _local_cache[key] = result
+            _local_cache_ttl[key] = datetime.now()
+            # Purge stale entries if dict grows too large
+            if len(_local_cache) > 500:
+                stale = [
+                    k for k, t in _local_cache_ttl.items()
+                    if (datetime.now() - t).total_seconds() > ttl
+                ]
+                for k in stale:
+                    _local_cache.pop(k, None)
+                    _local_cache_ttl.pop(k, None)
+
     return result
 
 
-def invalidate_analytics_cache():
-    """FIX B4: Call this when employee/plan/financial data changes to bust cache."""
-    global _cache_version
-    with _cache_lock:
-        _cache_version += 1
-        _cache.clear()
-        _cache_ttl.clear()
+def invalidate_analytics_cache(pattern: str = "*"):
+    """
+    FIX #H1: Инвалидация кэша через Redis (работает для всех воркеров).
+    pattern: суффикс ключа для точечной инвалидации, '*' — сбросить всё.
+    """
+    if redis_client:
+        try:
+            keys = list(redis_client.scan_iter(f"analytics:{pattern}"))
+            if keys:
+                redis_client.delete(*keys)
+                logger.info("Invalidated %d analytics cache keys (pattern: %s)", len(keys), pattern)
+        except Exception as e:
+            logger.warning("Redis cache invalidation failed: %s", e)
+    else:
+        # Fallback: clear local cache
+        with _local_cache_lock:
+            _local_cache.clear()
+            _local_cache_ttl.clear()
 
 
 def get_allowed_unit_ids(db: Session, user: User):
@@ -187,95 +227,102 @@ def get_branch_comparison(
     def compute():
         # FIX B1: Pre-build hierarchy map ONCE instead of N+1 recursive queries
         children_map = build_children_map(db)
-        
+
         # Get ALL organizational units (head_office, branches, departments)
         query = db.query(OrganizationUnit)
-        
         if allowed_ids is not None:
             query = query.filter(OrganizationUnit.id.in_(allowed_ids))
-            
         all_units = query.all()
+
+        # FIX #L4: Вынести fact-агрегацию ИЗ цикла — один запрос вместо N
+        # Строим subquery для последних финансовых записей каждого сотрудника
+        fact_sub_base = db.query(
+            FinancialRecord.employee_id,
+            func.max(FinancialRecord.id).label('max_id')
+        )
+        if date:
+            fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
+        fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
+
+        # Один агрегирующий запрос: total_net per org_unit_id
+        fact_rows = db.query(
+            Employee.org_unit_id,
+            func.sum(FinancialRecord.total_net).label('total_net')
+        ).join(
+            fact_subquery,
+            and_(
+                FinancialRecord.employee_id == fact_subquery.c.employee_id,
+                FinancialRecord.id == fact_subquery.c.max_id
+            )
+        ).join(
+            Employee,
+            Employee.id == FinancialRecord.employee_id
+        ).filter(
+            or_(Employee.status != 'Dismissed', Employee.status == None)
+        ).group_by(Employee.org_unit_id).all()
+
+        # Карта: org_unit_id -> fact_total (только прямые, без иерархии)
+        fact_direct_map: dict[int, float] = {
+            row.org_unit_id: float(row.total_net or 0)
+            for row in fact_rows
+            if row.org_unit_id is not None
+        }
+
+        # FIX #L4: Аналогично для plan — тоже один запрос
+        plan_rows = db.query(
+            PlanningPosition.branch_id,
+            PlanningPosition.department_id,
+            func.sum(
+                (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count +
+                PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
+            ).label('total_net')
+        ).filter(
+            PlanningPosition.scenario_id == None
+        ).group_by(PlanningPosition.branch_id, PlanningPosition.department_id).all()
+
+        # Карта: target_unit_id -> plan_total
+        plan_direct_map: dict[int, float] = {}
+        for row in plan_rows:
+            target_id = row.department_id if row.department_id else row.branch_id
+            if target_id:
+                plan_direct_map[target_id] = plan_direct_map.get(target_id, 0) + float(row.total_net or 0)
+
         results = []
-        
         for unit in all_units:
-            # Use pre-built map instead of recursive db.query
             unit_ids_list = get_unit_with_descendants(unit.id, children_map)
             if allowed_ids is not None:
                 unit_ids_list = [uid for uid in unit_ids_list if uid in allowed_ids]
-            
             if not unit_ids_list:
                 continue
-                
-            # Plan aggregation for this unit (any position linked to this unit or its descendants)
-            plan_query = db.query(
-                func.sum(
-                    (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + \
-                    PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
-                )
-            ).filter(
-                PlanningPosition.scenario_id == None,
-                or_(
-                    PlanningPosition.branch_id.in_(unit_ids_list),
-                    PlanningPosition.department_id.in_(unit_ids_list)
-                )
-            )
-            
-            plan_total = plan_query.scalar() or 0
-            
-            # Fact aggregation for this unit (employees in unit or its descendants)
-            # Need to join with latest financial records
-            fact_sub_base = db.query(
-                FinancialRecord.employee_id,
-                func.max(FinancialRecord.id).label('max_id')
-            )
-            if date: fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
-            fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
-            
-            fact_query = db.query(
-                func.sum(FinancialRecord.total_net)
-            ).join(
-                fact_subquery,
-                and_(
-                    FinancialRecord.employee_id == fact_subquery.c.employee_id,
-                    FinancialRecord.id == fact_subquery.c.max_id
-                )
-            ).join(
-                Employee,
-                Employee.id == FinancialRecord.employee_id
-            ).filter(
-                and_(
-                    or_(Employee.org_unit_id.in_(unit_ids_list), Employee.org_unit_id == None), # NULL check just in case but units matter here
-                    or_(Employee.status != 'Dismissed', Employee.status == None)
-                )
-            )
-            
-            fact_total = fact_query.scalar() or 0
-            
-            # Only include units with actual data
+
+            # Суммируем из карт (O(descendants) вместо SQL-запроса)
+            plan_total = sum(plan_direct_map.get(uid, 0) for uid in unit_ids_list)
+            fact_total = sum(fact_direct_map.get(uid, 0) for uid in unit_ids_list)
+
             if plan_total > 0 or fact_total > 0:
                 results.append({
                     'id': unit.id,
                     'parent_id': unit.parent_id,
                     'name': unit.name,
-                    'type': unit.type,  # Include type for frontend
+                    'type': unit.type,
                     'plan': float(plan_total),
                     'fact': float(fact_total),
                     'diff': float(fact_total - plan_total),
                     'percent': round((fact_total / plan_total * 100) if plan_total > 0 else 0, 1)
                 })
-        
+
         # Sort by fact descending
         results.sort(key=lambda x: x['fact'], reverse=True)
-        
+
         if limit:
             results = results[:limit]
-        
+
         return {
             'data': results,
             'total': len(results),
             'cached_at': datetime.now().isoformat()
         }
-    
+
     cache_key = f'branch_comparison_{current_user.id}_{limit}_{date}'
     return get_cached_or_compute(cache_key, compute)
 
