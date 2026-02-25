@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
 from database.database import get_db
 from database.models import User
@@ -47,7 +47,6 @@ def login(creds: LoginRequest, request: Request, response: Response, db: Session
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=400, detail=str(e))
 
-from fastapi import Request
 from jose import jwt, JWTError
 
 @router.post("/refresh")
