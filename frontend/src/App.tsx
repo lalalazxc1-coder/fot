@@ -107,7 +107,7 @@ function App() {
         const initAuth = async () => {
             const storedUserRaw = localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user');
 
-            // Set initial state from storage for speed and avoid flicker if possible
+            // Быстро установить данные из storage для мгновенного UI (без мерцания)
             if (storedUserRaw) {
                 try {
                     const storedUser = JSON.parse(storedUserRaw);
@@ -118,33 +118,27 @@ function App() {
                 }
             }
 
-            // If we have no record of the user at all, we shouldn't even attempt to fetch /auth/me
-            // This prevents expected 401 "Unauthorized" network errors in the console for fresh visitors.
-            if (!storedUserRaw) {
-                setLoading(false);
-                return;
-            }
-
-            // Always attempt to fetch the fresh user data since the JWT is in an HttpOnly cookie
-            // which can be present in a new tab even if sessionStorage is empty.
+            // Всегда проверяем /auth/me — HttpOnly cookie может существовать
+            // даже если sessionStorage пуст (новая вкладка, перезапуск браузера).
+            // Без этого вызова cookie-based auth не работает в новых вкладках.
             try {
                 const response = await api.get('/auth/me');
                 const freshUser = response.data;
                 setUser(freshUser);
                 setIsAuthenticated(true);
 
-                // Keep the storage in sync
+                // Синхронизируем storage — минимальные данные для UI
                 const storageData = { id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role };
                 if (localStorage.getItem('fot_user')) {
                     localStorage.setItem('fot_user', JSON.stringify(storageData));
                 } else {
+                    // Новая вкладка: сохраняем в sessionStorage чтобы не мигало
                     sessionStorage.setItem('fot_user', JSON.stringify(storageData));
                 }
             } catch (err: any) {
-                // If we get an error (e.g., 401 Unauthorized), the cookie is invalid or missing
-                // In production, we don't need to log expected 401s for guests
+                // 401 — cookie невалидный или отсутствует
                 if (err?.response?.status !== 401) {
-                    console.error("Failed to refresh user data from server / Session invalid", err);
+                    console.error("Ошибка при проверке сессии:", err);
                 }
                 localStorage.removeItem('fot_user');
                 sessionStorage.removeItem('fot_user');
