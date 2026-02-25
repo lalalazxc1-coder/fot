@@ -17,20 +17,9 @@ const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
-  const userStr = localStorage.getItem('fot_user') || sessionStorage.getItem('fot_user');
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr);
-      if (user.access_token) {
-        config.headers.Authorization = `Bearer ${user.access_token}`;
-      }
-    } catch (e) {
-      console.error('Error parsing user from storage', e);
-    }
-  }
-  return config;
-});
+// NEW-1 FIX: НЕ читаем access_token из localStorage — аутентификация через HttpOnly cookie.
+// Браузер автоматически отправляет cookie при withCredentials: true.
+// Это исключает возможность кражи токена через XSS (токен недоступен из JS).
 
 api.interceptors.response.use(
   (response) => response,

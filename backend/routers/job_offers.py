@@ -1,7 +1,4 @@
 import secrets
-import time
-from collections import defaultdict
-import threading
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -104,27 +101,15 @@ def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_
     db.refresh(offer)
     return offer
 
-# --- FIX #6: Rate limiting for public PIN attempts ---
-_pin_attempts: dict[str, list[float]] = defaultdict(list)
-_pin_lock = threading.Lock()
+# NEW-4 FIX: Redis-based rate limit для PIN (multi-worker safe)
+from utils.rate_limiter import check_rate_limit as _check_rl
+
 PIN_RATE_LIMIT_WINDOW = 900  # 15 minutes
-PIN_RATE_LIMIT_MAX = 5  # max attempts per token
+PIN_RATE_LIMIT_MAX = 5       # max attempts per token
 
 def _check_pin_rate_limit(token: str) -> bool:
-    """Returns True if rate limited."""
-    now = time.time()
-    with _pin_lock:
-        _pin_attempts[token] = [
-            t for t in _pin_attempts[token] if now - t < PIN_RATE_LIMIT_WINDOW
-        ]
-        if len(_pin_attempts[token]) >= PIN_RATE_LIMIT_MAX:
-            return True
-        _pin_attempts[token].append(now)
-        # Cap dictionary size
-        if len(_pin_attempts) > 5000:
-            oldest_key = next(iter(_pin_attempts))
-            del _pin_attempts[oldest_key]
-    return False
+    """Returns True if rate limited. Uses Redis (multi-worker safe)."""
+    return _check_rl(f"pin:{token}", PIN_RATE_LIMIT_MAX, PIN_RATE_LIMIT_WINDOW)
 
 
 @router.get("/public/{token}")

@@ -87,74 +87,35 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Cache-Control"] = "no-store"
     return response
 
-# --- Rate Limiting Middleware (FIX #2: memory-safe, proxy-aware) ---
+# --- Rate Limiting Middleware (NEW-3 FIX: Redis-based, работает в multi-worker) ---
 import time
-from collections import defaultdict
-import threading
+from utils.rate_limiter import check_rate_limit
 
-_login_attempts: dict[str, list[float]] = defaultdict(list)
-_rate_limit_lock = threading.Lock()
+RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "10"))
 RATE_LIMIT_WINDOW = 300  # 5 minutes
-RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "10"))  # max attempts per window
-RATE_LIMIT_MAX_IPS = 10000  # Cap to prevent memory exhaustion
-_last_cleanup = time.time()
 
 def _get_client_ip(request: Request) -> str:
     """Extract real client IP, respecting proxy headers."""
-    # Only trust X-Forwarded-For if behind a known proxy
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        # Take the first (leftmost) IP — the original client
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
-
-def _cleanup_stale_entries():
-    """Remove all expired entries and cap dictionary size."""
-    global _last_cleanup
-    now = time.time()
-    # Only run cleanup every 60 seconds
-    if now - _last_cleanup < 60:
-        return
-    _last_cleanup = now
-    stale_keys = [
-        ip for ip, timestamps in _login_attempts.items()
-        if not timestamps or all(now - t >= RATE_LIMIT_WINDOW for t in timestamps)
-    ]
-    for key in stale_keys:
-        del _login_attempts[key]
-    # Hard cap: if still too many IPs, drop oldest entries
-    if len(_login_attempts) > RATE_LIMIT_MAX_IPS:
-        excess = len(_login_attempts) - RATE_LIMIT_MAX_IPS
-        keys_to_remove = list(_login_attempts.keys())[:excess]
-        for key in keys_to_remove:
-            del _login_attempts[key]
 
 @app.middleware("http")
 async def rate_limit_login(request: Request, call_next):
     if request.url.path == "/api/auth/login" and request.method == "POST":
-        # Skip rate limiting in test environment
         env = os.environ.get("ENVIRONMENT", "development")
         if env == "testing":
             return await call_next(request)
 
         client_ip = _get_client_ip(request)
-        now = time.time()
-
-        with _rate_limit_lock:
-            # Periodic cleanup of stale entries
-            _cleanup_stale_entries()
-
-            # Clean old entries for this IP
-            _login_attempts[client_ip] = [
-                t for t in _login_attempts[client_ip] if now - t < RATE_LIMIT_WINDOW
-            ]
-            if len(_login_attempts[client_ip]) >= RATE_LIMIT_MAX:
-                logger.warning(f"Rate limit exceeded for {client_ip} on /api/auth/login")
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Слишком много попыток входа. Попробуйте через 5 минут."},
-                )
-            _login_attempts[client_ip].append(now)
+        # NEW-3: Redis sliding window rate limit — общий для всех воркеров
+        if check_rate_limit(f"login:{client_ip}", RATE_LIMIT_MAX, RATE_LIMIT_WINDOW):
+            logger.warning(f"Rate limit exceeded for {client_ip} on /api/auth/login")
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Слишком много попыток входа. Попробуйте через 5 минут."},
+            )
 
     response = await call_next(request)
     return response

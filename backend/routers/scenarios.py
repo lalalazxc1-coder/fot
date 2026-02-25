@@ -4,7 +4,8 @@ from sqlalchemy import func, case
 from datetime import datetime
 from database.database import get_db
 from database.models import Scenario, PlanningPosition, SalaryConfiguration, User, AuditLog
-from routers.auth import get_current_active_user
+from routers.auth import get_current_active_user  # noqa: F401 — kept for backward compat
+from dependencies import get_current_active_user  # NEW-5: правильный источник
 from services.salary_service import calculate_taxes, solve_gross_from_net, sync_employee_financials
 from pydantic import BaseModel
 from typing import Optional, List

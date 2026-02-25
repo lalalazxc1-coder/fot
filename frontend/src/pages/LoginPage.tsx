@@ -11,7 +11,7 @@ type AuthUser = {
     permissions: Record<string, boolean>;
     scope_branches?: number[];
     scope_departments?: number[];
-    access_token?: string;
+    // NEW-1: access_token намеренно убран — хранится в HttpOnly cookie, недоступен из JS
 };
 
 export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, rememberMe: boolean) => void }) {
@@ -70,7 +70,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                 permissions: data.permissions || {},
                 scope_branches: data.scope_branches,
                 scope_departments: data.scope_departments,
-                access_token: data.access_token
+                // NEW-1: access_token не сохраняем — он в HttpOnly cookie
             };
 
             setLoggedInUser(data.full_name);

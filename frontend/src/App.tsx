@@ -33,7 +33,7 @@ type AuthUser = {
     permissions: Record<string, boolean>;
     scope_branches?: number[];
     scope_departments?: number[];
-    access_token?: string;
+    // NEW-1: access_token намеренно убран — хранится только в HttpOnly cookie
 };
 
 // Security Wrappers
