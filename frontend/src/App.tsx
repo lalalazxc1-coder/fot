@@ -254,8 +254,10 @@ function App() {
                     </Route>
                 ) : null}
 
-                {/* Catch-all 404 */}
-                <Route path="*" element={<NotFoundPage />} />
+                {/* Catch-all: 404 for auth users, Redirect to login for guests */}
+                <Route path="*" element={
+                    isAuthenticated ? <NotFoundPage /> : <Navigate to="/login" replace />
+                } />
             </Routes>
         </SnapshotProvider>
     );

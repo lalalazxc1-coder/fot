@@ -100,9 +100,8 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
             <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl shadow-slate-300/60 overflow-hidden flex flex-col md:flex-row relative z-10 min-h-[600px] border border-slate-100/50">
 
                 {/* Left Side - Info */}
-                <div className="md:w-5/12 bg-slate-50 p-8 sm:p-12 flex flex-col justify-center relative border-r border-slate-100/50">
-                    <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-blue-100/40 blur-[80px] rounded-full pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-[50%] h-[50%] bg-indigo-100/40 blur-[80px] rounded-full pointer-events-none" />
+                <div className="md:w-5/12 bg-[#f8fafc] p-8 sm:p-14 flex flex-col justify-center relative border-r border-slate-100/50">
+                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-blue-50/50 via-transparent to-indigo-50/30 pointer-events-none" />
 
                     <div className="relative z-10 mb-auto">
                         <div className="flex items-center gap-3">
@@ -112,22 +111,23 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                                 </svg>
                             </div>
                             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                                HR & Payroll<span className="font-medium text-slate-400">Hub</span>
+                                HR & Payroll<span className="font-medium text-[#94a3b8]">Hub</span>
                             </h1>
                         </div>
                     </div>
 
-                    <div className="relative z-10 mt-12 mb-12">
-                        <h2 className="text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight mb-6 tracking-tight">
-                            Управление<br />персоналом<br />нового уровня
+                    <div className="relative z-10 mt-20 mb-12">
+                        <h2 className="text-[44px] lg:text-[52px] font-[900] text-[#0f172a] leading-[1.05] tracking-[-0.04em]">
+                            Цифровая<br />
+                            экосистема<br />
+                            управления<br />
+                            персоналом
                         </h2>
-                        <p className="text-slate-500 font-medium leading-relaxed max-w-sm text-sm sm:text-base">
-                            Единая платформа для автоматизации и расчета фонда оплаты труда (ФОТ), глубокой аналитики, управления заявками и моделирования зарплатных сценариев.
-                        </p>
                     </div>
 
-                    <div className="relative z-10 mt-auto">
-                        {/* Placeholder to keep alignment balanced */}
+                    <div className="relative z-10 mt-auto opacity-40">
+                        <div className="h-1 w-12 bg-slate-900 rounded-full mb-4"></div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 font-sans">Enterprise Solution</p>
                     </div>
                 </div>
 
