@@ -260,7 +260,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
 
                         <div className="mt-10 pt-8 border-t border-slate-100 text-center">
                             <p className="text-xs font-medium text-slate-400">
-                                &copy; {new Date().getFullYear()} Доступ только для авторизованных сотрудников.
+                                &copy; {new Date().getFullYear()} Вход только для зарегистрированных пользователей.
                             </p>
                         </div>
                     </div>
