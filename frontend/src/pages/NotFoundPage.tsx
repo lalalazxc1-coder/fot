@@ -48,12 +48,6 @@ export default function NotFoundPage() {
                             На главную
                         </button>
                     </div>
-
-                    {/* Footer / Branding */}
-                    <div className="pt-16 w-full border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-300 uppercase tracking-widest">
-                        <span>FOT Control System</span>
-                        <span>Identity & Access Management</span>
-                    </div>
                 </div>
             </div>
         </div>
