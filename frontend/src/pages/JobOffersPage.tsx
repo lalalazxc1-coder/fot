@@ -22,8 +22,11 @@ import {
     Edit3,
     FileText,
     Layout,
-    Sparkles
+    Sparkles,
+    Users,
+    CheckCircle
 } from 'lucide-react';
+import { useEmployees } from '../hooks/useEmployees';
 import Modal from '../components/Modal';
 import { formatMoney } from '../utils';
 import { toast } from 'sonner';
@@ -70,10 +73,7 @@ interface JobOffer {
     token: string;
 }
 
-interface Employee {
-    id: number;
-    full_name: string;
-}
+
 export default function JobOffersPage() {
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -105,6 +105,10 @@ export default function JobOffersPage() {
         welcome_page_config_id: null as number | null,
     };
 
+    const [isSignatorySelectOpen, setIsSignatorySelectOpen] = useState(false);
+    const [signatorySearch, setSignatorySearch] = useState('');
+    const [manualSignatory, setManualSignatory] = useState({ title: '', name: '' });
+
     const [formData, setFormData] = useState(initialForm);
 
     const { data: offers = [], isLoading: isOffersLoading } = useQuery({
@@ -115,13 +119,7 @@ export default function JobOffersPage() {
         }
     });
 
-    const { data: employees = [] } = useQuery({
-        queryKey: ['employees-for-offers'],
-        queryFn: async () => {
-            const res = await api.get('/employees/');
-            return res.data;
-        }
-    });
+    const { data: searchResults = [], isLoading: isSearchLoading } = useEmployees(signatorySearch.length >= 2 ? signatorySearch : undefined);
 
     const { data: welcomePages = [] } = useQuery({
         queryKey: ['welcome-pages'],
@@ -173,10 +171,17 @@ export default function JobOffersPage() {
     };
 
     const addSignatory = () => {
+        setIsSignatorySelectOpen(true);
+    };
+
+    const finishAddSignatory = (title: string, name: string) => {
         setFormData({
             ...formData,
-            signatories: [...formData.signatories, { title: 'Должность', name: 'ФИО' }]
+            signatories: [...formData.signatories, { title, name }]
         });
+        setIsSignatorySelectOpen(false);
+        setSignatorySearch('');
+        setManualSignatory({ title: '', name: '' });
     };
 
     const updateSignatory = (idx: number, field: 'title' | 'name', value: string) => {
@@ -379,158 +384,251 @@ export default function JobOffersPage() {
                 </div>
             )}
 
-            <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); setEditingId(null); }} title={editingId ? "Редактирование" : "Новый цифровой оффер"} maxWidth="max-w-6xl">
-                <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="grid grid-cols-1 md:grid-cols-3 gap-5 p-1">
-                    <div className="space-y-4">
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+            <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); setEditingId(null); }} title={editingId ? "Редактирование" : "Новый цифровой оффер"} maxWidth="max-w-7xl">
+                <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }} className="space-y-4 p-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+
+                        {/* ROW 1 */}
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-2 flex flex-col justify-center">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Layout className="w-3 h-3" /> Быстрая настройка</h4>
                             <select
-                                className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-900 outline-none"
+                                className="w-full h-8 bg-white border border-slate-200 rounded-xl px-3 text-sm font-bold text-slate-900 outline-none"
                                 onChange={(e) => applyTemplate(e.target.value)}
                                 defaultValue=""
                             >
-                                <option value="" disabled>Выберите шаблон...</option>
+                                <option value="" disabled>Шаблон...</option>
                                 {templates.map((t: OfferTemplate) => (
                                     <option key={t.id} value={t.id}>{t.name}</option>
                                 ))}
                             </select>
-                            <p className="text-[10px] text-slate-400 font-medium px-1">При выборе шаблона все настройки ниже будут заполнены автоматически.</p>
                         </section>
 
-                        {/* Welcome Page Selector */}
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 flex flex-col min-h-[140px]">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Безопасность (NDA)</h4>
+                            <textarea
+                                className="w-full flex-1 bg-white border border-slate-200 rounded-xl p-2.5 text-[11px] font-medium outline-none resize-none"
+                                value={formData.non_compete_text}
+                                onChange={e => setFormData({ ...formData, non_compete_text: e.target.value })}
+                                placeholder="Текст договора о неконкуренции..."
+                            />
+                        </section>
+
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-2 flex flex-col justify-center">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Clock className="w-3 h-3" /> Условия</h4>
+                            <div className="space-y-1.5">
+                                <input placeholder="Испытательный срок" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-3 text-xs" value={formData.probation_period} onChange={e => setFormData({ ...formData, probation_period: e.target.value })} />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input placeholder="Часы" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-3 text-xs" value={formData.working_hours} onChange={e => setFormData({ ...formData, working_hours: e.target.value })} />
+                                    <input placeholder="Обед" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-3 text-xs" value={formData.lunch_break} onChange={e => setFormData({ ...formData, lunch_break: e.target.value })} />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* ROW 2 */}
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-2 flex flex-col justify-center">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <Sparkles className="w-3 h-3" /> Welcome Page (после принятия)
+                                <Sparkles className="w-3 h-3" /> Welcome Page
                             </h4>
                             <select
-                                className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-900 outline-none"
+                                className="w-full h-8 bg-white border border-slate-200 rounded-xl px-3 text-sm font-bold text-slate-900 outline-none"
                                 value={formData.welcome_page_config_id ?? ''}
                                 onChange={e => setFormData({ ...formData, welcome_page_config_id: e.target.value ? Number(e.target.value) : null })}
                             >
                                 <option value="">Не выбрано</option>
                                 {(welcomePages as any[]).map((wp: any) => (
-                                    <option key={wp.id} value={wp.id}>
-                                        {wp.name}{wp.branch_name ? ` — ${wp.branch_name}` : ''}
-                                    </option>
+                                    <option key={wp.id} value={wp.id}>{wp.name}</option>
                                 ))}
                             </select>
-                            {formData.welcome_page_config_id && (() => {
-                                const sel = (welcomePages as any[]).find((wp: any) => wp.id === formData.welcome_page_config_id);
-                                return sel ? (
-                                    <div className="bg-white rounded-xl px-3 py-2 border border-slate-100 text-[10px] text-slate-500 font-medium space-y-0.5">
-                                        {sel.address && <p>📍 {sel.address}</p>}
-                                        {sel.team_members?.length > 0 && <p>👥 {sel.team_members.length} чел. в команде</p>}
-                                        {sel.first_day_instructions?.length > 0 && <p>📋 {sel.first_day_instructions.length} инструкций</p>}
-                                    </div>
-                                ) : null;
-                            })()}
-                            <p className="text-[10px] text-slate-400 font-medium">
-                                Кандидат увидит эту страницу после принятия оффера
-                            </p>
                         </section>
 
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserPlus className="w-3 h-3" /> Кандидат</h4>
-                            <div className="space-y-2">
-                                <input placeholder="ФИО Кандидата" required className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.candidate_name} onChange={e => setFormData({ ...formData, candidate_name: e.target.value })} />
-                                <input placeholder="Должность" required className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.position_title} onChange={e => setFormData({ ...formData, position_title: e.target.value })} />
-                                <input placeholder="Название компании" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold text-slate-900" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
-                            </div>
-                        </section>
-
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-2">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Wallet className="w-3 h-3" /> Деньги</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                <input type="number" placeholder="Оклад" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.base_net} onChange={e => setFormData({ ...formData, base_net: parseInt(e.target.value) || 0 })} />
-                                <input type="number" placeholder="Бонус" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.kpi_net} onChange={e => setFormData({ ...formData, kpi_net: parseInt(e.target.value) || 0 })} />
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                                 <div>
-                                    <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Дата выхода</label>
-                                    <input type="date" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                                    <label className="text-[8px] font-bold text-slate-400 uppercase px-1">Оклад</label>
+                                    <input type="number" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-2 text-xs font-bold" value={formData.base_net} onChange={e => setFormData({ ...formData, base_net: parseInt(e.target.value) || 0 })} />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Действителен до</label>
-                                    <input type="date" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.valid_until} onChange={e => setFormData({ ...formData, valid_until: e.target.value })} />
+                                    <label className="text-[8px] font-bold text-slate-400 uppercase px-1">Бонус</label>
+                                    <input type="number" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-2 text-xs font-bold" value={formData.kpi_net} onChange={e => setFormData({ ...formData, kpi_net: parseInt(e.target.value) || 0 })} />
+                                </div>
+                                <div>
+                                    <label className="text-[8px] font-bold text-slate-400 uppercase px-1">Дата выхода</label>
+                                    <input type="date" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-2 text-xs" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="text-[8px] font-bold text-slate-400 uppercase px-1">До</label>
+                                    <input type="date" className="w-full h-7 bg-white border border-slate-200 rounded-lg px-2 text-xs" value={formData.valid_until} onChange={e => setFormData({ ...formData, valid_until: e.target.value })} />
                                 </div>
                             </div>
                         </section>
 
-                    </div>
-
-                    <div className="space-y-4">
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Clock className="w-3 h-3" /> График</h4>
-                            <div className="space-y-2">
-                                <input placeholder="Испытательный срок" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.probation_period} onChange={e => setFormData({ ...formData, probation_period: e.target.value })} />
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input placeholder="Часы" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.working_hours} onChange={e => setFormData({ ...formData, working_hours: e.target.value })} />
-                                    <input placeholder="Обед" className="w-full h-9 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.lunch_break} onChange={e => setFormData({ ...formData, lunch_break: e.target.value })} />
-                                </div>
-                            </div>
-                        </section>
-
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Подписанты (Настройте должности и лиц)</h4>
-                            <div className="space-y-2 mb-3">
-                                {formData.signatories.map((sig, idx) => (
-                                    <div key={idx} className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1.5 relative group">
-                                        <button type="button" onClick={() => removeSignatory(idx)} className="absolute top-2 right-2 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3 h-3" /></button>
-                                        <input className="w-full bg-slate-50 px-3 py-1.5 rounded-lg text-xs font-black uppercase text-slate-900 outline-none" placeholder="Должность" value={sig.title} onChange={e => updateSignatory(idx, 'title', e.target.value)} />
-                                        <select
-                                            className="w-full bg-white border border-slate-100 px-3 py-1.5 rounded-lg text-xs outline-none"
-                                            value={sig.name}
-                                            onChange={e => updateSignatory(idx, 'name', e.target.value)}
-                                        >
-                                            <option value="">Выберите сотрудника...</option>
-                                            {employees.map((emp: Employee) => <option key={emp.id} value={emp.full_name}>{emp.full_name}</option>)}
-                                            <option value={sig.name}>{sig.name} (Ручной ввод)</option>
-                                        </select>
-                                        <input className="w-full bg-white border-b border-dashed border-slate-200 px-3 py-1 text-[11px] outline-none" placeholder="ФИО (если нет в списке)" value={sig.name} onChange={e => updateSignatory(idx, 'name', e.target.value)} />
-                                    </div>
-                                ))}
-                            </div>
-                            <button type="button" onClick={addSignatory} className="w-full py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200">+ Добавить подписанта</button>
-                        </section>
-                    </div>
-
-                    <div className="space-y-4">
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Безопасность (Обязательное условие)</h4>
-                            <textarea className="w-full h-28 bg-white border border-slate-200 rounded-xl p-3 text-xs font-medium outline-none resize-none" value={formData.non_compete_text} onChange={e => setFormData({ ...formData, non_compete_text: e.target.value })} />
-                        </section>
-
-                        <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Gift className="w-3 h-3" /> Соц. Пакет (Бенефиты)
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 flex flex-col">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Gift className="w-3 h-3" /> Соц. Пакет
                             </h4>
-                            <div className="space-y-2 mb-3">
+                            <div className="space-y-1 mb-2 overflow-y-auto max-h-[100px] pr-1 flex-1">
                                 {formData.benefits.map((benefit, idx) => (
-                                    <div key={idx} className="flex gap-2 group">
+                                    <div key={idx} className="flex gap-1.5 group">
                                         <input
-                                            className="flex-1 h-9 bg-white border border-slate-200 rounded-xl px-4 text-xs"
-                                            placeholder="Питание, Страховка и т.д."
+                                            className="flex-1 h-6 bg-white border border-slate-200 rounded-lg px-2 text-[10px]"
+                                            placeholder="Льгота..."
                                             value={benefit}
                                             onChange={e => updateBenefit(idx, e.target.value)}
                                         />
-                                        <button type="button" onClick={() => removeBenefit(idx)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                        <button type="button" onClick={() => removeBenefit(idx)} className="p-0.5 text-slate-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                                     </div>
                                 ))}
                             </div>
-                            <button type="button" onClick={addBenefit} className="w-full py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase hover:bg-slate-200">+ Добавить льготу</button>
+                            <button type="button" onClick={addBenefit} className="w-full py-1 bg-white border border-dashed border-slate-300 text-slate-500 rounded-lg text-[8px] font-black uppercase hover:bg-slate-50 transition-colors">+ Добавить</button>
                         </section>
 
-                        <div className="pt-4 sticky bottom-0 bg-white flex flex-col gap-3">
+                        {/* ROW 3 */}
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-2 flex flex-col justify-center">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><UserPlus className="w-3 h-3" /> Кандидат</h4>
+                            <div className="space-y-1.5">
+                                <input placeholder="ФИО Кандидата" required className="w-full h-8 bg-white border border-slate-200 rounded-xl px-3 text-xs" value={formData.candidate_name} onChange={e => setFormData({ ...formData, candidate_name: e.target.value })} />
+                                <input placeholder="Должность" required className="w-full h-8 bg-white border border-slate-200 rounded-xl px-3 text-xs" value={formData.position_title} onChange={e => setFormData({ ...formData, position_title: e.target.value })} />
+                                <input placeholder="Компания" className="w-full h-8 bg-white border border-slate-200 rounded-xl px-3 text-xs font-bold text-slate-900" value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
+                            </div>
+                        </section>
+
+                        <div className="hidden md:flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl p-4 opacity-30 select-none grayscale">
+                            <FileText className="w-8 h-8 text-slate-300 mb-2" />
+                            <span className="text-[8px] font-black uppercase tracking-tighter text-slate-300 text-center leading-none">Конфиденциально<br />FOT & Payroll Hub</span>
+                        </div>
+
+                        <section className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 flex flex-col">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Подписанты</h4>
+                            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 flex-1">
+                                {formData.signatories.map((sig, idx) => (
+                                    <div key={idx} className="p-2 bg-white rounded-xl border border-slate-200 relative group shadow-sm flex flex-col justify-center">
+                                        <button type="button" onClick={() => removeSignatory(idx)} className="absolute top-1 right-1 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity z-10"><Trash2 className="w-3 h-3" /></button>
+                                        <div className="pr-4">
+                                            <input
+                                                className="w-full bg-slate-50 px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-slate-400 outline-none border-none mb-0.5"
+                                                value={sig.title}
+                                                onChange={e => updateSignatory(idx, 'title', e.target.value)}
+                                            />
+                                            <input
+                                                className="w-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-900 outline-none border-none"
+                                                value={sig.name}
+                                                onChange={e => updateSignatory(idx, 'name', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button type="button" onClick={addSignatory} className="w-full py-1.5 mt-2 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-1.5 text-slate-400 hover:bg-slate-50 transition-all font-black text-[8px] uppercase">
+                                <Plus className="w-3 h-3" /> Добавить подписанта
+                            </button>
+                        </section>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={createMutation.isPending}
+                            className="w-full h-12 bg-slate-900 text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 disabled:opacity-50"
+                        >
+                            {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                <>{editingId ? "Сохранить изменения" : "Создать оффер"}</>
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Signatory Selection Modal */}
+            <Modal isOpen={isSignatorySelectOpen} onClose={() => { setIsSignatorySelectOpen(false); setManualSignatory({ title: '', name: '' }); }} title="Добавить подписанта" maxWidth="max-w-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+                    {/* LEFT: Manual Entry */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <Edit3 className="w-4 h-4" />
+                            <h5 className="text-[10px] font-black uppercase tracking-widest">Ввести вручную</h5>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
+                            <input
+                                placeholder="Должность подписанта"
+                                className="w-full h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-slate-400"
+                                value={manualSignatory.title}
+                                onChange={e => setManualSignatory({ ...manualSignatory, title: e.target.value })}
+                            />
+                            <input
+                                placeholder="ФИО подписанта"
+                                className="w-full h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-slate-400"
+                                value={manualSignatory.name}
+                                onChange={e => setManualSignatory({ ...manualSignatory, name: e.target.value })}
+                            />
                             <button
-                                type="submit"
-                                disabled={createMutation.isPending}
-                                className="w-full h-12 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/20 disabled:opacity-50"
+                                type="button"
+                                disabled={!manualSignatory.title || !manualSignatory.name}
+                                onClick={() => finishAddSignatory(manualSignatory.title, manualSignatory.name)}
+                                className="w-full h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30 flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
                             >
-                                {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                    <>{editingId ? "Сохранить изменения" : "Создать оффер"}</>
-                                )}
+                                <CheckCircle className="w-3 h-3" /> Добавить
                             </button>
                         </div>
                     </div>
-                </form>
+
+                    {/* RIGHT: Pick from Staff */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-blue-400">
+                            <Users className="w-4 h-4" />
+                            <h5 className="text-[10px] font-black uppercase tracking-widest">Выбрать из штата</h5>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    placeholder="Поиск сотрудника..."
+                                    className="w-full h-9 pl-9 pr-4 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-slate-400 transition-all focus:bg-white"
+                                    value={signatorySearch}
+                                    onChange={e => setSignatorySearch(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="max-h-[220px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl bg-white shadow-sm custom-scrollbar">
+                                {signatorySearch.length >= 2 ? (
+                                    <>
+                                        {searchResults.map((emp: any) => (
+                                            <button
+                                                key={emp.id}
+                                                type="button"
+                                                onClick={() => finishAddSignatory(emp.position || 'Должность', emp.full_name)}
+                                                className="w-full px-4 py-2.5 flex flex-col items-start hover:bg-slate-50 transition-colors text-left group"
+                                            >
+                                                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{emp.full_name}</span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{emp.position || 'Должность не указана'}</span>
+                                            </button>
+                                        ))}
+
+                                        {!isSearchLoading && searchResults.length === 0 && (
+                                            <div className="p-8 text-center text-slate-400 text-[10px] font-medium leading-relaxed">
+                                                Сотрудники не найдены<br />
+                                                <span className="text-[8px] opacity-50 uppercase font-black tracking-tighter">Убедитесь, что данные введены верно</span>
+                                            </div>
+                                        )}
+
+                                        {isSearchLoading && (
+                                            <div className="p-10 flex flex-col items-center justify-center gap-2">
+                                                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ищем в базе...</span>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="p-8 text-center text-slate-400 text-[10px] font-medium leading-relaxed">
+                                        Введите минимум 2 символа для поиска<br />
+                                        <span className="text-[8px] opacity-50 uppercase font-black tracking-tighter">Начните вводить ФИО или должность</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

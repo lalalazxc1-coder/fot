@@ -9,7 +9,7 @@ from schemas import EmployeeCreate, FinancialUpdate, EmployeeUpdate, EmpDetailsU
 
 class EmployeeService:
     @staticmethod
-    def get_employees(db: Session, current_user: User, scope_ids: Optional[List[int]]) -> List[Any]:
+    def get_employees(db: Session, current_user: User, scope_ids: Optional[List[int]], q: Optional[str] = None) -> List[Any]:
         """
         Retrieves employees with optimizations (joinedload) and scope filtering.
         """
@@ -20,9 +20,18 @@ class EmployeeService:
         )
 
         # Apply Scope Filter
-        # scope_ids is calculated by dependency. If None -> Admin/All access.
         if scope_ids is not None:
              query = query.filter(Employee.org_unit_id.in_(scope_ids))
+
+        # Apply Search Filter (Performance Optimization #1)
+        if q:
+            search_query = f"%{q}%"
+            query = query.join(Position, isouter=True).filter(
+                or_(
+                    Employee.full_name.ilike(search_query),
+                    Position.title.ilike(search_query)
+                )
+            ).limit(15)
 
         employees = query.all()
         results = []

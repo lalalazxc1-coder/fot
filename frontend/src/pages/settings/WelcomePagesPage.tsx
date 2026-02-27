@@ -3,11 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
     Plus, Loader2, Trash2, Edit3, Sparkles,
-    MapPin, Video, Package, Eye, Building2, ChevronDown, Users
+    MapPin, Video, Package, Building2, Users
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { toast } from 'sonner';
-import WelcomeDashboard from '../../components/WelcomeDashboard';
 
 interface TeamMember {
     name: string;
@@ -34,17 +33,14 @@ export default function WelcomePagesPage() {
     const [isOpen, setIsOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState(emptyForm());
-    const [showPreview, setShowPreview] = useState(false);
+
 
     const { data: configs = [], isLoading } = useQuery({
         queryKey: ['welcome-pages'],
         queryFn: () => api.get('/welcome-pages/').then(r => r.data),
     });
 
-    const { data: branches = [] } = useQuery({
-        queryKey: ['branches-for-welcome'],
-        queryFn: () => api.get('/structure/').then(r => (r.data as any[]).filter((u: any) => u.type === 'branch')),
-    });
+
 
     const mutation = useMutation({
         mutationFn: (data: any) => editingId
@@ -200,215 +196,167 @@ export default function WelcomePagesPage() {
 
             {/* Edit / Create Modal */}
             <Modal isOpen={isOpen} onClose={() => { setIsOpen(false); setEditingId(null); }} title={editingId ? 'Редактировать Welcome Page' : 'Новый Welcome Page'} maxWidth="max-w-4xl">
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
-
-                    {/* Column 1 */}
-                    <div className="space-y-5">
-                        <section className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Основная информация</h4>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Название *</label>
-                                <input
-                                    required
-                                    placeholder="Напр.: Welcome — Алматы офис"
-                                    className="w-full h-11 bg-white border border-slate-200 rounded-2xl px-4 text-sm font-bold outline-none focus:border-slate-400 shadow-sm"
-                                    value={formData.name}
-                                    onChange={e => set('name', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Филиал</label>
-                                <div className="relative">
-                                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <select
-                                        className="w-full h-11 bg-white border border-slate-200 rounded-2xl pl-9 pr-4 text-sm outline-none appearance-none focus:border-slate-400"
-                                        value={formData.branch_id ?? ''}
-                                        onChange={e => set('branch_id', e.target.value ? Number(e.target.value) : null)}
-                                    >
-                                        <option value="">Все филиалы</option>
-                                        {branches.map((b: any) => (
-                                            <option key={b.id} value={b.id}>{b.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <form onSubmit={handleSubmit} className="space-y-4 p-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        {/* Column 1 - Top */}
+                        <div className="space-y-4">
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Основная информация</h4>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Название *</label>
+                                    <input
+                                        required
+                                        placeholder="Напр.: Welcome — Алматы офис"
+                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold outline-none focus:border-slate-400 shadow-sm"
+                                        value={formData.name}
+                                        onChange={e => set('name', e.target.value)}
+                                    />
                                 </div>
-                            </div>
-                        </section>
+                            </section>
 
-                        <section className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Контент</h4>
-                            <div className="flex items-center gap-3">
-                                <Video className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <input
-                                    placeholder="Ссылка на видео-тур (YouTube / Vimeo)"
-                                    className="flex-1 h-11 bg-white border border-slate-200 rounded-2xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
-                                    value={formData.video_url}
-                                    onChange={e => set('video_url', e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <input
-                                    placeholder="Адрес офиса"
-                                    className="flex-1 h-11 bg-white border border-slate-200 rounded-2xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
-                                    value={formData.address}
-                                    onChange={e => set('address', e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Package className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                                <input
-                                    placeholder="Welcome Pack (мерч, подарки)"
-                                    className="flex-1 h-11 bg-white border border-slate-200 rounded-2xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
-                                    value={formData.merch_info}
-                                    onChange={e => set('merch_info', e.target.value)}
-                                />
-                            </div>
-                        </section>
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Контент</h4>
+                                <div className="flex items-center gap-3">
+                                    <Video className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                    <input
+                                        placeholder="Ссылка на видео-тур (YouTube / Vimeo)"
+                                        className="flex-1 h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
+                                        value={formData.video_url}
+                                        onChange={e => set('video_url', e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                    <input
+                                        placeholder="Адрес офиса"
+                                        className="flex-1 h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
+                                        value={formData.address}
+                                        onChange={e => set('address', e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Package className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                    <input
+                                        placeholder="Welcome Pack (мерч, подарки)"
+                                        className="flex-1 h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm outline-none focus:border-slate-400 shadow-sm"
+                                        value={formData.merch_info}
+                                        onChange={e => set('merch_info', e.target.value)}
+                                    />
+                                </div>
+                            </section>
 
-                        <section className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Инструкции для первого дня</h4>
-                            <div className="space-y-2">
-                                {formData.first_day_instructions.map((instr, i) => (
-                                    <div key={i} className="flex gap-2">
-                                        <input
-                                            className="flex-1 h-10 bg-white border border-slate-200 rounded-xl px-3 text-sm outline-none focus:border-slate-400 shadow-sm"
-                                            value={instr} placeholder={`Пункт ${i + 1}`}
-                                            onChange={e => updateInstruction(i, e.target.value)}
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">О компании</h4>
+                                <div className="space-y-2">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Описание компании</label>
+                                        <textarea
+                                            placeholder="Расскажите кратко о компании..."
+                                            className="w-full h-16 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
+                                            value={formData.company_description}
+                                            onChange={e => set('company_description', e.target.value)}
                                         />
-                                        <button type="button" onClick={() => removeInstruction(i)} className="p-2 text-slate-300 hover:text-red-500">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
                                     </div>
-                                ))}
-                                <button type="button"
-                                    onClick={() => set('first_day_instructions', [...formData.first_day_instructions, ''])}
-                                    className="w-full py-2.5 bg-white border border-dashed border-slate-300 rounded-xl text-xs font-black text-slate-500 uppercase hover:bg-slate-100 transition-colors"
-                                >
-                                    + Добавить пункт
-                                </button>
-                            </div>
-                        </section>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Миссия</label>
+                                            <textarea
+                                                placeholder="..."
+                                                className="w-full h-14 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
+                                                value={formData.mission}
+                                                onChange={e => set('mission', e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Видение</label>
+                                            <textarea
+                                                placeholder="..."
+                                                className="w-full h-14 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
+                                                value={formData.vision}
+                                                onChange={e => set('vision', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
 
-                        <section className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100 space-y-4">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">О компании</h4>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Описание компании</label>
-                                <textarea
-                                    placeholder="Расскажите кратко о компании..."
-                                    className="w-full h-20 bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                    value={formData.company_description}
-                                    onChange={e => set('company_description', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Миссия</label>
-                                <textarea
-                                    placeholder="Наша миссия — ..."
-                                    className="w-full h-16 bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                    value={formData.mission}
-                                    onChange={e => set('mission', e.target.value)}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Видение</label>
-                                <textarea
-                                    placeholder="Мы стремимся к ..."
-                                    className="w-full h-16 bg-white border border-slate-200 rounded-2xl py-3 px-4 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                    value={formData.vision}
-                                    onChange={e => set('vision', e.target.value)}
-                                />
-                            </div>
-                        </section>
+                        {/* Column 2 - Top */}
+                        <div className="space-y-4">
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                    <Users className="w-3.5 h-3.5" /> Команда и иерархия
+                                </h4>
+                                <p className="text-slate-400 text-[10px] mb-3">Кто в компании за что отвечает</p>
+                                <div className="space-y-2">
+                                    {formData.team_members.map((member, i) => (
+                                        <div key={i} className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5 relative group shadow-sm">
+                                            <button type="button" onClick={() => removeTeamMember(i)} className="absolute top-2 right-2 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <input
+                                                className="w-full bg-slate-50 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-900 outline-none"
+                                                placeholder="ФИО"
+                                                value={member.name}
+                                                onChange={e => updateTeamMember(i, 'name', e.target.value)}
+                                            />
+                                            <input
+                                                className="w-full bg-white border border-slate-100 px-3 py-1.5 rounded-lg text-xs text-slate-600 outline-none"
+                                                placeholder="Должность"
+                                                value={member.role}
+                                                onChange={e => updateTeamMember(i, 'role', e.target.value)}
+                                            />
+                                            <input
+                                                className="w-full bg-white border-b border-dashed border-slate-200 px-3 py-1 text-[11px] text-slate-500 outline-none"
+                                                placeholder="Зона ответственности"
+                                                value={member.description}
+                                                onChange={e => updateTeamMember(i, 'description', e.target.value)}
+                                            />
+                                        </div>
+                                    ))}
+                                    <button type="button" onClick={addTeamMember}
+                                        className="w-full py-2 bg-white border border-dashed border-slate-300 rounded-xl text-xs font-black text-slate-500 uppercase hover:bg-slate-100 transition-colors"
+                                    >
+                                        + Добавить руководителя
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Инструкции для первого дня</h4>
+                                <div className="space-y-1.5">
+                                    {formData.first_day_instructions.map((instr, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <input
+                                                className="flex-1 h-9 bg-white border border-slate-200 rounded-xl px-3 text-sm outline-none focus:border-slate-400 shadow-sm"
+                                                value={instr} placeholder={`Пункт ${i + 1}`}
+                                                onChange={e => updateInstruction(i, e.target.value)}
+                                            />
+                                            <button type="button" onClick={() => removeInstruction(i)} className="p-2 text-slate-300 hover:text-red-500">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button type="button"
+                                        onClick={() => set('first_day_instructions', [...formData.first_day_instructions, ''])}
+                                        className="w-full py-2 bg-white border border-dashed border-slate-300 rounded-xl text-xs font-black text-slate-500 uppercase hover:bg-slate-100 transition-colors"
+                                    >
+                                        + Добавить пункт
+                                    </button>
+                                </div>
+                            </section>
+                        </div>
                     </div>
 
-                    {/* Column 2 — Team / Org Hierarchy */}
-                    <div className="space-y-5">
-                        <section className="bg-slate-50/50 p-5 rounded-[2rem] border border-slate-100">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                <Users className="w-3.5 h-3.5" /> Команда и иерархия
-                            </h4>
-                            <p className="text-slate-400 text-xs mb-4">Кто в компании за что отвечает — кандидат увидит это на Welcome Page</p>
-                            <div className="space-y-3">
-                                {formData.team_members.map((member, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2 relative group shadow-sm">
-                                        <button type="button" onClick={() => removeTeamMember(i)} className="absolute top-2 right-2 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <input
-                                            className="w-full bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold text-slate-900 outline-none"
-                                            placeholder="ФИО (напр. Иванов Иван)"
-                                            value={member.name}
-                                            onChange={e => updateTeamMember(i, 'name', e.target.value)}
-                                        />
-                                        <input
-                                            className="w-full bg-white border border-slate-100 px-4 py-2 rounded-xl text-xs text-slate-600 outline-none"
-                                            placeholder="Должность (напр. Директор по HR)"
-                                            value={member.role}
-                                            onChange={e => updateTeamMember(i, 'role', e.target.value)}
-                                        />
-                                        <input
-                                            className="w-full bg-white border-b border-dashed border-slate-200 px-4 py-1 text-[11px] text-slate-500 outline-none"
-                                            placeholder="За что отвечает (напр. Адаптация новых сотрудников)"
-                                            value={member.description}
-                                            onChange={e => updateTeamMember(i, 'description', e.target.value)}
-                                        />
-                                    </div>
-                                ))}
-                                <button type="button" onClick={addTeamMember}
-                                    className="w-full py-3 bg-white border border-dashed border-slate-300 rounded-2xl text-xs font-black text-slate-500 uppercase hover:bg-slate-100 transition-colors"
-                                >
-                                    + Добавить сотрудника
-                                </button>
-                            </div>
-                        </section>
-
-                        {/* Actions */}
-                        <div className="flex gap-3 pt-4 sticky bottom-0 bg-white">
-                            <button type="button" onClick={() => setShowPreview(true)}
-                                className="flex items-center gap-2 px-5 py-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl text-sm font-bold hover:bg-slate-100 transition-all">
-                                <Eye className="w-4 h-4" /> Превью
-                            </button>
-                            <button type="submit" disabled={mutation.isPending}
-                                className="flex-1 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 disabled:opacity-50">
-                                {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingId ? 'Сохранить' : 'Создать')}
-                            </button>
-                        </div>
+                    {/* Actions - Full Width Bottom */}
+                    <div className="pt-2 sticky bottom-0 bg-white">
+                        <button type="submit" disabled={mutation.isPending}
+                            className="w-full h-12 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 disabled:opacity-50">
+                            {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (editingId ? 'Сохранить изменения' : 'Создать страницу')}
+                        </button>
                     </div>
                 </form>
             </Modal>
-
-            {/* Preview Modal */}
-            {showPreview && (
-                <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowPreview(false)}>
-                    <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setShowPreview(false)}
-                            className="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur text-slate-900 rounded-full w-9 h-9 flex items-center justify-center hover:bg-white text-lg font-bold shadow-lg">
-                            ✕
-                        </button>
-                        <div className="pointer-events-none text-[10px] bg-slate-900 text-white text-center py-1.5 font-black uppercase tracking-widest rounded-t-[2rem]">
-                            Превью — так видит кандидат
-                        </div>
-                        <WelcomeDashboard
-                            candidateName="Алия Сейткали"
-                            positionTitle="Ваша должность"
-                            companyName={branches.find((b: any) => b.id === formData.branch_id)?.name || 'Компания'}
-                            startDate={new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split('T')[0]}
-                            welcomeContent={{
-                                video_url: formData.video_url || undefined,
-                                address: formData.address || undefined,
-                                first_day_instructions: formData.first_day_instructions.filter(Boolean),
-                                merch_info: formData.merch_info || undefined,
-                                team_members: formData.team_members.filter(m => m.name || m.role),
-                                office_tour_images: formData.office_tour_images,
-                                company_description: formData.company_description || undefined,
-                                mission: formData.mission || undefined,
-                                vision: formData.vision || undefined,
-                            }}
-                        />
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

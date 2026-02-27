@@ -6,13 +6,18 @@ import {
     Loader2,
     Clock,
     Gift,
+    Check,
     Trash2,
     Edit3,
     FileText,
-    Layout
+    Layout,
+    Users,
+    Search,
+    CheckCircle
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { toast } from 'sonner';
+import { useEmployees } from '../../hooks/useEmployees';
 
 export default function OfferTemplatesPage() {
     const queryClient = useQueryClient();
@@ -35,6 +40,9 @@ export default function OfferTemplatesPage() {
     };
 
     const [formData, setFormData] = useState(initialForm);
+    const [isSignatorySelectOpen, setIsSignatorySelectOpen] = useState(false);
+    const [signatorySearch, setSignatorySearch] = useState('');
+    const [manualSignatory, setManualSignatory] = useState({ title: '', name: '' });
 
     const { data: templates = [], isLoading } = useQuery({
         queryKey: ['offer-templates'],
@@ -44,13 +52,10 @@ export default function OfferTemplatesPage() {
         }
     });
 
-    const { data: employees = [] } = useQuery({
-        queryKey: ['employees-for-templates'],
-        queryFn: async () => {
-            const res = await api.get('/employees/');
-            return res.data;
-        }
-    });
+    const { data: searchResults = [], isLoading: isSearchLoading } = useEmployees(
+        signatorySearch.length >= 2 ? signatorySearch : undefined,
+        { enabled: signatorySearch.length >= 2 }
+    );
 
     const mutation = useMutation({
         mutationFn: async (data: any) => {
@@ -87,7 +92,17 @@ export default function OfferTemplatesPage() {
     };
 
     // Helper functions for dynamic fields
-    const addSignatory = () => setFormData({ ...formData, signatories: [...formData.signatories, { title: 'Должность', name: '' }] });
+    const addSignatory = () => setIsSignatorySelectOpen(true);
+
+    const finishAddSignatory = (title: string, name: string) => {
+        setFormData({
+            ...formData,
+            signatories: [...formData.signatories, { title, name }]
+        });
+        setIsSignatorySelectOpen(false);
+        setSignatorySearch('');
+        setManualSignatory({ title: '', name: '' });
+    };
     const updateSignatory = (idx: number, field: 'title' | 'name', value: string) => {
         const newSigns = [...formData.signatories];
         newSigns[idx][field] = value;
@@ -221,22 +236,24 @@ export default function OfferTemplatesPage() {
                             </h4>
                             <div className="space-y-4 mb-6">
                                 {formData.signatories.map((sig, idx) => (
-                                    <div key={idx} className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 relative group">
-                                        <button type="button" onClick={() => removeSignatory(idx)} className="absolute top-2 right-2 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3 h-3" /></button>
-                                        <input className="w-full bg-slate-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase text-slate-900 outline-none" placeholder="Должность" value={sig.title} onChange={e => updateSignatory(idx, 'title', e.target.value)} />
-                                        <select
-                                            className="w-full bg-white border border-slate-100 px-4 py-2 rounded-xl text-xs outline-none"
-                                            value={sig.name}
-                                            onChange={e => updateSignatory(idx, 'name', e.target.value)}
-                                        >
-                                            <option value="">Выберите человека...</option>
-                                            {employees.map((emp: any) => <option key={emp.id} value={emp.full_name}>{emp.full_name}</option>)}
-                                        </select>
-                                        <input className="w-full bg-white border-b border-dashed border-slate-200 px-4 py-1 text-[11px] outline-none" placeholder="ФИО вручную" value={sig.name} onChange={e => updateSignatory(idx, 'name', e.target.value)} />
+                                    <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 relative group shadow-sm flex flex-col justify-center">
+                                        <button type="button" onClick={() => removeSignatory(idx)} className="absolute top-1 right-1 text-red-300 opacity-0 group-hover:opacity-100 transition-opacity z-10"><Trash2 className="w-3 h-3" /></button>
+                                        <div className="pr-4">
+                                            <input
+                                                className="w-full bg-slate-50 px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-slate-400 outline-none border-none mb-0.5"
+                                                value={sig.title}
+                                                onChange={e => updateSignatory(idx, 'title', e.target.value)}
+                                            />
+                                            <input
+                                                className="w-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-900 outline-none border-none"
+                                                value={sig.name}
+                                                onChange={e => updateSignatory(idx, 'name', e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                            <button type="button" onClick={addSignatory} className="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase hover:bg-blue-100 transition-colors">+ Добавить лицо</button>
+                            <button type="button" onClick={addSignatory} className="w-full py-3 bg-blue-50 text-blue-600 rounded-2xl text-[10px] font-black uppercase hover:bg-blue-100 transition-colors shadow-sm shadow-blue-500/5">+ Добавить лицо</button>
                         </section>
                     </div>
 
@@ -260,6 +277,97 @@ export default function OfferTemplatesPage() {
                         </div>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Signatory Selection Modal (Shared logic with JobOffersPage) */}
+            <Modal isOpen={isSignatorySelectOpen} onClose={() => { setIsSignatorySelectOpen(false); setManualSignatory({ title: '', name: '' }); }} title="Добавить подписанта" maxWidth="max-w-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+                    {/* LEFT: Manual Entry */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <Edit3 className="w-4 h-4" />
+                            <h5 className="text-[10px] font-black uppercase tracking-widest">Ввести вручную</h5>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
+                            <input
+                                placeholder="Должность подписанта"
+                                className="w-full h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-slate-400"
+                                value={manualSignatory.title}
+                                onChange={e => setManualSignatory({ ...manualSignatory, title: e.target.value })}
+                            />
+                            <input
+                                placeholder="ФИО подписанта"
+                                className="w-full h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-slate-400"
+                                value={manualSignatory.name}
+                                onChange={e => setManualSignatory({ ...manualSignatory, name: e.target.value })}
+                            />
+                            <button
+                                type="button"
+                                disabled={!manualSignatory.title || !manualSignatory.name}
+                                onClick={() => finishAddSignatory(manualSignatory.title, manualSignatory.name)}
+                                className="w-full h-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30 flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10"
+                            >
+                                <CheckCircle className="w-3 h-3" /> Добавить
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Pick from Staff */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-blue-400">
+                            <Users className="w-4 h-4" />
+                            <h5 className="text-[10px] font-black uppercase tracking-widest">Выбрать из штата</h5>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    placeholder="Поиск сотрудника..."
+                                    className="w-full h-9 pl-9 pr-4 bg-slate-50 border border-slate-100 rounded-xl text-xs outline-none focus:border-slate-400 transition-all focus:bg-white"
+                                    value={signatorySearch}
+                                    onChange={e => setSignatorySearch(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="max-h-[220px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl bg-white shadow-sm custom-scrollbar">
+                                {signatorySearch.length >= 2 ? (
+                                    <>
+                                        {searchResults.map((emp: any) => (
+                                            <button
+                                                key={emp.id}
+                                                type="button"
+                                                onClick={() => finishAddSignatory(emp.position || 'Должность', emp.full_name)}
+                                                className="w-full px-4 py-2.5 flex flex-col items-start hover:bg-slate-50 transition-colors text-left group"
+                                            >
+                                                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{emp.full_name}</span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{emp.position || 'Должность не указана'}</span>
+                                            </button>
+                                        ))}
+
+                                        {!isSearchLoading && searchResults.length === 0 && (
+                                            <div className="p-8 text-center text-slate-400 text-[10px] font-medium leading-relaxed">
+                                                Сотрудники не найдены<br />
+                                                <span className="text-[8px] opacity-50 uppercase font-black tracking-tighter">Убедитесь, что данные введены верно</span>
+                                            </div>
+                                        )}
+
+                                        {isSearchLoading && (
+                                            <div className="p-10 flex flex-col items-center justify-center gap-2">
+                                                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ищем в базе...</span>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="p-8 text-center text-slate-400 text-[10px] font-medium leading-relaxed">
+                                        Введите минимум 2 символа для поиска<br />
+                                        <span className="text-[8px] opacity-50 uppercase font-black tracking-tighter">Начните вводить ФИО или должность</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

@@ -52,9 +52,10 @@ def dismiss_employee(
 def get_employees(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_active_user),
-    scope: Optional[List[int]] = Depends(get_user_scope)
+    scope: Optional[List[int]] = Depends(get_user_scope),
+    q: Optional[str] = None
 ):
-    return EmployeeService.get_employees(db, current_user, scope)
+    return EmployeeService.get_employees(db, current_user, scope, q)
 
 # ... (Skipping standard CRUD for brevity, focus on Export Optimization) ...
 

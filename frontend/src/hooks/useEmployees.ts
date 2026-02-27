@@ -6,13 +6,14 @@ import { EmployeeCreatePayload, EmployeeUpdatePayload, ApiError } from '../types
 
 export type Employee = EmployeeRecord;
 
-export function useEmployees() {
+export function useEmployees(q?: string, options: { enabled?: boolean } = {}) {
     return useQuery({
-        queryKey: ['employees'],
+        queryKey: ['employees', q],
         queryFn: async () => {
-            const res = await api.get('/employees');
+            const res = await api.get('/employees', { params: { q } });
             return res.data as Employee[];
         },
+        enabled: options.enabled ?? true
     });
 }
 
