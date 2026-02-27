@@ -348,7 +348,10 @@ export default function PublicOfferPage() {
                                             </div>
                                             {offer.status === 'accepted' && welcomeContent && (
                                                 <button
-                                                    onClick={() => setShowWelcome(true)}
+                                                    onClick={() => {
+                                                        setShowWelcome(true);
+                                                        window.scrollTo(0, 0);
+                                                    }}
                                                     id="btn-open-welcome-page"
                                                     className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98]"
                                                 >

@@ -132,6 +132,7 @@ export default function WelcomeDashboard({
     const [videoPlaying, setVideoPlaying] = useState(false);
 
     useEffect(() => {
+        window.scrollTo(0, 0);
         if (confettiFired.current) return;
         confettiFired.current = true;
         launchConfetti();
