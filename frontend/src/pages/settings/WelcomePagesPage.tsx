@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
     Plus, Loader2, Trash2, Edit3, Sparkles,
-    MapPin, Video, Package, Building2, Users
+    MapPin, Video, Package, Building2, Users,
+    Clock, CheckCircle
 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { toast } from 'sonner';
@@ -33,6 +34,11 @@ export default function WelcomePagesPage() {
     const [isOpen, setIsOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState(emptyForm());
+
+    // Instructions Modal State
+    const [isInstructionModalOpen, setIsInstructionModalOpen] = useState(false);
+    const [tempInstruction, setTempInstruction] = useState('');
+    const [editingInstructionIdx, setEditingInstructionIdx] = useState<number | null>(null);
 
 
     const { data: configs = [], isLoading } = useQuery({
@@ -97,6 +103,28 @@ export default function WelcomePagesPage() {
 
     const removeInstruction = (i: number) =>
         set('first_day_instructions', formData.first_day_instructions.filter((_, idx) => idx !== i));
+
+    const finishInstruction = () => {
+        if (!tempInstruction.trim()) return;
+
+        const upd = [...formData.first_day_instructions];
+        if (editingInstructionIdx !== null) {
+            upd[editingInstructionIdx] = tempInstruction.trim();
+        } else {
+            upd.push(tempInstruction.trim());
+        }
+
+        set('first_day_instructions', upd);
+        setIsInstructionModalOpen(false);
+        setTempInstruction('');
+        setEditingInstructionIdx(null);
+    };
+
+    const openInstructionEdit = (idx: number) => {
+        setTempInstruction(formData.first_day_instructions[idx]);
+        setEditingInstructionIdx(idx);
+        setIsInstructionModalOpen(true);
+    };
 
     // Team members helpers
     const addTeamMember = () => set('team_members', [...formData.team_members, { name: '', role: '', description: '' }]);
@@ -322,27 +350,59 @@ export default function WelcomePagesPage() {
                                 </div>
                             </section>
 
-                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Инструкции для первого дня</h4>
-                                <div className="space-y-1.5">
+                            <section className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Инструкции первого дня</h4>
+                                        <p className="text-[10px] text-slate-400 font-medium">Пошаговый план для новичка</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setTempInstruction(''); setEditingInstructionIdx(null); setIsInstructionModalOpen(true); }}
+                                        className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar min-h-[100px]">
                                     {formData.first_day_instructions.map((instr, i) => (
-                                        <div key={i} className="flex gap-2">
-                                            <input
-                                                className="flex-1 h-9 bg-white border border-slate-200 rounded-xl px-3 text-sm outline-none focus:border-slate-400 shadow-sm"
-                                                value={instr} placeholder={`Пункт ${i + 1}`}
-                                                onChange={e => updateInstruction(i, e.target.value)}
-                                            />
-                                            <button type="button" onClick={() => removeInstruction(i)} className="p-2 text-slate-300 hover:text-red-500">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                        <div key={i} className="group relative bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:border-slate-400 transition-all">
+                                            <div className="flex items-start gap-3 pr-14">
+                                                <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-400 flex-shrink-0 border border-slate-100">
+                                                    {i + 1}
+                                                </div>
+                                                <p className="text-xs font-semibold text-slate-700 leading-relaxed line-clamp-2">{instr}</p>
+                                            </div>
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openInstructionEdit(i)}
+                                                    className="p-1.5 hover:bg-slate-50 text-slate-300 hover:text-blue-500 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                                >
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeInstruction(i)}
+                                                    className="p-1.5 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
-                                    <button type="button"
-                                        onClick={() => set('first_day_instructions', [...formData.first_day_instructions, ''])}
-                                        className="w-full py-2 bg-white border border-dashed border-slate-300 rounded-xl text-xs font-black text-slate-500 uppercase hover:bg-slate-100 transition-colors"
-                                    >
-                                        + Добавить пункт
-                                    </button>
+                                    {formData.first_day_instructions.length === 0 && (
+                                        <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-200 mb-3 shadow-sm border border-slate-100">
+                                                <Clock className="w-6 h-6" />
+                                            </div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-loose">
+                                                Список пуст<br />
+                                                <span className="opacity-40 font-bold">Нажмите +, чтобы добавить инструкцию</span>
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </div>
@@ -356,6 +416,37 @@ export default function WelcomePagesPage() {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Instruction Editor Modal */}
+            <Modal isOpen={isInstructionModalOpen} onClose={() => { setIsInstructionModalOpen(false); setTempInstruction(''); setEditingInstructionIdx(null); }} title={editingInstructionIdx !== null ? "Редактировать пункт" : "Новая инструкция"} maxWidth="max-w-xl">
+                <div className="space-y-6 pt-2">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <Edit3 className="w-4 h-4" />
+                            <h5 className="text-[10px] font-black uppercase tracking-widest leading-none">Текст инструкции</h5>
+                        </div>
+                        <textarea
+                            autoFocus
+                            placeholder="Например: Подойдите к ресепшн и спросите HR-менеджера Марию..."
+                            className="w-full h-48 bg-slate-50 border border-slate-200 rounded-[2rem] p-6 text-sm font-medium leading-relaxed outline-none focus:bg-white focus:border-slate-400 transition-all shadow-inner"
+                            value={tempInstruction}
+                            onChange={e => setTempInstruction(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex gap-4">
+                        <button
+                            type="button"
+                            disabled={!tempInstruction.trim()}
+                            onClick={finishInstruction}
+                            className="flex-1 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 disabled:opacity-30 disabled:grayscale"
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                            {editingInstructionIdx !== null ? "Обновить данные" : "Добавить в список"}
+                        </button>
+                    </div>
+                    <p className="text-center text-[9px] text-slate-300 font-bold uppercase tracking-widest">Текст будет виден кандидату на Welcome Page</p>
+                </div>
             </Modal>
         </div>
     );

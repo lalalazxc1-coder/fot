@@ -4,7 +4,6 @@ import {
     Calendar,
     Users,
     Gift,
-    CheckCircle2,
     Play,
     Download,
     Navigation,
@@ -337,20 +336,32 @@ export default function WelcomeDashboard({
 
                 {/* First Day Instructions */}
                 {instructions.length > 0 && (
-                    <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-3">
-                            <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center border border-slate-100">
-                                <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    <section className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+                        <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-900/10">
+                                    <Clock className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="font-black text-slate-900 text-lg uppercase tracking-tight">Твой первый день</h2>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Пошаговый план действий</p>
+                                </div>
                             </div>
-                            <h2 className="font-bold text-slate-900 text-sm">Твой первый день</h2>
                         </div>
-                        <div className="px-5 py-4 space-y-2">
+                        <div className="p-8 space-y-8 relative">
+                            {/* Vertical Line */}
+                            <div className="absolute left-[51px] top-12 bottom-12 w-0.5 bg-slate-100 hidden sm:block"></div>
+
                             {instructions.map((instruction, i) => (
-                                <div key={i} className="flex items-start gap-3">
-                                    <div className="w-5 h-5 bg-slate-50 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 border border-slate-100">
-                                        <CheckCircle2 className="w-3 h-3 text-slate-400" />
+                                <div key={i} className="flex items-start gap-6 relative group">
+                                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 border-2 border-slate-100 group-hover:border-slate-900 group-hover:scale-110 transition-all z-10 shadow-sm">
+                                        <span className="text-sm font-black text-slate-900">{i + 1}</span>
                                     </div>
-                                    <p className="text-slate-700 text-sm font-medium leading-snug">{instruction}</p>
+                                    <div className="flex-1 pt-1.5">
+                                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 group-hover:bg-white group-hover:shadow-xl group-hover:shadow-slate-200/50 transition-all">
+                                            <p className="text-slate-800 text-sm font-bold leading-relaxed">{instruction}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
