@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-table';
 import { Plus, Loader2, Download, HelpCircle } from 'lucide-react';
 import { PageHeader } from './shared';
-import { Button } from './ui-mocks';
+
 import { api } from '../lib/api';
 import Modal from './Modal';
 import { DismissModal } from './payroll/DismissModal';

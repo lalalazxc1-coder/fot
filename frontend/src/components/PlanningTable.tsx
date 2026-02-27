@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-table';
 import { Plus, Loader2, Settings, Download, HelpCircle, Calculator, RefreshCw } from 'lucide-react';
 import { PageHeader } from './shared';
-import { Button } from './ui-mocks';
+
 import SalarySettingsModal from './SalarySettingsModal';
 import Modal from './Modal';
 
