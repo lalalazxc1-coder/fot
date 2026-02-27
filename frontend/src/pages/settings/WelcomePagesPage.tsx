@@ -95,12 +95,6 @@ export default function WelcomePagesPage() {
 
     const set = (field: string, val: any) => setFormData(prev => ({ ...prev, [field]: val }));
 
-    const updateInstruction = (i: number, val: string) => {
-        const upd = [...formData.first_day_instructions];
-        upd[i] = val;
-        set('first_day_instructions', upd);
-    };
-
     const removeInstruction = (i: number) =>
         set('first_day_instructions', formData.first_day_instructions.filter((_, idx) => idx !== i));
 
