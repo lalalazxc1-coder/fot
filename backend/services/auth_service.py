@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from database.models import User, LoginLog
-from security import verify_password, create_access_token, create_refresh_token, get_password_hash
+from security import verify_password, create_access_token, create_refresh_token, get_password_hash, REFRESH_TOKEN_EXPIRE_DAYS
 from datetime import timedelta
 from utils.date_utils import now_iso
 import logging
@@ -74,9 +74,8 @@ class AuthService:
         _write_login_log(db, "login_success", user_id=user.id, user_email=username,
                          ip_address=ip_address, user_agent=user_agent)
 
-        expires_delta = timedelta(days=30) if remember_me else None
         access_token = create_access_token(data={"sub": str(user.id)})
-        refresh_expires_delta = timedelta(days=30) if remember_me else None
+        refresh_expires_delta = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS) if remember_me else timedelta(hours=12)
         refresh_token = create_refresh_token(data={"sub": str(user.id)}, expires_delta=refresh_expires_delta)
 
         return {
