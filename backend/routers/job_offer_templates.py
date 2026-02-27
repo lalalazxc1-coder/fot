@@ -22,7 +22,8 @@ def create_template(data: schemas.JobOfferTemplateCreate, db: Session = Depends(
         working_hours=data.working_hours,
         lunch_break=data.lunch_break,
         non_compete_text=data.non_compete_text,
-        signatories=[s.dict() for s in data.signatories] if data.signatories else []
+        signatories=[s.dict() for s in data.signatories] if data.signatories else [],
+        welcome_content=data.welcome_content.dict() if data.welcome_content else None
     )
     db.add(db_template)
     db.commit()
@@ -65,6 +66,7 @@ def update_template(template_id: int, data: schemas.JobOfferTemplateUpdate, db: 
     template.lunch_break = data.lunch_break
     template.non_compete_text = data.non_compete_text
     template.signatories = [s.dict() for s in data.signatories] if data.signatories else []
+    template.welcome_content = data.welcome_content.dict() if data.welcome_content else None
     
     db.commit()
     db.refresh(template)

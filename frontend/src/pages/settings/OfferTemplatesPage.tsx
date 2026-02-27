@@ -5,7 +5,6 @@ import {
     Plus,
     Loader2,
     Clock,
-    Palette,
     Gift,
     Trash2,
     Edit3,
@@ -182,13 +181,6 @@ export default function OfferTemplatesPage() {
                             />
                         </section>
 
-                        <section className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 space-y-4 text-slate-900">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4"><Palette className="w-3 h-3" /> Бренд и Цвет</h4>
-                            <div className="flex items-center gap-4">
-                                <input type="color" className="w-16 h-16 cursor-pointer rounded-2xl bg-white border border-slate-200 p-1" value={formData.theme_color} onChange={e => setFormData({ ...formData, theme_color: e.target.value })} />
-                                <div className="text-xs font-bold text-slate-500 uppercase">HEX: {formData.theme_color}</div>
-                            </div>
-                        </section>
 
                         <section className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 space-y-4">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4"><Clock className="w-3 h-3" /> График по умолчанию</h4>

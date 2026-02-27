@@ -300,6 +300,17 @@ class CustomSection(BaseModel):
     title: str
     content: str
 
+class WelcomeContent(BaseModel):
+    video_url: Optional[str] = None
+    office_tour_images: Optional[List[str]] = []
+    address: Optional[str] = None
+    coordinates: Optional[Dict[str, float]] = None
+    first_day_instructions: Optional[List[str]] = []
+    merch_info: Optional[str] = None
+    team_leader_name: Optional[str] = None
+    team_leader_photo: Optional[str] = None
+    team_leader_message: Optional[str] = None
+
 class Signatory(BaseModel):
     title: str
     name: str
@@ -334,6 +345,8 @@ class JobOfferCreate(BaseModel):
     hr_name: Optional[str] = Field(None, max_length=200)
     start_date: Optional[str] = None
     signatories: Optional[List[Signatory]] = []
+    welcome_content: Optional[WelcomeContent] = None
+    welcome_page_config_id: Optional[int] = None  # ID конфига Welcome Page; бэкенд снапшотит его в welcome_content
 
 class JobOfferResponse(BaseModel):
     id: int
@@ -364,6 +377,7 @@ class JobOfferResponse(BaseModel):
     hr_name: Optional[str] = None
     start_date: Optional[str] = None
     signatories: Optional[List[Signatory]] = []
+    welcome_content: Optional[WelcomeContent] = None
     
     class Config:
         from_attributes = True
@@ -381,6 +395,7 @@ class JobOfferTemplateBase(BaseModel):
     lunch_break: Optional[str] = "13:00 - 14:00"
     non_compete_text: Optional[str] = None
     signatories: Optional[List[Signatory]] = []
+    welcome_content: Optional[WelcomeContent] = None
 
 class JobOfferTemplateCreate(JobOfferTemplateBase):
     pass

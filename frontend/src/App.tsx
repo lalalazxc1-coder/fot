@@ -25,6 +25,7 @@ import LogsPage from './pages/admin/LogsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 import PositionsPage from './pages/settings/PositionsPage';
 import OfferTemplatesPage from './pages/settings/OfferTemplatesPage';
+import WelcomePagesPage from './pages/settings/WelcomePagesPage';
 
 type AuthUser = {
     id: number;
@@ -233,6 +234,7 @@ function App() {
                             <Route path="structure" element={<StructurePage />} />
                             <Route path="positions" element={<PositionsPage />} />
                             <Route path="offer-templates" element={<OfferTemplatesPage />} />
+                            <Route path="welcome-pages" element={<WelcomePagesPage />} />
                         </Route>
 
                         {/* Admin Routes - System config */}

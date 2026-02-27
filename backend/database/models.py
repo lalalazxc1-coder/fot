@@ -355,6 +355,7 @@ class JobOffer(Base):
     start_date = Column(String, nullable=True)
     
     signatories = Column(JSON, default=[])
+    welcome_content = Column(JSON, nullable=True)  # Welcome Experience data
 
     branch = relationship("OrganizationUnit", foreign_keys=[branch_id])
     department = relationship("OrganizationUnit", foreign_keys=[department_id])
@@ -379,4 +380,29 @@ class JobOfferTemplate(Base):
     non_compete_text = Column(String, nullable=True)
     
     signatories = Column(JSON, default=[])
+    welcome_content = Column(JSON, nullable=True)  # Welcome Experience data
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class WelcomePageConfig(Base):
+    """Самостоятельная конфигурация страницы приветствия, привязанная к филиалу."""
+    __tablename__ = "welcome_page_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)                                    # Название конфига (для списка)
+    branch_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True)  # Привязка к филиалу
+
+    video_url = Column(String, nullable=True)
+    office_tour_images = Column(JSON, default=[])
+    address = Column(String, nullable=True)
+    first_day_instructions = Column(JSON, default=[])
+    merch_info = Column(String, nullable=True)
+    team_members = Column(JSON, default=[])  # [{name, role, description}]
+    company_description = Column(String, nullable=True)  # О компании
+    mission = Column(String, nullable=True)               # Миссия
+    vision = Column(String, nullable=True)                 # Видение
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    branch = relationship("OrganizationUnit", foreign_keys=[branch_id])
+

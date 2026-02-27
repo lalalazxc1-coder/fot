@@ -7,10 +7,12 @@ import {
     Shield,
     CheckCircle2,
     Lock,
-    ArrowRight
+    ArrowRight,
+    Sparkles
 } from 'lucide-react';
 import { formatMoney } from '../../utils';
 import { toast } from 'sonner';
+import WelcomeDashboard from '../../components/WelcomeDashboard';
 
 export default function PublicOfferPage() {
     const { token } = useParams();
@@ -25,6 +27,10 @@ export default function PublicOfferPage() {
     const [isLocked, setIsLocked] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [pinError, setPinError] = useState(false);
+
+    // Welcome Experience State
+    const [welcomeContent, setWelcomeContent] = useState<any>(null);
+    const [showWelcome, setShowWelcome] = useState(false);
 
     const fetchOffer = async () => {
         setIsVerifying(true);
@@ -54,6 +60,10 @@ export default function PublicOfferPage() {
             setIsLocked(false);
             setPinError(false);
             setOffer(res.data);
+            // If already accepted — store welcome_content but DON'T auto-show
+            if (res.data.status === 'accepted' && res.data.welcome_content) {
+                setWelcomeContent(res.data.welcome_content);
+            }
             if (searchParams.get('print') === 'true') {
                 setTimeout(() => window.print(), 1000);
             }
@@ -72,10 +82,16 @@ export default function PublicOfferPage() {
     const handleAction = async (action: 'accept' | 'reject') => {
         setIsSubmitting(true);
         try {
-            await api.post(`/offers/public/${token}/action`, { action, pin });
-            setOffer({ ...offer, status: action === 'accept' ? 'accepted' : 'rejected' });
+            const res = await api.post(`/offers/public/${token}/action`, { action, pin });
+            const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+            setOffer({ ...offer, status: newStatus });
             if (action === 'accept') {
-                toast.success('Предложение принято успешно.');
+                toast.success('Предложение принято! Нажмите кнопку ниже, чтобы открыть Welcome Page.');
+                // Store welcome content, show button — don't auto-redirect
+                const wc = res.data?.welcome_content;
+                if (wc) {
+                    setWelcomeContent(wc);
+                }
             } else {
                 toast.info('Предложение отклонено.');
             }
@@ -101,6 +117,19 @@ export default function PublicOfferPage() {
     );
 
     const isPending = offer?.status === 'pending';
+
+    // Show Welcome Dashboard if accepted
+    if (showWelcome) {
+        return (
+            <WelcomeDashboard
+                candidateName={offer.candidate_name}
+                positionTitle={offer.position_title}
+                companyName={offer.company_name}
+                startDate={offer.start_date}
+                welcomeContent={welcomeContent}
+            />
+        );
+    }
 
     // LOCK SCREEN: Ask for PIN (Light Version)
     if (isLocked) {
@@ -213,16 +242,10 @@ export default function PublicOfferPage() {
                 <div className="bg-white shadow-2xl shadow-slate-200/50 rounded-[2.5rem] border border-slate-200 overflow-hidden">
 
                     <div className="bg-slate-50 border-b border-slate-100 p-8 md:p-12">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                            <div>
-                                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-4">Официальный документ</div>
-                                <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">Предложение о работе</h1>
-                                <p className="text-slate-500 font-medium">Для кандидата: <span className="text-slate-900 font-bold">{offer.candidate_name}</span></p>
-                            </div>
-                            <div className="bg-white px-6 py-4 rounded-3xl border border-slate-200 shadow-sm text-center min-w-[200px]">
-                                <p className="text-[10px] font-black uppercase text-slate-500 mb-1">ID Оффера</p>
-                                <p className="font-mono text-sm font-bold text-slate-900">{token?.slice(0, 12).toUpperCase()}</p>
-                            </div>
+                        <div>
+                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-4">Официальный документ</div>
+                            <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">Предложение о работе</h1>
+                            <p className="text-slate-500 font-medium">Для кандидата: <span className="text-slate-900 font-bold">{offer.candidate_name}</span></p>
                         </div>
                     </div>
 
@@ -238,15 +261,15 @@ export default function PublicOfferPage() {
                         </div>
 
                         <section>
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 font-mono">01. Финансовая мотивация</h2>
-                            <div className="space-y-4">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 rounded-3xl bg-slate-50 border border-slate-100">
-                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 md:mb-0">Ежемесячный оклад (На руки)</div>
-                                    <div className="text-3xl font-black text-slate-900">{formatMoney(offer.base_net)}</div>
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6 font-mono">01. Финансовая мотивация</h2>
+                            <div className="rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                                <div className="flex justify-between items-center px-6 py-4 bg-slate-50">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ежемесячный оклад (На руки)</span>
+                                    <span className="text-xl font-black text-slate-900">{formatMoney(offer.base_net)}</span>
                                 </div>
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 rounded-3xl bg-white border border-slate-100 shadow-sm">
-                                    <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 md:mb-0">Переменная часть (Бонусы)</div>
-                                    <div className="text-3xl font-black text-slate-900">{formatMoney(offer.kpi_net)}</div>
+                                <div className="flex justify-between items-center px-6 py-4 bg-white">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Переменная часть (Бонусы)</span>
+                                    <span className="text-xl font-black text-slate-900">{formatMoney(offer.kpi_net)}</span>
                                 </div>
                             </div>
                         </section>
@@ -318,9 +341,21 @@ export default function PublicOfferPage() {
 
                                 <div className="w-full md:w-auto min-w-[300px]">
                                     {!isPending ? (
-                                        <div className={`p-8 text-center rounded-[2rem] border-2 shadow-xl ${offer.status === 'accepted' ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}`}>
-                                            <div className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-slate-500">Статус оффера</div>
-                                            <div className="text-2xl font-black uppercase">{offer.status === 'accepted' ? 'ПРИНЯТО ВАМИ' : 'ОТКЛОНЕНО'}</div>
+                                        <div className="space-y-4">
+                                            <div className={`p-8 text-center rounded-[2rem] border-2 shadow-xl ${offer.status === 'accepted' ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}`}>
+                                                <div className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-slate-500">Статус оффера</div>
+                                                <div className="text-2xl font-black uppercase">{offer.status === 'accepted' ? 'ПРИНЯТО ВАМИ' : 'ОТКЛОНЕНО'}</div>
+                                            </div>
+                                            {offer.status === 'accepted' && welcomeContent && (
+                                                <button
+                                                    onClick={() => setShowWelcome(true)}
+                                                    id="btn-open-welcome-page"
+                                                    className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10 active:scale-[0.98]"
+                                                >
+                                                    <Sparkles className="w-4 h-4" />
+                                                    Посмотреть Welcome Page
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col gap-3">

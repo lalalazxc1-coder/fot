@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database.database import get_db
-from database.models import JobOffer, User
+from database.models import JobOffer, User, WelcomePageConfig
 from schemas import JobOfferCreate, JobOfferResponse
 from dependencies import get_current_active_user, PermissionChecker
 
@@ -21,6 +21,25 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
     # FIX #6: Use cryptographically secure random, 6 digits
     access_code = "".join([str(secrets.choice(range(10))) for _ in range(6)])
     
+    # Resolve welcome_content: from explicit field OR from config_id
+    welcome_content = None
+    if data.welcome_content:
+        welcome_content = data.welcome_content.dict()
+    elif data.welcome_page_config_id:
+        cfg = db.query(WelcomePageConfig).filter(WelcomePageConfig.id == data.welcome_page_config_id).first()
+        if cfg:
+            welcome_content = {
+                "video_url": cfg.video_url,
+                "office_tour_images": cfg.office_tour_images or [],
+                "address": cfg.address,
+                "first_day_instructions": cfg.first_day_instructions or [],
+                "merch_info": cfg.merch_info,
+                "team_members": cfg.team_members or [],
+                "company_description": cfg.company_description,
+                "mission": cfg.mission,
+                "vision": cfg.vision,
+            }
+
     new_offer = JobOffer(
         token=token,
         access_code=access_code,
@@ -49,6 +68,7 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
         hr_name=data.hr_name,
         start_date=data.start_date,
         signatories=[s.dict() for s in data.signatories],
+        welcome_content=welcome_content,
         status="pending"
     )
     db.add(new_offer)
@@ -96,6 +116,7 @@ def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_
     offer.hr_name = data.hr_name
     offer.start_date = data.start_date
     offer.signatories = [s.dict() for s in data.signatories]
+    offer.welcome_content = data.welcome_content.dict() if data.welcome_content else None
     
     db.commit()
     db.refresh(offer)
@@ -180,7 +201,8 @@ def unlock_offer_with_pin(token: str, data: PinVerifyRequest, db: Session = Depe
         "president_name": offer.president_name,
         "hr_name": offer.hr_name,
         "start_date": offer.start_date,
-        "signatories": offer.signatories
+        "signatories": offer.signatories,
+        "welcome_content": offer.welcome_content,
     }
 
 
@@ -210,4 +232,4 @@ def job_offer_action(token: str, data: JobOfferActionRequest, db: Session = Depe
         raise HTTPException(status_code=400, detail="Invalid action")
     
     db.commit()
-    return {"status": offer.status}
+    return {"status": offer.status, "welcome_content": offer.welcome_content if offer.status == "accepted" else None}
