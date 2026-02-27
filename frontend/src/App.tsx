@@ -10,6 +10,7 @@ import MarketPage from './pages/MarketPage';
 import ScenariosPage from './pages/ScenariosPage';
 import JobOffersPage from './pages/JobOffersPage';
 import PublicOfferPage from './pages/requests/PublicOfferPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { api } from './lib/api';
 import { SnapshotProvider } from './context/SnapshotContext';
 
@@ -251,9 +252,10 @@ function App() {
                             <Route path="logs" element={<LogsPage />} />
                         </Route>
                     </Route>
-                ) : (
-                    <Route path="*" element={<Navigate to="/login" replace />} />
-                )}
+                ) : null}
+
+                {/* Catch-all 404 */}
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </SnapshotProvider>
     );
