@@ -179,7 +179,7 @@ export default function PlanningTable({ user }: { user: any }) {
             </PageHeader>
 
             {/* Filters & Actions */}
-            <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
+            <div className="flex flex-col xl:flex-row items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-100">
                 <PlanningFilters
                     searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                     branchFilter={branchFilter} setBranchFilter={setBranchFilter}
@@ -187,8 +187,8 @@ export default function PlanningTable({ user }: { user: any }) {
                     structure={structure}
                 />
 
-                <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row gap-2 mt-2 xl:mt-0">
-                    <Button
+                <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row justify-end items-center gap-2 shrink-0">
+                    <button
                         onClick={async () => {
                             try {
                                 const filteredIds = table.getRowModel().rows.map((r: any) => r.original.id);
@@ -220,22 +220,21 @@ export default function PlanningTable({ user }: { user: any }) {
                                 alert('Ошибка при экспорте');
                             }
                         }}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 active:scale-[0.98] transition-all rounded-xl py-2.5 px-4 font-semibold"
+                        className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all outline-none shrink-0 shadow-sm"
                         title="Экспорт в Excel"
                     >
-                        <Download className="w-4 h-4 mr-2" />
-                        Экспорт
-                    </Button>
+                        <Download className="w-[18px] h-[18px]" />
+                    </button>
                     {canManage && (
                         <>
-                            <Button onClick={() => setIsSettingsOpen(true)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 border border-transparent active:scale-[0.98] transition-all rounded-xl py-2.5 px-4 font-semibold" title="Настройки расчета зарплаты">
-                                <Settings className="w-4 h-4" />
-                            </Button>
-                            <Button onClick={() => setEditingRow({
+                            <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all outline-none shrink-0 shadow-sm" title="Настройки расчета зарплаты">
+                                <Settings className="w-[18px] h-[18px]" />
+                            </button>
+                            <button onClick={() => setEditingRow({
                                 id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: ''
-                            } as any)} className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold">
-                                <Plus className="w-4 h-4 mr-2" /> Добавить
-                            </Button>
+                            } as any)} className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/20 transition-all border-none outline-none shrink-0" title="Добавить позицию">
+                                <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                            </button>
                         </>
                     )}
                 </div>
@@ -244,14 +243,14 @@ export default function PlanningTable({ user }: { user: any }) {
             <SalarySettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
             {/* Table */}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col relative">
+                <div className="w-full">
+                    <table className="w-full text-sm text-left relative">
+                        <thead className="sticky top-14 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                             {table.getHeaderGroups().map(headerGroup => (
                                 <tr key={headerGroup.id}>
                                     {headerGroup.headers.map(header => (
-                                        <th key={header.id} className="px-4 py-3 font-bold text-slate-500 select-none" onClick={header.column.getToggleSortingHandler()}>
+                                        <th key={header.id} className="px-4 py-3 font-bold text-slate-500 select-none whitespace-nowrap" onClick={header.column.getToggleSortingHandler()}>
                                             {flexRender(header.column.columnDef.header, header.getContext())}
                                         </th>
                                     ))}
@@ -348,6 +347,6 @@ export default function PlanningTable({ user }: { user: any }) {
                     </div>
                 </div>
             </Modal>
-        </div>
+        </div >
     );
 }

@@ -259,7 +259,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         onDepartmentFilterChange={setDepartmentFilter}
         structure={structure}
       >
-        <Button
+        <button
           onClick={async () => {
             try {
               const filteredIds = table.getRowModel().rows.map(r => r.original.id);
@@ -286,20 +286,19 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
               alert('Ошибка при экспорте');
             }
           }}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 active:scale-[0.98] transition-all rounded-xl py-2.5 px-4 font-semibold mr-2"
+          className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all outline-none shrink-0 shadow-sm"
           title="Экспорт в Excel"
         >
-          <Download className="w-4 h-4 mr-2" />
-          Экспорт
-        </Button>
+          <Download className="w-[18px] h-[18px]" />
+        </button>
         {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
-          <Button className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 active:scale-[0.98] transition-all rounded-xl py-2.5 px-5 font-semibold" onClick={() => setIsAddOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Добавить сотрудника
-          </Button>
+          <button className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/20 transition-all border-none outline-none shrink-0" title="Добавить сотрудника" onClick={() => setIsAddOpen(true)}>
+            <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+          </button>
         )}
       </EmployeeTableFilters>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col relative">
         {loading ? (
           <div className="h-64 flex justify-center items-center">
             <Loader2 className="animate-spin w-8 h-8 opacity-50" />
@@ -307,15 +306,15 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
         ) : data.length === 0 ? (
           <div className="h-48 flex justify-center items-center text-slate-500">Нет данных</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50/80 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100 sticky top-0 z-10 backdrop-blur-sm">
+          <div className="w-full">
+            <table className="w-full text-sm text-left relative">
+              <thead className="sticky top-14 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className="px-4 py-3 font-bold text-slate-500 select-none align-top"
+                        className="px-4 py-3 font-bold text-slate-500 select-none align-top whitespace-nowrap"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}

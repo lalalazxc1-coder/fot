@@ -142,7 +142,7 @@ export const StaffingGapsView = () => {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left border-collapse">
-                            <thead className="bg-slate-50 text-slate-500 font-bold">
+                            <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                                 <tr>
                                     <th className="px-4 py-3 rounded-l-lg border-b border-slate-100">Подразделение (Иерархия)</th>
                                     <th className="px-4 py-3 border-b border-slate-100">План (Агр.)</th>

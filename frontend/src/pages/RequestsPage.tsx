@@ -113,7 +113,7 @@ export default function RequestsPage() {
             </PageHeader>
 
             {/* Controls */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex justify-between items-center bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex gap-2">
                     <button
                         onClick={() => setViewMode('pending')}
@@ -134,7 +134,7 @@ export default function RequestsPage() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
                 <div className="overflow-x-auto w-full">
                     <table className="w-full text-left text-sm min-w-[600px]">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-xs">
+                        <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                             <tr>
                                 <th className="px-6 py-4 font-bold">Сотрудник</th>
                                 <th className="px-6 py-4 font-bold">Филиал</th>

@@ -145,52 +145,54 @@ export default function PublicOfferPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#f1f5f9] font-sans text-slate-900 selection:bg-slate-200">
+        <div className="min-h-screen bg-[#f1f5f9] font-sans text-slate-900 selection:bg-slate-200 print:bg-white print:min-h-0">
             <style>{`
                 @media print {
-                    @page { size: A4; margin: 0; }
-                    body { background: white !important; -webkit-print-color-adjust: exact; margin: 0; padding: 0; overflow: hidden; }
+                    @page { size: A4; margin: 10mm 15mm; }
+                    body, html { background: white !important; -webkit-print-color-adjust: exact; margin: 0; padding: 0; display: block; }
                     .no-print { display: none !important; }
                     .offer-screen { display: none !important; }
+                    
                     .offer-pdf { 
                         display: block !important; 
-                        width: 210mm !important; 
-                        height: 297mm !important; 
-                        padding: 12mm 18mm !important; 
                         background: white !important; 
                         color: black !important;
-                        box-sizing: border-box; 
-                        position: relative; 
-                        font-family: 'Inter', sans-serif;
+                        font-family: Arial, Helvetica, sans-serif;
+                        font-size: 9.5pt;
+                        line-height: 1.35;
+                        width: 100%;
+                        box-sizing: border-box;
                     }
-                    .pdf-header-meta { text-align: right; margin-bottom: 30px; }
-                    .pdf-header-meta div:first-child { color: #2563eb; font-weight: 800; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.1em; }
-                    .pdf-header-meta div:last-child { color: black; font-weight: 700; font-size: 8pt; margin-top: 2px; }
-                    
-                    .pdf-center-header { text-align: center; margin-bottom: 25px; }
-                    .pdf-company-name { font-size: 11pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
-                    .pdf-greeting { font-size: 16pt; font-weight: 900; color: black; margin: 10px 0; }
-                    .pdf-intro { text-align: center; font-size: 9pt; color: #475569; margin-bottom: 20px; line-height: 1.5; }
-                    
-                    .pdf-main-text { font-size: 9pt; line-height: 1.6; color: black; }
-                    .pdf-bullet-list { margin: 20px 0; padding-left: 0; list-style: none; }
-                    .pdf-bullet-item { position: relative; padding-left: 25px; margin-bottom: 12px; }
-                    .pdf-bullet-item:before { 
-                        content: '✓'; position: absolute; left: 0; top: 0; 
-                        color: #2563eb; font-weight: bold; font-size: 11pt; 
+                    .pdf-content-wrapper {
+                        display: block;
                     }
                     
-                    .pdf-details-row { margin-top: 15px; font-size: 9pt; color: #334155; }
-                    .pdf-details-row strong { color: black; }
+                    .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+                    .pdf-company-logo { max-width: 250px; object-fit: contain; }
+                    .pdf-header-right { text-align: right; font-weight: bold; font-size: 10.5pt; line-height: 1.5; }
                     
-                    .pdf-date-start { margin-top: 25px; font-size: 9.5pt; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }
+                    .pdf-greeting { text-align: center; font-weight: bold; text-decoration: underline; font-size: 10.5pt; margin-bottom: 10px; }
+                    .pdf-center-text { text-align: center; margin-bottom: 10px; }
+                    .pdf-position { text-align: center; font-weight: bold; font-size: 10.5pt; margin-bottom: 15px; }
                     
-                    .pdf-signature-section { margin-top: 35px; width: 100%; }
-                    .pdf-sig-row { display: grid; grid-template-columns: 1fr 220px; gap: 40px; margin-bottom: 25px; align-items: flex-end; }
-                    .pdf-sig-label { font-size: 8.5pt; font-weight: 800; color: #2563eb; margin-bottom: 4px; }
-                    .pdf-sig-name { font-size: 9pt; font-weight: 700; color: black; }
-                    .pdf-sig-line { border-bottom: 1px solid #000; width: 100%; margin-bottom: 15px; }
-                    .pdf-sig-hint { text-align: center; font-size: 7pt; color: #64748b; text-transform: uppercase; font-weight: 700; }
+                    .pdf-text { margin-bottom: 8px; text-align: justify; }
+                    
+                    .pdf-list { list-style: none; padding-left: 0; margin-bottom: 10px; }
+                    .pdf-list li { position: relative; padding-left: 20px; margin-bottom: 5px; }
+                    .pdf-list li:before { content: '✓'; position: absolute; left: 0; font-weight: bold; }
+                    
+                    .pdf-cond-list { padding-left: 20px; margin-bottom: 10px; list-style-type: square; }
+                    .pdf-cond-list li { margin-bottom: 5px; }
+                    
+                    /* Блок подписей идет обычным потоком сверху вниз */
+                    .pdf-signatures { margin-top: 30px; page-break-inside: avoid; }
+                    .pdf-sig-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
+                    .pdf-sig-left { width: 45%; }
+                    .pdf-sig-left-title { font-weight: bold; margin-bottom: 5px; font-size: 9pt; }
+                    .pdf-sig-left-name { font-size: 10pt; }
+                    .pdf-sig-right { width: 45%; text-align: center; }
+                    .pdf-sig-line { border-bottom: 1px solid black; width: 100%; margin-bottom: 2px; }
+                    .pdf-sig-hint { font-size: 8pt; }
                 }
                 @media screen {
                     .offer-pdf { display: none; }
@@ -213,12 +215,12 @@ export default function PublicOfferPage() {
                     <div className="bg-slate-50 border-b border-slate-100 p-8 md:p-12">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                             <div>
-                                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-4">Официальный документ</div>
+                                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-4">Официальный документ</div>
                                 <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">Предложение о работе</h1>
                                 <p className="text-slate-500 font-medium">Для кандидата: <span className="text-slate-900 font-bold">{offer.candidate_name}</span></p>
                             </div>
                             <div className="bg-white px-6 py-4 rounded-3xl border border-slate-200 shadow-sm text-center min-w-[200px]">
-                                <p className="text-[10px] font-black uppercase text-slate-400 mb-1">ID Оффера</p>
+                                <p className="text-[10px] font-black uppercase text-slate-500 mb-1">ID Оффера</p>
                                 <p className="font-mono text-sm font-bold text-slate-900">{token?.slice(0, 12).toUpperCase()}</p>
                             </div>
                         </div>
@@ -226,7 +228,7 @@ export default function PublicOfferPage() {
 
                     <div className="p-8 md:p-16 space-y-20">
                         <div className="max-w-3xl border-l-4 border-slate-900 pl-8">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-6">Приветствую</h2>
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Приветствую</h2>
                             <div className="text-lg leading-relaxed text-slate-800 font-medium">
                                 {offer.welcome_text || `Мы рады предложить Вам позицию в нашей команде.`}
                                 <p className="mt-4 text-slate-500 text-base italic">
@@ -236,7 +238,7 @@ export default function PublicOfferPage() {
                         </div>
 
                         <section>
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-8 font-mono">01. Финансовая мотивация</h2>
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 font-mono">01. Финансовая мотивация</h2>
                             <div className="space-y-4">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 rounded-3xl bg-slate-50 border border-slate-100">
                                     <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 md:mb-0">Ежемесячный оклад (На руки)</div>
@@ -250,22 +252,22 @@ export default function PublicOfferPage() {
                         </section>
 
                         <section>
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-10 font-mono">02. Условия трудоустройства</h2>
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-10 font-mono">02. Условия трудоустройства</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                 <div className="p-4 border-b border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Работодатель</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Работодатель</p>
                                     <p className="text-lg font-bold text-slate-900">{offer.company_name}</p>
                                 </div>
                                 <div className="p-4 border-b border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Должность</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Должность</p>
                                     <p className="text-lg font-bold text-slate-900">{offer.position_title}</p>
                                 </div>
                                 <div className="p-4 border-b border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Дата выхода</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Дата выхода</p>
                                     <p className="text-lg font-bold text-slate-900">{offer.start_date || 'По согласованию'}</p>
                                 </div>
                                 <div className="p-4 border-b border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Испытательный срок</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Испытательный срок</p>
                                     <p className="text-lg font-bold text-slate-900">{offer.probation_period || '3 месяца'}</p>
                                 </div>
                             </div>
@@ -273,7 +275,7 @@ export default function PublicOfferPage() {
 
                         {offer.benefits?.length > 0 && (
                             <section>
-                                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 mb-8 font-mono">03. Социальный пакет</h2>
+                                <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 font-mono">03. Социальный пакет</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {offer.benefits.map((b: string, i: number) => (
                                         <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 bg-slate-50/50">
@@ -301,15 +303,23 @@ export default function PublicOfferPage() {
                             <div className="flex flex-col md:flex-row items-center justify-between gap-12">
                                 <div className="max-w-sm">
                                     <h4 className="text-xs font-black uppercase tracking-widest mb-3">Ваше решение</h4>
-                                    <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                                        Подтверждение условий через данную форму является предварительным согласием с Вашей стороны.
+                                    <p className="text-sm text-slate-500 font-medium leading-relaxed mb-4">
+                                        Этот документ носит информационный характер. Официальный трудовой договор будет подписан в первый рабочий день.
                                     </p>
+                                    <p className="text-base font-bold text-slate-900 mb-2">
+                                        Готовы присоединиться?
+                                    </p>
+                                    {offer.valid_until && (
+                                        <p className="text-xs font-bold text-red-500 bg-red-50 inline-block px-3 py-1.5 rounded-lg border border-red-100">
+                                            Оффер действителен до {new Date(offer.valid_until).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).replace(' г.', '')}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="w-full md:w-auto min-w-[300px]">
                                     {!isPending ? (
                                         <div className={`p-8 text-center rounded-[2rem] border-2 shadow-xl ${offer.status === 'accepted' ? 'border-emerald-500 text-emerald-600 bg-emerald-50' : 'border-red-500 text-red-600 bg-red-50'}`}>
-                                            <div className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-slate-400">Статус оффера</div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-slate-500">Статус оффера</div>
                                             <div className="text-2xl font-black uppercase">{offer.status === 'accepted' ? 'ПРИНЯТО ВАМИ' : 'ОТКЛОНЕНО'}</div>
                                         </div>
                                     ) : (
@@ -337,75 +347,96 @@ export default function PublicOfferPage() {
                 </div>
             </main>
 
-            {/* RESTORED & ENHANCED PDF VIEW (Matching the Screenshot Request) */}
+            {/* UPDATED PDF VIEW (Matching User Reference Image) */}
             <div className="offer-pdf">
-                <div className="pdf-header-meta">
-                    <div>Строго конфиденциально</div>
-                    <div>Предложение о работе</div>
-                </div>
+                <div className="pdf-content-wrapper">
+                    <div className="pdf-header">
+                        <div>
+                        </div>
+                        <div className="pdf-header-right">
+                            <div>Строго Конфиденциально</div>
+                            <div>Предложение о работе</div>
+                        </div>
+                    </div>
 
-                <div className="pdf-center-header">
-                    <div className="pdf-company-name">Компания {offer.company_name}</div>
-                    <div className="pdf-greeting">Уважаемый {offer.candidate_name}</div>
-                </div>
+                    <div className="pdf-greeting">
+                        Уважаемый {offer.candidate_name}!
+                    </div>
 
-                <div className="pdf-intro">
-                    Примите наши поздравления и выражаем благодарность за интерес к работе в нашей Компании.<br />
-                    Мы с большим удовольствием приглашаем Вас присоединиться к нашему коллективу.
-                </div>
+                    <div className="pdf-center-text">
+                        Компания {offer.company_name || 'KULAN OIL'} рада сделать вам предложение о работе на должность
+                    </div>
 
-                <div className="pdf-main-text">
-                    Основные условия Вашего трудоустройства:
-                    <ul className="pdf-bullet-list">
-                        <li className="pdf-bullet-item">Ежемесячный должностной оклад составляет <strong>{formatMoney(offer.base_net)}</strong> (после вычета налогов/Net).</li>
-                        {offer.kpi_net > 0 && <li className="pdf-bullet-item">Дополнительно предусмотрен целевой бонус в размере <strong>{formatMoney(offer.kpi_net)}</strong> за достижение KPI.</li>}
+                    <div className="pdf-position">
+                        {offer.position_title}
+                    </div>
+
+                    <div className="pdf-text">
+                        Мы заинтересованы в привлечении в штат компании таких профессионалов, как вы. Надеемся, что работа в нашей команде будет способствовать вашему профессиональному и карьерному росту.
+                    </div>
+
+                    <div className="pdf-text">
+                        Компенсационный пакет включает в себя:
+                    </div>
+
+                    <ul className="pdf-list">
+                        <li>Ежемесячный оклад в размере <strong>{formatMoney(offer.base_net)}</strong> тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>
+                        {offer.kpi_net > 0 && <li>Ежемесячный бонус в размере <strong>{formatMoney(offer.kpi_net)}</strong> (при выполнении задач по мотивационной системе) тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>}
                         {offer.benefits?.map((b: string, i: number) => (
-                            <li key={i} className="pdf-bullet-item">{b}</li>
+                            <li key={i}>{b}.</li>
                         ))}
                     </ul>
+
+                    <div className="pdf-text">
+                        Испытательный срок: {offer.probation_period || '3 месяца'} согласно ТК РК.
+                    </div>
+
+                    <div className="pdf-text">
+                        В компании установлена пятидневная рабочая неделя (выходные дни: суббота, воскресенье)<br />
+                        - восьмичасовой рабочий день - {offer.working_hours || 'с «09:00» часов до «18:00» часов'}<br />
+                        - 1 (один) час на отдых и прием пищи - {offer.lunch_break || 'с «13.00» часов до «14.00» часов'}
+                    </div>
+
+                    <div className="pdf-text" style={{ marginTop: '5px', marginBottom: '5px' }}>
+                        Обязательное условие:
+                    </div>
+
+                    <ul className="pdf-cond-list">
+                        <li>
+                            {offer.non_compete_text || `Заключение договора о неконкуренции, по условиям которого Вы после увольнения в течении 3-х лет не вправе трудоустроиться в конкурентные компании осуществляющих аналогичную деятельность как у ${offer.company_name || 'KULAN OIL'}, за нарушение данного условия предусмотрен штраф, подлежащий выплате по первому его требованию.`}
+                        </li>
+                    </ul>
+
+                    <div className="pdf-text" style={{ marginTop: '5px' }}>
+                        С нетерпением ждем Вашего присоединения к команде компании {offer.company_name || 'KULAN OIL'}.
+                    </div>
+
+                    <div className="pdf-text">
+                        Дата выхода на работу: {offer.start_date ? offer.start_date.split('-').reverse().join('.') : '_______________ 202__ г.'}
+                    </div>
                 </div>
 
-                <div className="pdf-details-row">
-                    Испытательный срок: <strong>{offer.probation_period || '3 месяца'}</strong>.
-                </div>
-
-                <div className="pdf-details-row" style={{ marginTop: '10px' }}>
-                    В Компании установлен следующий рабочий график и время отдыха:<br />
-                    • Рабочий график: <strong>{offer.working_hours || '09:00 - 18:00'}</strong><br />
-                    • Время отдыха и приема пищи: <strong>{offer.lunch_break || '13:00 - 14:00'}</strong>
-                </div>
-
-                <div className="pdf-main-text" style={{ marginTop: '20px' }}>
-                    <p>Обязательным условием является соблюдение политики конфиденциальности и безопасности Компании.</p>
-                </div>
-
-                <div className="pdf-date-start">
-                    Дата выхода на работу: {offer.start_date || '_________________'} 202_г.
-                </div>
-
-                <div className="pdf-signature-section">
-                    <p style={{ fontWeight: 800, fontSize: '9pt', marginBottom: '20px' }}>С уважением,</p>
-                    {offer.signatories?.map((sig: any, idx: number) => (
+                <div className="pdf-signatures">
+                    {offer.signatories?.length > 0 && offer.signatories.map((sig: any, idx: number) => (
                         <div key={idx} className="pdf-sig-row">
-                            <div>
-                                <div className="pdf-sig-label text-blue-500">{sig.title}</div>
-                                <div className="pdf-sig-name">{sig.name}</div>
+                            <div className="pdf-sig-left">
+                                {sig.title && <div className="pdf-sig-left-title">{sig.title}</div>}
+                                <div className="pdf-sig-left-name">{sig.name}</div>
                             </div>
-                            <div style={{ textAlign: 'center' }}>
+                            <div className="pdf-sig-right">
                                 <div className="pdf-sig-line"></div>
-                                <div className="pdf-sig-hint">Подпись</div>
+                                <div className="pdf-sig-hint">(подпись)</div>
                             </div>
                         </div>
                     ))}
 
-                    <div className="pdf-sig-row" style={{ marginTop: '30px' }}>
-                        <div>
-                            <div className="pdf-sig-label">Кандидат / Согласие с условиями</div>
-                            <div className="pdf-sig-name" style={{ color: '#cbd5e1' }}>{offer.candidate_name}</div>
+                    <div className="pdf-sig-row" style={{ marginTop: '20px' }}>
+                        <div className="pdf-sig-left">
+                            <div className="pdf-sig-left-name">{offer.candidate_name}</div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div className="pdf-sig-line" style={{ borderBottom: '1px solid #3b82f6' }}></div>
-                            <div className="pdf-sig-hint" style={{ color: '#3b82f6' }}>Подпись кандидата</div>
+                        <div className="pdf-sig-right">
+                            <div className="pdf-sig-line"></div>
+                            <div className="pdf-sig-hint">(подпись)</div>
                         </div>
                     </div>
                 </div>

@@ -97,7 +97,7 @@ export const RetentionDashboard = () => {
 
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm border-separate border-spacing-0">
-                    <thead className="bg-slate-50">
+                    <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                         <tr>
                             <th className="pb-3 pt-3 pl-4 font-semibold text-slate-500 border-b">Сотрудник</th>
                             <th className="pb-3 pt-3 font-semibold text-slate-500 border-b">Должность</th>

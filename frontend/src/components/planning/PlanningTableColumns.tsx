@@ -1,8 +1,8 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { Edit2, History, Trash2 } from 'lucide-react';
 import { PlanRow } from '../../hooks/usePlanning';
 import { FlatStructureItem } from '../../hooks/useStructure';
 import { FinancialCell } from '../payroll/FinancialCell';
+import { ActionMenu } from './ActionMenu';
 
 export const createColumns = (
     flatStructure: FlatStructureItem[],
@@ -69,9 +69,9 @@ export const createColumns = (
                 }
 
                 return (
-                    <div>
-                        <div className="text-sm font-medium text-slate-700">{branchName}</div>
-                        {deptName && <div className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-fit mt-1">{deptName}</div>}
+                    <div className="opacity-90 hover:opacity-100 transition-opacity">
+                        <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{branchName}</div>
+                        {deptName && <div className="text-sm font-medium text-slate-800 mt-1">{deptName}</div>}
                     </div>
                 );
             }
@@ -89,10 +89,10 @@ export const createColumns = (
         {
             header: 'Кол-во',
             accessorKey: 'count',
-            cell: info => <div className="flex justify-center"><span className="bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded-lg">{info.getValue() as number}</span></div>,
+            cell: info => <div className="flex justify-center"><span className="bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200/50 text-xs font-bold px-2.5 py-1 rounded-lg min-w-[32px] text-center">{info.getValue() as number}</span></div>,
         },
         {
-            header: 'Оклад (Net/Gross)',
+            header: 'Оклад',
             id: 'base',
             cell: ({ row }) => <FinancialCell value={{
                 net: row.original.base_net,
@@ -100,7 +100,7 @@ export const createColumns = (
             }} />,
         },
         {
-            header: 'KPI (Net/Gross)',
+            header: 'KPI',
             id: 'kpi',
             cell: ({ row }) => <FinancialCell value={{
                 net: row.original.kpi_net,
@@ -108,20 +108,22 @@ export const createColumns = (
             }} />,
         },
         {
-            header: 'Доплаты (Net/Gross)',
+            header: 'Доплаты',
             id: 'bonus',
             cell: ({ row }) => {
                 const r = row.original;
+                const hasPartialBonus = r.bonus_count !== null && r.bonus_count !== undefined && r.bonus_count < r.count && (r.bonus_net > 0 || r.bonus_gross > 0);
                 return (
-                    <div className="flex flex-col items-center justify-center">
+                    <div className="flex flex-col items-center justify-center relative group">
                         <FinancialCell value={{
                             net: r.bonus_net,
                             gross: r.bonus_gross
                         }} />
-                        {r.bonus_count !== null && r.bonus_count !== undefined && r.bonus_count < r.count && (r.bonus_net > 0 || r.bonus_gross > 0) && (
-                            <span className="text-[9px] text-slate-400 mt-0.5 leading-tight text-center">
-                                для {r.bonus_count} ед.
-                            </span>
+                        {hasPartialBonus && (
+                            <div className="absolute -top-1 -right-2 flex h-2.5 w-2.5 cursor-help" title={`Доплата применяется только для ${r.bonus_count} ед.`}>
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 border border-white"></span>
+                            </div>
                         )}
                     </div>
                 );
@@ -139,12 +141,12 @@ export const createColumns = (
                 const hasPartialBonus = bonusCount > 0 && bonusCount < r.count && (r.bonus_net > 0 || r.bonus_gross > 0);
 
                 return (
-                    <div className="flex flex-col items-center justify-center">
+                    <div className="flex flex-col items-center justify-center relative group">
                         <FinancialCell value={{ net, gross }} />
                         {hasPartialBonus && (
-                            <span className="text-[9px] text-slate-400 mt-0.5 leading-tight text-center">
-                                доплата для {bonusCount} ед.
-                            </span>
+                            <div className="absolute -top-1 -right-2 flex h-2.5 w-2.5 cursor-help" title={`Включает доплату только для ${bonusCount} ед.`}>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 border border-white"></span>
+                            </div>
                         )}
                     </div>
                 );
@@ -160,7 +162,7 @@ export const createColumns = (
                 const net = (r.base_net + r.kpi_net) * r.count + (r.bonus_net * bonusCount);
                 const gross = (r.base_gross + r.kpi_gross) * r.count + (r.bonus_gross * bonusCount);
                 return (
-                    <div className="bg-slate-900 text-white px-2 py-1.5 rounded-lg shadow-sm flex flex-col justify-center">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 text-white px-3 py-2 rounded-xl shadow-md flex flex-col justify-center transform transition-transform hover:scale-[1.02]">
                         <FinancialCell value={{ net, gross }} isTotal={true} />
                     </div>
                 );
@@ -169,21 +171,16 @@ export const createColumns = (
         {
             id: 'actions',
             header: '',
-            size: 110,
+            size: 80,
             cell: ({ row }) => {
                 if (!canManage) return null;
                 return (
-                    <div className="flex justify-end items-center gap-1 h-full pr-2">
-                        <button onClick={() => onHistory(row.original.id)} className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors" title="История">
-                            <History className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => onEdit(row.original)} className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-lg transition-colors" title="Редактировать">
-                            <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => onDelete(row.original.id)} className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors" title="Удалить">
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
+                    <ActionMenu
+                        row={row.original}
+                        onHistory={onHistory}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                    />
                 )
             }
         }

@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: fot_db_dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fot_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fot_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-fot_db}
+      TZ: Asia/Almaty
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fot_admin} -d ${POSTGRES_DB:-fot_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: fot_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fot_backend_dev
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-fot_admin}:${POSTGRES_PASSWORD:-fot_pass}@db:5432/${POSTGRES_DB:-fot_db}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-for-local-development}
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - TZ=Asia/Almaty
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    command: >
+      /bin/sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips '*'"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    image: node:18-alpine
+    container_name: fot_frontend_dev
+    working_dir: /app
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - CHOKIDAR_USEPOLLING=true
+      - TZ=Asia/Almaty
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: /bin/sh -c "npm install && npm run dev"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+  frontend_node_modules:

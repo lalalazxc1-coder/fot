@@ -598,7 +598,7 @@ export default function MarketPage() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+                                <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                                     <tr>
                                         <th className="px-6 py-4">Должность / Источники</th>
                                         <th className="px-6 py-4">Рыночный диапазон (Net)</th>

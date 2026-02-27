@@ -81,7 +81,7 @@ export default function PositionsPage() {
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto w-full">
                     <table className="w-full text-left min-w-[500px]">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-semibold">
+                        <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                             <tr>
                                 <th className="px-6 py-4">Название должности</th>
                                 <th className="px-6 py-4 w-32 text-center">Грейд</th>

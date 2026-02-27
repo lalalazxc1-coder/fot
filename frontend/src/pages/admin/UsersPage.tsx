@@ -123,7 +123,7 @@ export default function UsersPage() {
             ) : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-200/60 shadow-sm custom-scrollbar">
                     <table className="w-full text-left text-sm min-w-[700px]">
-                        <thead className="bg-slate-50/80 border-b border-slate-100">
+                        <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                             <tr>
                                 <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider">Пользователь</th>
                                 <th className="px-6 py-4 font-bold text-slate-400 uppercase text-[10px] tracking-wider hidden sm:table-cell">Email</th>

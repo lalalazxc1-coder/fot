@@ -94,9 +94,9 @@ export default function JobOffersPage() {
         custom_sections: [] as { title: string, content: string }[],
         // Formal fields
         probation_period: '3 месяца',
-        working_hours: '09:00 - 18:00',
+        working_hours: '08:30 - 17:30',
         lunch_break: '13:00 - 14:00',
-        non_compete_text: 'Обязательное условие: Заключение договора о неконкуренции, по условиям которого Вы после увольнения в течении 3-х лет не вправе трудоустроиться в конкурентные компании осуществляющих аналогичную деятельность, за нарушение данного условия предусмотрен штраф, подлежащий выплате по первому его требованию.',
+        non_compete_text: 'Заключение договора о неконкуренции, по условиям которого Вы после увольнения в течении 3-х лет не вправе трудоустроиться в конкурентные компании осуществляющих аналогичную деятельность, за нарушение данного условия предусмотрен штраф, подлежащий выплате по первому его требованию.',
         start_date: '',
         signatories: [] as { title: string, name: string }[]
     };
@@ -357,9 +357,13 @@ export default function JobOffersPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <input type="number" placeholder="Оклад" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.base_net} onChange={e => setFormData({ ...formData, base_net: parseInt(e.target.value) || 0 })} />
                                 <input type="number" placeholder="Бонус" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm font-bold" value={formData.kpi_net} onChange={e => setFormData({ ...formData, kpi_net: parseInt(e.target.value) || 0 })} />
-                                <div className="col-span-2">
+                                <div className="col-span-1">
                                     <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Дата выхода</label>
                                     <input type="date" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase px-1">Действителен до</label>
+                                    <input type="date" className="w-full h-10 bg-white border border-slate-200 rounded-xl px-4 text-sm" value={formData.valid_until} onChange={e => setFormData({ ...formData, valid_until: e.target.value })} />
                                 </div>
                             </div>
                         </section>

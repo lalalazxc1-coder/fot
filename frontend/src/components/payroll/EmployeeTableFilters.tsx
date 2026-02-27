@@ -32,7 +32,7 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
     const selectedFilterBranch = structure.find(b => b.id.toString() === branchFilter);
 
     return (
-        <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-white p-4 sm:p-5 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100">
+        <div className="flex flex-col xl:flex-row items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-100">
             {/* Search */}
 
 
@@ -87,7 +87,7 @@ export const EmployeeTableFilters: React.FC<EmployeeTableFiltersProps> = ({
                 />
             </div>
             {/* Actions */}
-            <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row gap-2 mt-2 xl:mt-0">
+            <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row justify-end items-center gap-2 shrink-0">
                 {children}
             </div>
         </div>

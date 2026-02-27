@@ -84,8 +84,8 @@ function AuditTab() {
                             key={opt.value}
                             onClick={() => { setEntityFilter(opt.value); setPage(1); }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${entityFilter === opt.value
-                                    ? 'bg-slate-900 text-white border-slate-900'
-                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                                 }`}
                         >
                             {opt.label}
@@ -101,7 +101,7 @@ function AuditTab() {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                            <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                                 <tr>
                                     <th className="px-4 py-3 whitespace-nowrap">Время</th>
                                     <th className="px-4 py-3">Пользователь</th>
@@ -259,8 +259,8 @@ function SessionsTab() {
                         key={opt.value}
                         onClick={() => { setActionFilter(opt.value); setPage(1); }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${actionFilter === opt.value
-                                ? 'bg-slate-900 text-white border-slate-900'
-                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                            ? 'bg-slate-900 text-white border-slate-900'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                             }`}
                     >
                         {opt.label}
@@ -275,7 +275,7 @@ function SessionsTab() {
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                            <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                                 <tr>
                                     <th className="px-4 py-3 whitespace-nowrap">Время</th>
                                     <th className="px-4 py-3">Пользователь</th>
@@ -395,8 +395,8 @@ export default function LogsPage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         {tab.icon}

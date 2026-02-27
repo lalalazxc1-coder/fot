@@ -52,15 +52,15 @@ const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data })
     const flatHierarchy = flattenNodes(rootNodes);
 
     return (
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative rounded-2xl border border-slate-200">
             <table className="w-full text-left text-sm border-separate border-spacing-0">
-                <thead className="sticky top-0 bg-white z-10">
+                <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
                     <tr>
-                        <th className="pb-3 pt-2 text-slate-400 font-medium pl-4 border-b border-slate-100 bg-white relative z-20">Подразделение</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white relative z-20">План</th>
-                        <th className="pb-3 pt-2 text-left pl-8 text-slate-400 font-medium border-b border-slate-100 bg-white min-w-[150px] relative z-20">Факт</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium border-b border-slate-100 bg-white relative z-20">Отклонение</th>
-                        <th className="pb-3 pt-2 text-right text-slate-400 font-medium pr-4 border-b border-slate-100 bg-white relative z-20">%</th>
+                        <th className="px-4 py-3 font-bold">Подразделение</th>
+                        <th className="px-4 py-3 font-bold text-right">План</th>
+                        <th className="px-4 py-3 font-bold text-left pl-8 min-w-[150px]">Факт</th>
+                        <th className="px-4 py-3 font-bold text-right">Отклонение</th>
+                        <th className="px-4 py-3 font-bold text-right pr-4">%</th>
                     </tr>
                 </thead>
                 <tbody>
