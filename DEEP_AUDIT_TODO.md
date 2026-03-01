@@ -1,61 +1,37 @@
-# TODO по результатам deep audit
+# Deep Audit TODO
 
-Дата: 2026-02-28
+Last updated: 2026-03-01
 
-## P0 / High
+## P0 - Critical (release blockers)
 
-- [x] Санитизировать ошибку экспорта planning
-  - Файл: `backend/routers/planning.py:393`
-  - Что сделать: убрать `str(e)` из API-ответа, оставить общий текст; детали только в логах.
-  - Критерий готовности: endpoint возвращает безопасный `detail`, traceback отсутствует в клиентском ответе.
+- [ ] Add strict RBAC checks for all write endpoints in `backend/routers/scenarios.py` (`POST /`, `DELETE /{id}`, `POST /{id}/apply-change`, `POST /{id}/commit`).
+- [ ] Protect `GET /api/salary-config/` and `GET /api/salary-config/history` with `require_admin` in `backend/routers/salary_config.py`.
+- [ ] Add/extend backend tests for negative RBAC cases (non-admin must get 403).
 
-- [x] Санитизировать ошибки HH sync в market
-  - Файл: `backend/routers/market.py:185`
-  - Что сделать: не отдавать `resp.text`; добавить маппинг статусов (429/5xx/прочие) на безопасные сообщения.
-  - Критерий готовности: внешний body/диагностика не попадают в API-ответ.
+## P1 - Security and data correctness
 
-- [x] Выровнять RBAC для read-endpoints positions/scenarios
-  - Файлы: `backend/routers/positions.py`, `backend/routers/scenarios.py`
-  - Что сделать: добавить явные permission checks для чтения (`view_positions`, `view_scenarios` или agreed policy).
-  - Критерий готовности: пользователи без прав получают 403; регрессий для admin нет.
+- [ ] Replace `--forwarded-allow-ips '*'` with trusted proxy IPs in runtime config.
+- [ ] Normalize date/time handling (prefer `DateTime` over string where feasible).
+- [ ] Switch retention stagnation logic to `last_raise_date` instead of `created_at`.
+- [ ] Standardize API date format to ISO 8601.
 
-## P1 / Medium
+## P2 - Reliability and performance
 
-- [x] Добавить CSRF-защиту для cookie-auth
-  - Файлы: `backend/routers/auth.py`, mutating routers, `frontend/src/lib/api.ts`
-  - Что сделать: реализовать CSRF token (double-submit/synchronizer), обязательная проверка на state-changing запросах.
-  - Критерий готовности: mutating endpoints отклоняют запрос без валидного CSRF токена.
+- [ ] Refactor notifications flow to avoid per-item `db.commit()` in `backend/routers/requests.py`.
+- [ ] Restrict `SalaryRequestUpdate.status` to an enum-like set (`approved`, `rejected`).
+- [ ] Add allowlist validation for editable fields in scenario mass update.
+- [ ] Profile heavy analytics queries and add indexes after `EXPLAIN`.
 
-- [x] Удалить/архивировать дублирующий salary router
-  - Файлы: `backend/routers/salary.py`, `backend/routers/salary_config.py`
-  - Что сделать: оставить один источник истины, убрать дублирование логики.
-  - Критерий готовности: в кодовой базе один активный модуль salary-config.
+## P3 - Tech debt and quality
 
-- [x] Скрыть stack trace в production ErrorBoundary
-  - Файл: `frontend/src/main.tsx`
-  - Что сделать: показывать stack/details только в dev (`import.meta.env.DEV`).
-  - Критерий готовности: в production UI отображается только безопасное сообщение об ошибке.
+- [ ] Clean Alembic history inconsistencies (empty migrations / metadata mismatch).
+- [ ] Add frontend tests for auth and critical user flows.
+- [ ] Align password validation rules between frontend and backend.
+- [ ] Verify dynamic Tailwind class usage and add safelist if needed.
 
-- [x] Убрать SAWarning по циклическим FK в тестах
-  - Файлы: `backend/database/models.py`, `backend/tests/conftest.py`
-  - Что сделать: применить `use_alter=True`/корректную стратегию очистки схемы в тестах.
-  - Критерий готовности: `pytest` без текущего SAWarning о drop order.
+## Verification checklist
 
-## P2 / Tech debt
-
-- [x] Снизить количество `any` на фронтенде
-  - Файлы: в первую очередь `frontend/src/components/` и `frontend/src/pages/RequestsPage.tsx`
-  - Что сделать: поэтапная типизация (requests -> payroll -> market).
-  - Критерий готовности: уменьшить количество `any` минимум на 50% в следующем цикле.
-  - Прогресс: типизированы analytics/admin/market/salary UI-модули, `any` убран из рабочих TS/TSX файлов (остались только упоминания в комментариях/тексте).
-
-- [x] Убрать broad `except Exception` с `pass`
-  - Файлы: `backend/routers/salary_config.py`, смежные модули
-  - Что сделать: сузить типы исключений и добавить структурированное логирование.
-  - Критерий готовности: нет silent-fail блоков в критических путях.
-  - Прогресс: `except ...: pass` для broad/silent путей убран; добавлено логирование в auth/logout и безопасная обработка ошибок login.
-
-- [x] Актуализировать security headers
-  - Файл: `backend/main.py`
-  - Что сделать: убрать legacy `X-XSS-Protection`, подготовить CSP-политику.
-  - Критерий готовности: заголовки соответствуют современным практикам.
+- [ ] `pytest` passes in `backend/`.
+- [ ] `npm run build` passes in `frontend/`.
+- [ ] No financial write endpoint is left without explicit authorization checks.
+- [ ] Audit report updated after fixes.
