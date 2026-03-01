@@ -3,10 +3,11 @@ import { useOutletContext } from 'react-router-dom';
 import { Plus, Trash2, Search, Briefcase, Loader2, Edit2 } from 'lucide-react';
 import { usePositions, useCreatePosition, useUpdatePosition, useDeletePosition } from '../../hooks/usePositions';
 import Modal from '../../components/Modal';
+import type { AuthUser } from '../../types';
 // import { toast } from 'sonner';
 
 export default function PositionsPage() {
-    const { user } = useOutletContext<{ user: any }>();
+    const { user } = useOutletContext<{ user: AuthUser }>();
     const { data: positions = [], isLoading } = usePositions();
     const createMutation = useCreatePosition();
     const updateMutation = useUpdatePosition();

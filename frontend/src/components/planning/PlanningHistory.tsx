@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import Modal from '../Modal';
-import { usePlanningHistory } from '../../hooks/usePlanning';
+import { usePlanningHistory, PlanHistoryItem } from '../../hooks/usePlanning';
 
 type PlanningHistoryProps = {
     isOpen: boolean;
@@ -17,8 +17,14 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
         }
 
         // Group logs by Date + User
-        const grouped = [];
-        let last = null;
+        type GroupedHistory = {
+            date: string;
+            user: string;
+            changes: PlanHistoryItem[];
+        };
+
+        const grouped: GroupedHistory[] = [];
+        let last: GroupedHistory | null = null;
         for (const log of historyLogs) {
             if (last && last.date === log.date && last.user === log.user) {
                 last.changes.push(log);
@@ -29,7 +35,7 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
         }
 
         return grouped.map((group, i) => {
-            const fieldLabels: any = {
+            const fieldLabels: Record<string, string> = {
                 base_net: "Оклад (Net)", base_gross: "Оклад (Gross)",
                 kpi_net: "KPI (Net)", kpi_gross: "KPI (Gross)",
                 bonus_net: "Доплаты (Net)", bonus_gross: "Доплаты (Gross)",
@@ -56,7 +62,7 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
                 "Кол-во получателей доплаты", "bonus_count"
             ];
 
-            const sortedChanges = [...group.changes].sort((a: any, b: any) => {
+            const sortedChanges = [...group.changes].sort((a, b) => {
                 let idxA = fieldOrder.indexOf(a.field);
                 let idxB = fieldOrder.indexOf(b.field);
                 if (idxA === -1) idxA = 999;
@@ -77,7 +83,7 @@ export const PlanningHistory: React.FC<PlanningHistoryProps> = ({ isOpen, onClos
                         </div>
 
                         <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
-                            {sortedChanges.map((log: any, j: number) => {
+                            {sortedChanges.map((log, j) => {
                                 const label = fieldLabels[log.field] || log.field;
                                 return (
                                     <div key={j} className="px-4 py-2.5 flex items-center justify-between border-b border-slate-100 last:border-0 hover:bg-white transition-colors">

@@ -11,4 +11,4 @@ export { EditEmployeeModal } from './EditEmployeeModal';
 export { HistoryModal } from './HistoryModal';
 export { usePayrollColumns } from './usePayrollColumns';
 export { EmployeeActionMenu } from './EmployeeActionMenu';
-export type { EmployeeRecord, FinancialValue, AuditLog, BranchStructure, PlanRow } from './types';
+export type { EmployeeRecord, FinancialValue, AuditLog, BranchStructure, PlanRow, AppUser } from './types';

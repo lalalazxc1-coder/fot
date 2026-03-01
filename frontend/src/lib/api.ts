@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 const getBaseUrl = () => {
   // Use relative path by default to leverage Vite's proxy and avoid cross-origin cookie issues
-  const url = (import.meta as any).env.VITE_API_URL || '';
+  const url = import.meta.env.VITE_API_URL || '';
   if (!url) return '/api';
   if (url.endsWith('/api')) return url;
   return `${url}/api`;
@@ -15,6 +15,42 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+const readCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+const ensureCsrfToken = async (): Promise<string | null> => {
+  let token = readCookie('csrf_token');
+  if (token) return token;
+
+  try {
+    await axios.get(getBaseUrl() + '/auth/csrf', { withCredentials: true });
+    token = readCookie('csrf_token');
+    return token;
+  } catch {
+    return null;
+  }
+};
+
+api.interceptors.request.use(async (config) => {
+  const method = (config.method || 'get').toUpperCase();
+  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  if (!isMutating) return config;
+
+  const token = await ensureCsrfToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers[CSRF_HEADER_NAME] = token;
+  }
+
+  return config;
 });
 
 // NEW-1 FIX: НЕ читаем access_token из localStorage — аутентификация через HttpOnly cookie.

@@ -1,8 +1,9 @@
 import { Building, Briefcase, Send, Sparkles } from 'lucide-react';
 import { useOutletContext, NavLink, Outlet } from 'react-router-dom';
+import type { AuthUser } from '../../types';
 
 export default function SettingsLayout() {
-    const { user } = useOutletContext<{ user: any }>();
+    const { user } = useOutletContext<{ user: AuthUser }>();
 
     const hasPermission = (key: string) => {
         if (!user) return false;

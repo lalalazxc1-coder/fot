@@ -20,6 +20,12 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
     onClose,
     logs
 }) => {
+    type GroupedAuditLog = {
+        date: string;
+        user: string;
+        changes: AuditLog[];
+    };
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="История изменений">
             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar p-1">
@@ -27,8 +33,8 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                     <p className="text-slate-400 text-center py-4">История пуста</p>
                 ) : (() => {
                     // Group logs by Date + User
-                    const grouped: any[] = [];
-                    let last: any = null;
+                    const grouped: GroupedAuditLog[] = [];
+                    let last: GroupedAuditLog | null = null;
                     for (const log of logs) {
                         if (last && last.date === log.date && last.user === log.user) {
                             last.changes.push(log);
@@ -39,7 +45,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                     }
 
                     return grouped.map((group, i) => {
-                        const fieldLabels: any = {
+                        const fieldLabels: Record<string, string> = {
                             "Оклад (Net)": "Оклад (Net)",
                             "Оклад (Gross)": "Оклад (Gross)",
                             "KPI (Net)": "KPI (Net)",
@@ -84,7 +90,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                             "sync_source", "Источник изменения"
                         ];
 
-                        const sortedChanges = [...group.changes].sort((a: any, b: any) => {
+                        const sortedChanges = [...group.changes].sort((a, b) => {
                             let idxA = fieldOrder.indexOf(a.field);
                             let idxB = fieldOrder.indexOf(b.field);
                             if (idxA === -1) idxA = 999;
@@ -107,7 +113,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                                     </div>
 
                                     <div className="bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
-                                        {sortedChanges.map((log: any, j: number) => {
+                                        {sortedChanges.map((log, j) => {
                                             const label = fieldLabels[log.field] || log.field;
 
                                             // Transform sync_source value to be user-friendly

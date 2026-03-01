@@ -88,9 +88,9 @@ export type MarketSyncResult = {
 // --- Planning ---
 
 export type PlanCreatePayload = {
-    position_title: string;
+    position: string;
     branch_id?: number;
-    department_id?: number;
+    department_id?: number | null;
     count: number;
     schedule?: string;
     base_net: number;

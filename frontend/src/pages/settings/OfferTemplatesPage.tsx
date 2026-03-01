@@ -18,6 +18,25 @@ import Modal from '../../components/Modal';
 import { toast } from 'sonner';
 import { useEmployees } from '../../hooks/useEmployees';
 
+interface OfferTemplateForm {
+    name: string;
+    company_name: string;
+    benefits: string[];
+    welcome_text: string;
+    description_text: string;
+    theme_color: string;
+    custom_sections: { title: string; content: string }[];
+    probation_period: string;
+    working_hours: string;
+    lunch_break: string;
+    non_compete_text: string;
+    signatories: { title: string; name: string }[];
+}
+
+interface OfferTemplateItem extends OfferTemplateForm {
+    id: number;
+}
+
 export default function OfferTemplatesPage() {
     const queryClient = useQueryClient();
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -43,10 +62,10 @@ export default function OfferTemplatesPage() {
     const [signatorySearch, setSignatorySearch] = useState('');
     const [manualSignatory, setManualSignatory] = useState({ title: '', name: '' });
 
-    const { data: templates = [], isLoading } = useQuery({
+    const { data: templates = [], isLoading } = useQuery<OfferTemplateItem[]>({
         queryKey: ['offer-templates'],
         queryFn: async () => {
-            const res = await api.get('/offer-templates/');
+            const res = await api.get<OfferTemplateItem[]>('/offer-templates/');
             return res.data;
         }
     });
@@ -57,7 +76,7 @@ export default function OfferTemplatesPage() {
     );
 
     const mutation = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: OfferTemplateForm) => {
             if (editingId) {
                 const res = await api.put(`/offer-templates/${editingId}`, data);
                 return res.data;
@@ -84,7 +103,7 @@ export default function OfferTemplatesPage() {
         }
     });
 
-    const openEdit = (template: any) => {
+    const openEdit = (template: OfferTemplateItem) => {
         setFormData({ ...initialForm, ...template });
         setEditingId(template.id);
         setIsAddOpen(true);
@@ -135,7 +154,7 @@ export default function OfferTemplatesPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templates.map((template: any) => (
+                {templates.map((template) => (
                     <div key={template.id} className="bg-white rounded-[2rem] border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-200/40 transition-all flex flex-col group">
                         <div className="flex justify-between items-start mb-6">
                             <div className="p-3 bg-slate-50 rounded-2xl text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all">
@@ -331,7 +350,7 @@ export default function OfferTemplatesPage() {
                             <div className="max-h-[220px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl bg-white shadow-sm custom-scrollbar">
                                 {signatorySearch.length >= 2 ? (
                                     <>
-                                        {searchResults.map((emp: any) => (
+                                        {searchResults.map((emp) => (
                                             <button
                                                 key={emp.id}
                                                 type="button"

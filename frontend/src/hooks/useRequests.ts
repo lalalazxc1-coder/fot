@@ -41,6 +41,7 @@ export type RequestRow = {
     current_step_label: string;
     current_step_type: 'approval' | 'notification';
     can_approve: boolean;
+    is_final?: boolean;
     analytics_context: {
         market: { min: number; max: number; median: number } | null;
         internal: { avg_total_net: number; count: number } | null;

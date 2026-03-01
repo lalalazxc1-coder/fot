@@ -15,7 +15,26 @@ interface TeamMember {
     description: string;
 }
 
-const emptyForm = () => ({
+interface WelcomePageForm {
+    name: string;
+    branch_id: number | null;
+    video_url: string;
+    address: string;
+    first_day_instructions: string[];
+    merch_info: string;
+    team_members: TeamMember[];
+    office_tour_images: string[];
+    company_description: string | null;
+    mission: string | null;
+    vision: string | null;
+}
+
+interface WelcomePageConfig extends WelcomePageForm {
+    id: number;
+    branch_name?: string;
+}
+
+const emptyForm = (): WelcomePageForm => ({
     name: '',
     branch_id: null as number | null,
     video_url: '',
@@ -41,15 +60,18 @@ export default function WelcomePagesPage() {
     const [editingInstructionIdx, setEditingInstructionIdx] = useState<number | null>(null);
 
 
-    const { data: configs = [], isLoading } = useQuery({
+    const { data: configs = [], isLoading } = useQuery<WelcomePageConfig[]>({
         queryKey: ['welcome-pages'],
-        queryFn: () => api.get('/welcome-pages/').then(r => r.data),
+        queryFn: async () => {
+            const response = await api.get<WelcomePageConfig[]>('/welcome-pages/');
+            return response.data;
+        },
     });
 
 
 
     const mutation = useMutation({
-        mutationFn: (data: any) => editingId
+        mutationFn: (data: WelcomePageForm) => editingId
             ? api.put(`/welcome-pages/${editingId}`, data)
             : api.post('/welcome-pages/', data),
         onSuccess: () => {
@@ -69,7 +91,7 @@ export default function WelcomePagesPage() {
         },
     });
 
-    const openEdit = (cfg: any) => {
+    const openEdit = (cfg: WelcomePageConfig) => {
         setFormData({
             name: cfg.name || '',
             branch_id: cfg.branch_id || null,
@@ -93,7 +115,9 @@ export default function WelcomePagesPage() {
         setIsOpen(true);
     };
 
-    const set = (field: string, val: any) => setFormData(prev => ({ ...prev, [field]: val }));
+    const set = <K extends keyof WelcomePageForm>(field: K, val: WelcomePageForm[K]) => {
+        setFormData(prev => ({ ...prev, [field]: val }));
+    };
 
     const removeInstruction = (i: number) =>
         set('first_day_instructions', formData.first_day_instructions.filter((_, idx) => idx !== i));
@@ -167,7 +191,7 @@ export default function WelcomePagesPage() {
 
             {/* Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {configs.map((cfg: any) => (
+                {configs.map((cfg) => (
                     <div key={cfg.id} className="bg-white rounded-[2rem] border border-slate-200 p-6 flex flex-col group hover:shadow-xl hover:shadow-slate-200/40 transition-all">
                         <div className="flex justify-between items-start mb-4">
                             <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 group-hover:bg-slate-900 group-hover:text-white transition-all">
@@ -272,12 +296,12 @@ export default function WelcomePagesPage() {
                                 <div className="space-y-2">
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-400 uppercase px-1 mb-1 block">Описание компании</label>
-                                        <textarea
-                                            placeholder="Расскажите кратко о компании..."
-                                            className="w-full h-16 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                            value={formData.company_description}
-                                            onChange={e => set('company_description', e.target.value)}
-                                        />
+                                            <textarea
+                                                placeholder="Расскажите кратко о компании..."
+                                                className="w-full h-16 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
+                                                value={formData.company_description || ''}
+                                                onChange={e => set('company_description', e.target.value)}
+                                            />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
@@ -285,7 +309,7 @@ export default function WelcomePagesPage() {
                                             <textarea
                                                 placeholder="..."
                                                 className="w-full h-14 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                                value={formData.mission}
+                                                value={formData.mission || ''}
                                                 onChange={e => set('mission', e.target.value)}
                                             />
                                         </div>
@@ -294,7 +318,7 @@ export default function WelcomePagesPage() {
                                             <textarea
                                                 placeholder="..."
                                                 className="w-full h-14 bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm outline-none focus:border-slate-400 shadow-sm resize-none"
-                                                value={formData.vision}
+                                                value={formData.vision || ''}
                                                 onChange={e => set('vision', e.target.value)}
                                             />
                                         </div>

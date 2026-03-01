@@ -14,10 +14,71 @@ import { formatMoney } from '../../utils';
 import { toast } from 'sonner';
 import WelcomeDashboard from '../../components/WelcomeDashboard';
 
+interface OfferSignatory {
+    title?: string;
+    name: string;
+}
+
+interface TeamMember {
+    name: string;
+    role: string;
+    description?: string;
+}
+
+interface PublicOfferWelcomeContent {
+    video_url?: string;
+    office_tour_images?: string[];
+    address?: string;
+    first_day_instructions?: string[];
+    merch_info?: string;
+    team_members?: TeamMember[];
+    company_description?: string;
+    mission?: string;
+    vision?: string;
+    coordinates?: Record<string, number>;
+    team_leader_name?: string;
+    team_leader_photo?: string;
+    team_leader_message?: string;
+}
+
+interface PublicOffer {
+    id?: number;
+    token?: string;
+    candidate_name: string;
+    position_title: string;
+    base_net?: number;
+    kpi_net?: number;
+    bonus_net?: number;
+    status: string;
+    company_name?: string;
+    manager_name?: string;
+    benefits?: string[];
+    valid_until?: string;
+    welcome_text?: string;
+    description_text?: string;
+    theme_color?: string;
+    custom_sections?: { title: string; content: string }[];
+    probation_period?: string;
+    working_hours?: string;
+    lunch_break?: string;
+    non_compete_text?: string;
+    president_name?: string;
+    hr_name?: string;
+    start_date?: string;
+    signatories?: OfferSignatory[];
+    welcome_content?: PublicOfferWelcomeContent | null;
+    is_locked?: boolean;
+}
+
+type PublicOfferActionResponse = {
+    status: 'accepted' | 'rejected';
+    welcome_content?: PublicOfferWelcomeContent | null;
+};
+
 export default function PublicOfferPage() {
     const { token } = useParams();
     const [searchParams] = useSearchParams();
-    const [offer, setOffer] = useState<any>(null);
+    const [offer, setOffer] = useState<PublicOffer | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +90,7 @@ export default function PublicOfferPage() {
     const [pinError, setPinError] = useState(false);
 
     // Welcome Experience State
-    const [welcomeContent, setWelcomeContent] = useState<any>(null);
+    const [welcomeContent, setWelcomeContent] = useState<PublicOfferWelcomeContent | null>(null);
     const [showWelcome, setShowWelcome] = useState(false);
 
     const fetchOffer = async () => {
@@ -39,7 +100,7 @@ export default function PublicOfferPage() {
             const res = await api.get(`/offers/public/${token}`);
             setOffer(res.data);
             setIsLocked(true); // Всегда начинаем как locked
-        } catch (e: any) {
+        } catch {
             setError("Оффер не найден или срок его действия истек");
         } finally {
             setIsLoading(false);
@@ -67,9 +128,10 @@ export default function PublicOfferPage() {
             if (searchParams.get('print') === 'true') {
                 setTimeout(() => window.print(), 1000);
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             setPinError(true);
-            if (e?.response?.status === 429) {
+            const status = (e as { response?: { status?: number } })?.response?.status;
+            if (status === 429) {
                 toast.error('Превышен лимит попыток. Попробуйте через 15 минут.');
             } else {
                 toast.error('Неверный код доступа');
@@ -82,9 +144,9 @@ export default function PublicOfferPage() {
     const handleAction = async (action: 'accept' | 'reject') => {
         setIsSubmitting(true);
         try {
-            const res = await api.post(`/offers/public/${token}/action`, { action, pin });
+            const res = await api.post<PublicOfferActionResponse>(`/offers/public/${token}/action`, { action, pin });
             const newStatus = action === 'accept' ? 'accepted' : 'rejected';
-            setOffer({ ...offer, status: newStatus });
+            setOffer((prev) => (prev ? { ...prev, status: newStatus } : prev));
             if (action === 'accept') {
                 toast.success('Предложение принято! Нажмите кнопку ниже, чтобы открыть Welcome Page.');
                 // Store welcome content, show button — don't auto-redirect
@@ -95,7 +157,7 @@ export default function PublicOfferPage() {
             } else {
                 toast.info('Предложение отклонено.');
             }
-        } catch (e) {
+        } catch {
             toast.error('Ошибка при выполнении действия.');
         } finally {
             setIsSubmitting(false);
@@ -117,6 +179,11 @@ export default function PublicOfferPage() {
     );
 
     const isPending = offer?.status === 'pending';
+    const offerCompanyName = offer.company_name || 'Наша Компания';
+    const baseNet = offer.base_net ?? 0;
+    const kpiNet = offer.kpi_net ?? 0;
+    const benefits = offer.benefits ?? [];
+    const signatories = offer.signatories ?? [];
 
     // Show Welcome Dashboard if accepted
     if (showWelcome) {
@@ -124,7 +191,7 @@ export default function PublicOfferPage() {
             <WelcomeDashboard
                 candidateName={offer.candidate_name}
                 positionTitle={offer.position_title}
-                companyName={offer.company_name}
+                companyName={offerCompanyName}
                 startDate={offer.start_date}
                 welcomeContent={welcomeContent}
             />
@@ -265,11 +332,11 @@ export default function PublicOfferPage() {
                             <div className="rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
                                 <div className="flex justify-between items-center px-6 py-4 bg-slate-50">
                                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ежемесячный оклад (На руки)</span>
-                                    <span className="text-xl font-black text-slate-900">{formatMoney(offer.base_net)}</span>
+                                    <span className="text-xl font-black text-slate-900">{formatMoney(baseNet)}</span>
                                 </div>
                                 <div className="flex justify-between items-center px-6 py-4 bg-white">
                                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Переменная часть (Бонусы)</span>
-                                    <span className="text-xl font-black text-slate-900">{formatMoney(offer.kpi_net)}</span>
+                                    <span className="text-xl font-black text-slate-900">{formatMoney(kpiNet)}</span>
                                 </div>
                             </div>
                         </section>
@@ -296,11 +363,11 @@ export default function PublicOfferPage() {
                             </div>
                         </section>
 
-                        {offer.benefits?.length > 0 && (
+                        {benefits.length > 0 && (
                             <section>
                                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8 font-mono">03. Социальный пакет</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {offer.benefits.map((b: string, i: number) => (
+                                    {benefits.map((b: string, i: number) => (
                                         <div key={i} className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 bg-slate-50/50">
                                             <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
                                                 <CheckCircle2 className="w-4 h-4 text-slate-900" />
@@ -402,7 +469,7 @@ export default function PublicOfferPage() {
                     </div>
 
                     <div className="pdf-center-text">
-                        Компания {offer.company_name || 'KULAN OIL'} рада сделать вам предложение о работе на должность
+                        Компания {offerCompanyName || 'KULAN OIL'} рада сделать вам предложение о работе на должность
                     </div>
 
                     <div className="pdf-position">
@@ -418,9 +485,9 @@ export default function PublicOfferPage() {
                     </div>
 
                     <ul className="pdf-list">
-                        <li>Ежемесячный оклад в размере <strong>{formatMoney(offer.base_net)}</strong> тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>
-                        {offer.kpi_net > 0 && <li>Ежемесячный бонус в размере <strong>{formatMoney(offer.kpi_net)}</strong> (при выполнении задач по мотивационной системе) тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>}
-                        {offer.benefits?.map((b: string, i: number) => (
+                        <li>Ежемесячный оклад в размере <strong>{formatMoney(baseNet)}</strong> тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>
+                        {kpiNet > 0 && <li>Ежемесячный бонус в размере <strong>{formatMoney(kpiNet)}</strong> (при выполнении задач по мотивационной системе) тенге к начислению, с учетом пенсионных и налоговых отчислений согласно законодательству РК.</li>}
+                        {benefits.map((b: string, i: number) => (
                             <li key={i}>{b}.</li>
                         ))}
                     </ul>
@@ -441,12 +508,12 @@ export default function PublicOfferPage() {
 
                     <ul className="pdf-cond-list">
                         <li>
-                            {offer.non_compete_text || `Заключение договора о неконкуренции, по условиям которого Вы после увольнения в течении 3-х лет не вправе трудоустроиться в конкурентные компании осуществляющих аналогичную деятельность как у ${offer.company_name || 'KULAN OIL'}, за нарушение данного условия предусмотрен штраф, подлежащий выплате по первому его требованию.`}
+                            {offer.non_compete_text || `Заключение договора о неконкуренции, по условиям которого Вы после увольнения в течении 3-х лет не вправе трудоустроиться в конкурентные компании осуществляющих аналогичную деятельность как у ${offerCompanyName || 'KULAN OIL'}, за нарушение данного условия предусмотрен штраф, подлежащий выплате по первому его требованию.`}
                         </li>
                     </ul>
 
                     <div className="pdf-text" style={{ marginTop: '5px' }}>
-                        С нетерпением ждем Вашего присоединения к команде компании {offer.company_name || 'KULAN OIL'}.
+                        С нетерпением ждем Вашего присоединения к команде компании {offerCompanyName || 'KULAN OIL'}.
                     </div>
 
                     <div className="pdf-text">
@@ -455,7 +522,7 @@ export default function PublicOfferPage() {
                 </div>
 
                 <div className="pdf-signatures">
-                    {offer.signatories?.length > 0 && offer.signatories.map((sig: any, idx: number) => (
+                    {signatories.length > 0 && signatories.map((sig, idx: number) => (
                         <div key={idx} className="pdf-sig-row">
                             <div className="pdf-sig-left">
                                 {sig.title && <div className="pdf-sig-left-title">{sig.title}</div>}

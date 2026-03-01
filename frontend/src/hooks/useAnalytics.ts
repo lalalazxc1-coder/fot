@@ -94,12 +94,48 @@ export function useAnalytics() {
         },
     });
 
+    const retentionRisk = useQuery({
+        queryKey: ['analytics', 'retention-risk', snapshotDate],
+        queryFn: async () => {
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/retention-risk', { params });
+            return res.data;
+        },
+    });
+
+    const esgMetrics = useQuery({
+        queryKey: ['analytics', 'esg-metrics', snapshotDate],
+        queryFn: async () => {
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/esg/pay-equity', { params });
+            return res.data;
+        },
+    });
+
+    const turnover = useQuery({
+        queryKey: ['analytics', 'turnover', snapshotDate],
+        queryFn: async () => {
+            const params = snapshotDate ? { date: snapshotDate } : {};
+            const res = await api.get('/analytics/turnover', { params });
+            return res.data;
+        },
+    });
+
     return {
         summary,
         branchComparison,
         topEmployees,
         costDistribution,
-        isLoading: summary.isLoading || branchComparison.isLoading || topEmployees.isLoading || costDistribution.isLoading
+        retentionRisk,
+        esgMetrics,
+        turnover,
+        isLoading: summary.isLoading || 
+                   branchComparison.isLoading || 
+                   topEmployees.isLoading || 
+                   costDistribution.isLoading ||
+                   retentionRisk.isLoading ||
+                   esgMetrics.isLoading ||
+                   turnover.isLoading
     };
 }
 

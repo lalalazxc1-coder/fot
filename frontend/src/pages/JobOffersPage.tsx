@@ -73,6 +73,11 @@ interface JobOffer {
     token: string;
 }
 
+interface WelcomePageOption {
+    id: number;
+    name: string;
+}
+
 
 export default function JobOffersPage() {
     const queryClient = useQueryClient();
@@ -121,9 +126,12 @@ export default function JobOffersPage() {
 
     const { data: searchResults = [], isLoading: isSearchLoading } = useEmployees(signatorySearch.length >= 2 ? signatorySearch : undefined);
 
-    const { data: welcomePages = [] } = useQuery({
+    const { data: welcomePages = [] } = useQuery<WelcomePageOption[]>({
         queryKey: ['welcome-pages'],
-        queryFn: () => api.get('/welcome-pages/').then(r => r.data),
+        queryFn: async () => {
+            const response = await api.get<WelcomePageOption[]>('/welcome-pages/');
+            return response.data;
+        },
     });
 
     const createMutation = useMutation({
@@ -365,7 +373,7 @@ export default function JobOffersPage() {
                                             <a
                                                 href={`/public/offer/${offer.token}`}
                                                 target="_blank"
-                                                rel="noreferrer"
+                                                rel="noopener noreferrer"
                                                 className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                                                 title="Открыть"
                                             >
@@ -435,7 +443,7 @@ export default function JobOffersPage() {
                                 onChange={e => setFormData({ ...formData, welcome_page_config_id: e.target.value ? Number(e.target.value) : null })}
                             >
                                 <option value="">Не выбрано</option>
-                                {(welcomePages as any[]).map((wp: any) => (
+                                {welcomePages.map((wp) => (
                                     <option key={wp.id} value={wp.id}>{wp.name}</option>
                                 ))}
                             </select>
@@ -593,7 +601,7 @@ export default function JobOffersPage() {
                             <div className="max-h-[220px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-2xl bg-white shadow-sm custom-scrollbar">
                                 {signatorySearch.length >= 2 ? (
                                     <>
-                                        {searchResults.map((emp: any) => (
+                                        {searchResults.map((emp) => (
                                             <button
                                                 key={emp.id}
                                                 type="button"

@@ -55,6 +55,42 @@ export type Notification = {
     link?: string;
 };
 
+export type AuditLogEntry = {
+    id: number;
+    user: string;
+    entity: string;
+    entity_raw?: string;
+    target_entity_id?: number | null;
+    old_values?: Record<string, unknown> | null;
+    new_values?: Record<string, unknown> | null;
+    timestamp: string | null;
+    ip_address?: string | null;
+    user_agent?: string | null;
+};
+
+export type LoginLogEntry = {
+    id: number;
+    user: string;
+    user_email?: string | null;
+    action: string;
+    action_label: string;
+    action_color: string;
+    ip_address: string;
+    browser: string;
+    os: string;
+    device: string;
+    user_agent_full?: string | null;
+    timestamp: string | null;
+};
+
+export type PagedLogsResponse<TLog> = {
+    logs: TLog[];
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+};
+
 // --- Hooks ---
 
 export function useAdminStats() {
@@ -74,13 +110,7 @@ export function useAuditLogs(page: number = 1, limit: number = 50, entity?: stri
             const params = new URLSearchParams({ page: String(page), limit: String(limit) });
             if (entity) params.set('entity', entity);
             const res = await api.get(`/admin/logs?${params}`);
-            return res.data as {
-                logs: any[];
-                total: number;
-                page: number;
-                limit: number;
-                total_pages: number;
-            };
+            return res.data as PagedLogsResponse<AuditLogEntry>;
         },
     });
 }
@@ -92,13 +122,7 @@ export function useLoginLogs(page: number = 1, limit: number = 50, action?: stri
             const params = new URLSearchParams({ page: String(page), limit: String(limit) });
             if (action) params.set('action', action);
             const res = await api.get(`/admin/login-logs?${params}`);
-            return res.data as {
-                logs: any[];
-                total: number;
-                page: number;
-                limit: number;
-                total_pages: number;
-            };
+            return res.data as PagedLogsResponse<LoginLogEntry>;
         },
     });
 }

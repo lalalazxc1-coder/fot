@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Plus, Eye, HelpCircle, Calculator } from 'lucide-react';
 import { PageHeader } from '../components/shared';
 import Modal from '../components/Modal';
-import { useRequests, useUpdateRequestStatus } from '../hooks/useRequests';
+import { useRequests, useUpdateRequestStatus, RequestRow } from '../hooks/useRequests';
 import { useEmployees } from '../hooks/useEmployees';
 import { formatMoney } from '../utils';
 
@@ -27,7 +27,7 @@ export default function RequestsPage() {
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+    const [selectedRequest, setSelectedRequest] = useState<RequestRow | null>(null);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     // Available employees for dropdown (Active only)

@@ -11,6 +11,12 @@ import {
     PartyPopper,
 } from 'lucide-react';
 
+type ImageErrorEvent = React.SyntheticEvent<HTMLImageElement>;
+
+const hideBrokenImage = (event: ImageErrorEvent) => {
+    event.currentTarget.style.display = 'none';
+};
+
 // Native confetti — no external dependency
 function launchConfetti() {
     const canvas = document.createElement('canvas');
@@ -286,7 +292,7 @@ export default function WelcomeDashboard({
                                     src={images[activeImage]}
                                     alt="Офис"
                                     className="w-full h-full object-cover"
-                                    onError={(e: any) => { e.target.style.display = 'none'; }}
+                                    onError={hideBrokenImage}
                                 />
                             </div>
                             {images.length > 1 && (
@@ -298,7 +304,7 @@ export default function WelcomeDashboard({
                                             className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === activeImage ? 'border-slate-900' : 'border-slate-200 opacity-60'}`}
                                         >
                                             <img src={img} alt="" className="w-full h-full object-cover"
-                                                onError={(e: any) => { e.target.style.display = 'none'; }} />
+                                                onError={hideBrokenImage} />
                                         </button>
                                     ))}
                                 </div>

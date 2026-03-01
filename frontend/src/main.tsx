@@ -5,7 +5,7 @@ import './index.css'
 import { BrowserRouter } from 'react-router-dom'
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
-    constructor(props: any) {
+    constructor(props: { children: React.ReactNode }) {
         super(props);
         this.state = { hasError: false, error: null };
     }
@@ -14,17 +14,23 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: any) {
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         console.error("Uncaught error:", error, errorInfo);
     }
 
     render() {
+        const isDev = import.meta.env.DEV;
+
         if (this.state.hasError) {
             return (
                 <div style={{ padding: 20, color: 'red', fontFamily: 'sans-serif' }}>
                     <h1>Something went wrong.</h1>
-                    <pre>{this.state.error?.toString()}</pre>
-                    <pre>{this.state.error?.stack}</pre>
+                    {isDev && (
+                        <>
+                            <pre>{this.state.error?.toString()}</pre>
+                            <pre>{this.state.error?.stack}</pre>
+                        </>
+                    )}
                     <button onClick={() => window.location.reload()}>Reload</button>
                     <button onClick={() => { localStorage.clear(); window.location.reload() }}>Clear Storage & Reload</button>
                 </div>

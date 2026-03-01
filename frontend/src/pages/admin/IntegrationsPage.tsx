@@ -4,19 +4,65 @@ import { Save, Info, CheckCircle, XCircle, Key, Loader2, Trash2, Play } from 'lu
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+interface IntegrationService {
+    id: number;
+    service_name: string;
+    is_active: boolean;
+    has_api_key: boolean;
+    has_client_secret: boolean;
+    client_id?: string | null;
+    updated_at?: string;
+    additional_params?: Record<string, unknown>;
+}
+
+interface IntegrationSettingsPayload {
+    service_name?: string;
+    is_active: boolean;
+    api_key?: string;
+    client_id?: string;
+    client_secret?: string;
+    additional_params?: Record<string, unknown>;
+}
+
+interface TestConnectionPayload {
+    service_name: string;
+    api_key?: string;
+    client_id?: string;
+    client_secret?: string;
+    base_url?: string;
+}
+
+interface TestConnectionResponse {
+    success: boolean;
+    message: string;
+}
+
+const getApiErrorMessage = (error: unknown): string => {
+    if (typeof error === 'object' && error !== null && 'response' in error) {
+        const response = (error as { response?: { data?: { message?: string } } }).response;
+        if (response?.data?.message) {
+            return response.data.message;
+        }
+    }
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return 'Неизвестная ошибка';
+};
+
 export default function IntegrationsPage() {
     const queryClient = useQueryClient();
-    const { data: settings, isLoading } = useQuery({
+    const { data: settings = [], isLoading } = useQuery<IntegrationService[]>({
         queryKey: ['integrations'],
         queryFn: async () => {
-            const res = await api.get('/integrations/settings');
+            const res = await api.get<IntegrationService[]>('/integrations/settings');
             return res.data;
         }
     });
 
-    const updateMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const res = await api.post('/integrations/settings', data);
+    const updateMutation = useMutation<IntegrationService, unknown, IntegrationSettingsPayload>({
+        mutationFn: async (data) => {
+            const res = await api.post<IntegrationService>('/integrations/settings', data);
             return res.data;
         },
         onSuccess: () => {
@@ -34,11 +80,11 @@ export default function IntegrationsPage() {
             <p className="text-slate-500">Настройте подключение к внешним сервисам для поиска кандидатов и аналитики.</p>
 
             <div className="grid gap-6">
-                {settings?.map((service: any) => (
+                {settings.map((service) => (
                     <IntegrationCard
                         key={service.id}
                         service={service}
-                        onSave={(data: any) => updateMutation.mutate({ ...data, service_name: service.service_name })}
+                        onSave={(data) => updateMutation.mutate({ ...data, service_name: service.service_name })}
                         isSaving={updateMutation.isPending}
                     />
                 ))}
@@ -47,19 +93,25 @@ export default function IntegrationsPage() {
     );
 }
 
-const IntegrationCard = ({ service, onSave, isSaving }: any) => {
+type IntegrationCardProps = {
+    service: IntegrationService;
+    onSave: (data: IntegrationSettingsPayload) => void;
+    isSaving: boolean;
+};
+
+const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) => {
     const [apiKey, setApiKey] = useState('');
     const [clientId, setClientId] = useState(service.client_id || '');
     const [clientSecret, setClientSecret] = useState('');
     const [isActive, setIsActive] = useState(service.is_active);
     const [isTesting, setIsTesting] = useState(false);
-    const [baseUrl, setBaseUrl] = useState(service.additional_params?.base_url || 'https://api.openai.com/v1');
+    const [baseUrl, setBaseUrl] = useState((service.additional_params?.base_url as string) || 'https://api.openai.com/v1');
 
     const isHH = service.service_name === 'hh';
     const isAI = service.service_name === 'openai';
 
     const handleSave = () => {
-        const payload: any = { is_active: isActive };
+        const payload: IntegrationSettingsPayload = { is_active: isActive };
         // Clean strings
         if (apiKey.trim()) payload.api_key = apiKey.trim();
         if (clientId.trim()) payload.client_id = clientId.trim();
@@ -75,7 +127,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
     const handleClear = () => {
         if (!confirm('Вы уверены, что хотите удалить ключи подключения? Интеграция перестанет работать.')) return;
         // Sending empty strings to clear
-        const payload: any = { is_active: false, api_key: "", client_id: "", client_secret: "" };
+        const payload: IntegrationSettingsPayload = { is_active: false, api_key: '', client_id: '', client_secret: '' };
         onSave(payload);
         setApiKey('');
         setClientId('');
@@ -85,20 +137,20 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
     const handleTest = async () => {
         setIsTesting(true);
         try {
-            const payload: any = { service_name: service.service_name };
+            const payload: TestConnectionPayload = { service_name: service.service_name };
             if (apiKey.trim()) payload.api_key = apiKey.trim();
             if (clientId.trim()) payload.client_id = clientId.trim();
             if (clientSecret.trim()) payload.client_secret = clientSecret.trim();
             if (isAI) payload.base_url = baseUrl;
 
-            const res = await api.post('/integrations/test-connection', payload);
+            const res = await api.post<TestConnectionResponse>('/integrations/test-connection', payload);
             if (res.data.success) {
                 toast.success(res.data.message);
             } else {
                 toast.error(res.data.message);
             }
-        } catch (e: any) {
-            toast.error("Ошибка соединения: " + (e.response?.data?.message || e.message));
+        } catch (error: unknown) {
+            toast.error(`Ошибка соединения: ${getApiErrorMessage(error)}`);
         } finally {
             setIsTesting(false);
         }
@@ -170,7 +222,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: any) => {
                             <div className="bg-blue-50 p-3 rounded-lg flex gap-3 text-sm text-blue-700">
                                 <Info className="w-5 h-5 flex-shrink-0" />
                                 <p>
-                                    Зарегистрируйте приложение на <a href="https://dev.hh.ru/admin" target="_blank" className="underline font-bold hover:text-blue-900">dev.hh.ru</a>.
+                                    Зарегистрируйте приложение на <a href="https://dev.hh.ru/admin" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-blue-900">dev.hh.ru</a>.
                                     Используйте <code>Client Credentials</code> Grant Type.
                                 </p>
                             </div>

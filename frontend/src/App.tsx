@@ -1,32 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import EmployeeTable from './components/EmployeeTable';
-import PlanningTable from './components/PlanningTable';
-import DashboardLayout from './components/DashboardLayout';
-import LoginPage from './pages/LoginPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import RequestsPage from './pages/RequestsPage';
-import MarketPage from './pages/MarketPage';
-import ScenariosPage from './pages/ScenariosPage';
-import JobOffersPage from './pages/JobOffersPage';
-import PublicOfferPage from './pages/requests/PublicOfferPage';
-import NotFoundPage from './pages/NotFoundPage';
 import { api } from './lib/api';
 import { SnapshotProvider } from './context/SnapshotContext';
 
-// Admin SubPages
-import AdminLayout from './pages/admin/AdminLayout';
-import RolesPage from './pages/admin/RolesPage';
-import UsersPage from './pages/admin/UsersPage';
-import StructurePage from './pages/admin/StructurePage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import WorkflowPage from './pages/admin/WorkflowPage';
-import IntegrationsPage from './pages/admin/IntegrationsPage';
-import LogsPage from './pages/admin/LogsPage';
-import SettingsLayout from './pages/settings/SettingsLayout';
-import PositionsPage from './pages/settings/PositionsPage';
-import OfferTemplatesPage from './pages/settings/OfferTemplatesPage';
-import WelcomePagesPage from './pages/settings/WelcomePagesPage';
+const EmployeeTable = lazy(() => import('./components/EmployeeTable'));
+const PlanningTable = lazy(() => import('./components/PlanningTable'));
+const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const RequestsPage = lazy(() => import('./pages/RequestsPage'));
+const MarketPage = lazy(() => import('./pages/MarketPage'));
+const ScenariosPage = lazy(() => import('./pages/ScenariosPage'));
+const JobOffersPage = lazy(() => import('./pages/JobOffersPage'));
+const PublicOfferPage = lazy(() => import('./pages/requests/PublicOfferPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+
+// Admin sub-pages
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
+const RolesPage = lazy(() => import('./pages/admin/RolesPage'));
+const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
+const StructurePage = lazy(() => import('./pages/admin/StructurePage'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const WorkflowPage = lazy(() => import('./pages/admin/WorkflowPage'));
+const IntegrationsPage = lazy(() => import('./pages/admin/IntegrationsPage'));
+const AnalyticsSettingsPage = lazy(() => import('./pages/admin/AnalyticsSettingsPage'));
+const LogsPage = lazy(() => import('./pages/admin/LogsPage'));
+const SettingsLayout = lazy(() => import('./pages/settings/SettingsLayout'));
+const PositionsPage = lazy(() => import('./pages/settings/PositionsPage'));
+const OfferTemplatesPage = lazy(() => import('./pages/settings/OfferTemplatesPage'));
+const WelcomePagesPage = lazy(() => import('./pages/settings/WelcomePagesPage'));
 
 type AuthUser = {
     id: number;
@@ -137,9 +139,10 @@ function App() {
                     // Новая вкладка: сохраняем в sessionStorage чтобы не мигало
                     sessionStorage.setItem('fot_user', JSON.stringify(storageData));
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 // 401 — cookie невалидный или отсутствует
-                if (err?.response?.status !== 401) {
+                const status = (err as { response?: { status?: number } })?.response?.status;
+                if (status !== 401) {
                     console.error("Ошибка при проверке сессии:", err);
                 }
                 localStorage.removeItem('fot_user');
@@ -201,64 +204,73 @@ function App() {
 
     return (
         <SnapshotProvider>
-            <Routes>
-                <Route path="/login" element={
-                    !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />
-                } />
+            <Suspense
+                fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                }
+            >
+                <Routes>
+                    <Route path="/login" element={
+                        !isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" replace />
+                    } />
 
-                <Route path="/public/offer/:token" element={<PublicOfferPage />} />
+                    <Route path="/public/offer/:token" element={<PublicOfferPage />} />
 
-                {/* Protected Routes */}
-                {isAuthenticated && user ? (
-                    <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
-                        <Route path="/" element={<Navigate to={(user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics) ? "/analytics" : "/requests"} replace />} />
-                        <Route path="/analytics" element={<ProtectedAnalyticsRoute user={user}><AnalyticsPage /></ProtectedAnalyticsRoute>} />
-                        <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
-                        <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
-                        <Route path="/requests" element={<RequestsPage />} />
-                        <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
-                        <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
+                    {/* Protected Routes */}
+                    {isAuthenticated && user ? (
+                        <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
+                            <Route path="/" element={<Navigate to={(user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics) ? "/analytics" : "/requests"} replace />} />
+                            <Route path="/analytics" element={<ProtectedAnalyticsRoute user={user}><AnalyticsPage /></ProtectedAnalyticsRoute>} />
+                            <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
+                            <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
+                            <Route path="/requests" element={<RequestsPage />} />
+                            <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
+                            <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
 
-                        <Route path="/market" element={
-                            <ProtectedMarketRoute user={user}>
-                                <MarketPage />
-                            </ProtectedMarketRoute>
-                        } />
+                            <Route path="/market" element={
+                                <ProtectedMarketRoute user={user}>
+                                    <MarketPage />
+                                </ProtectedMarketRoute>
+                            } />
 
-                        {/* Settings Routes - Company config */}
-                        <Route path="/settings" element={
-                            <ProtectedSettingsRoute user={user}>
-                                <SettingsLayout />
-                            </ProtectedSettingsRoute>
-                        }>
-                            <Route index element={<Navigate to="structure" replace />} />
-                            <Route path="structure" element={<StructurePage />} />
-                            <Route path="positions" element={<PositionsPage />} />
-                            <Route path="offer-templates" element={<OfferTemplatesPage />} />
-                            <Route path="welcome-pages" element={<WelcomePagesPage />} />
+                            {/* Settings Routes - Company config */}
+                            <Route path="/settings" element={
+                                <ProtectedSettingsRoute user={user}>
+                                    <SettingsLayout />
+                                </ProtectedSettingsRoute>
+                            }>
+                                <Route index element={<Navigate to="structure" replace />} />
+                                <Route path="structure" element={<StructurePage />} />
+                                <Route path="positions" element={<PositionsPage />} />
+                                <Route path="offer-templates" element={<OfferTemplatesPage />} />
+                                <Route path="welcome-pages" element={<WelcomePagesPage />} />
+                            </Route>
+
+                            {/* Admin Routes - System config */}
+                            <Route path="/admin" element={
+                                <ProtectedAdminRoute user={user}>
+                                    <AdminLayout />
+                                </ProtectedAdminRoute>
+                            }>
+                                <Route index element={<AdminDashboard />} />
+                                <Route path="roles" element={<RolesPage />} />
+                                <Route path="users" element={<UsersPage />} />
+                                <Route path="workflow" element={<WorkflowPage />} />
+                                <Route path="integrations" element={<IntegrationsPage />} />
+                                <Route path="analytics-config" element={<AnalyticsSettingsPage />} />
+                                <Route path="logs" element={<LogsPage />} />
+                            </Route>
                         </Route>
+                    ) : null}
 
-                        {/* Admin Routes - System config */}
-                        <Route path="/admin" element={
-                            <ProtectedAdminRoute user={user}>
-                                <AdminLayout />
-                            </ProtectedAdminRoute>
-                        }>
-                            <Route index element={<AdminDashboard />} />
-                            <Route path="roles" element={<RolesPage />} />
-                            <Route path="users" element={<UsersPage />} />
-                            <Route path="workflow" element={<WorkflowPage />} />
-                            <Route path="integrations" element={<IntegrationsPage />} />
-                            <Route path="logs" element={<LogsPage />} />
-                        </Route>
-                    </Route>
-                ) : null}
-
-                {/* Catch-all: 404 for auth users, Redirect to login for guests */}
-                <Route path="*" element={
-                    isAuthenticated ? <NotFoundPage /> : <Navigate to="/login" replace />
-                } />
-            </Routes>
+                    {/* Catch-all: 404 for auth users, Redirect to login for guests */}
+                    <Route path="*" element={
+                        isAuthenticated ? <NotFoundPage /> : <Navigate to="/login" replace />
+                    } />
+                </Routes>
+            </Suspense>
         </SnapshotProvider>
     );
 }

@@ -6,6 +6,7 @@ import { useSnapshot } from '../context/SnapshotContext';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
 import { api } from '../lib/api';
+import { Notification } from '../hooks/useAdmin';
 import { NavBar } from './ui/tubelight-navbar';
 import { ExpandableTabs } from './ui/expandable-tabs';
 import { useOnClickOutside } from 'usehooks-ts';
@@ -16,7 +17,15 @@ type User = {
     permissions: Record<string, boolean>;
 };
 
-const PasswordInput = ({ value, onChange, label, error, minLength }: any) => {
+type PasswordInputProps = {
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    label: string;
+    error?: boolean;
+    minLength?: number;
+};
+
+const PasswordInput = ({ value, onChange, label, error, minLength }: PasswordInputProps) => {
     const [show, setShow] = useState(false);
     return (
         <div>
@@ -164,9 +173,9 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         setActiveTabIndex(null);
     });
 
-    const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+    const unreadCount = notifications.filter((n: Notification) => !n.is_read).length;
 
-    const handleNotifClick = (n: any) => {
+    const handleNotifClick = (n: Notification) => {
         if (!n.is_read) markRead.mutate(n.id);
         if (n.link) navigate(n.link);
         setActiveTabIndex(null);
@@ -194,18 +203,10 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
             });
             setSuccess('Пароль успешно изменен');
             setTimeout(() => setIsPassOpen(false), 1500);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error(e);
-            let msg = e.message;
-            try {
-                const parsed = JSON.parse(msg);
-                if (parsed.detail) {
-                    msg = parsed.detail;
-                }
-            } catch {
-                // Not JSON, keep original message
-            }
-            setError(msg);
+            const err = e as { response?: { data?: { detail?: string } }; message?: string };
+            setError(err.response?.data?.detail || err.message || 'Ошибка смены пароля');
         }
     };
 
@@ -310,7 +311,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                                     {notifications.length === 0 ? (
                                         <div className="p-6 text-center text-slate-400 text-sm">Нет уведомлений</div>
                                     ) : (
-                                        notifications.map((n: any) => (
+                                        notifications.map((n: Notification) => (
                                             <div
                                                 key={n.id}
                                                 onClick={() => handleNotifClick(n)}
@@ -410,21 +411,21 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                     <PasswordInput
                         label="Старый пароль"
                         value={passData.old}
-                        onChange={(e: any) => setPassData({ ...passData, old: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, old: e.target.value })}
                         error={error === 'Неверный старый пароль'}
                     />
 
                     <PasswordInput
                         label="Новый пароль"
                         value={passData.new}
-                        onChange={(e: any) => setPassData({ ...passData, new: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, new: e.target.value })}
                         minLength={8}
                     />
 
                     <PasswordInput
                         label="Повторите новый пароль"
                         value={passData.confirm}
-                        onChange={(e: any) => setPassData({ ...passData, confirm: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, confirm: e.target.value })}
                     />
 
                     <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98]">

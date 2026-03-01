@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuditLogs, useLoginLogs } from '../../hooks/useAdmin';
+import type { AuditLogEntry, LoginLogEntry } from '../../hooks/useAdmin';
 import {
     Loader2, Activity, ChevronLeft, ChevronRight, Eye,
     LogIn, LogOut, Shield, Monitor, Smartphone, Tablet,
@@ -38,11 +39,30 @@ function formatTimestamp(ts: string | null) {
     } catch { return ts; }
 }
 
+function getAuditSummary(values: Record<string, unknown> | null | undefined): string {
+    if (!values || Object.keys(values).length === 0) {
+        return 'Действие';
+    }
+
+    const note = values.note;
+    if (typeof note === 'string' && note.trim()) {
+        return note;
+    }
+
+    const event = values['Событие'];
+    if (typeof event === 'string' && event.trim()) {
+        return event;
+    }
+
+    const keys = Object.keys(values).slice(0, 3);
+    return keys.length > 0 ? keys.join(', ') : 'Действие';
+}
+
 // --- Вкладка: Изменения (AuditLog) ---
 function AuditTab() {
     const [page, setPage] = useState(1);
     const [entityFilter, setEntityFilter] = useState('');
-    const [selectedLog, setSelectedLog] = useState<any>(null);
+    const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
     const { data, isLoading } = useAuditLogs(page, PAGE_LIMIT, entityFilter || undefined);
 
     const entityOptions = [
@@ -64,7 +84,7 @@ function AuditTab() {
         'Структура': 'bg-teal-100 text-teal-700',
     };
 
-    const formatJSON = (data: any) => {
+    const formatJSON = (data: Record<string, unknown> | null | undefined) => {
         if (!data || Object.keys(data).length === 0) return <span className="text-slate-400 italic text-sm">Нет данных</span>;
         return (
             <pre className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[12px] font-mono text-slate-700 whitespace-pre-wrap overflow-x-auto max-h-64">
@@ -112,7 +132,7 @@ function AuditTab() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {data?.logs.map((log: any) => (
+                                {data?.logs.map((log) => (
                                     <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
                                         <td className="px-4 py-3 font-mono text-slate-500 text-xs whitespace-nowrap">
                                             <div className="flex items-center gap-1.5">
@@ -138,9 +158,7 @@ function AuditTab() {
                                             {log.ip_address || '—'}
                                         </td>
                                         <td className="px-4 py-3 text-slate-500 text-sm max-w-[200px] truncate">
-                                            {log.new_values?.note || log.new_values?.Событие
-                                                || Object.keys(log.new_values || {}).slice(0, 3).join(', ')
-                                                || 'Действие'}
+                                            {getAuditSummary(log.new_values)}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <button onClick={() => setSelectedLog(log)}
@@ -212,7 +230,7 @@ function ActionBadge({ label, color }: { label: string; color: string }) {
 function SessionsTab() {
     const [page, setPage] = useState(1);
     const [actionFilter, setActionFilter] = useState('');
-    const [selectedLog, setSelectedLog] = useState<any>(null);
+    const [selectedLog, setSelectedLog] = useState<LoginLogEntry | null>(null);
     const { data, isLoading } = useLoginLogs(page, PAGE_LIMIT, actionFilter || undefined);
 
     const actionOptions = [
@@ -224,7 +242,7 @@ function SessionsTab() {
     ];
 
     // Подсчёт по типам
-    const counts = data?.logs.reduce((acc: Record<string, number>, log: any) => {
+    const counts = data?.logs.reduce((acc: Record<string, number>, log) => {
         acc[log.action] = (acc[log.action] || 0) + 1;
         return acc;
     }, {});
@@ -287,7 +305,7 @@ function SessionsTab() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {data?.logs.map((log: any) => (
+                                {data?.logs.map((log) => (
                                     <tr key={log.id} className={`hover:bg-slate-50/60 transition-colors ${log.action === 'login_failed' ? 'bg-red-50/30' : ''}`}>
                                         <td className="px-4 py-3 font-mono text-slate-500 text-xs whitespace-nowrap">
                                             <div className="flex items-center gap-1.5">

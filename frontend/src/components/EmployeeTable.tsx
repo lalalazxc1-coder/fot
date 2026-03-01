@@ -24,7 +24,8 @@ import {
   HistoryModal,
   usePayrollColumns,
   EmployeeRecord,
-  AuditLog
+  AuditLog,
+  AppUser
 } from './payroll';
 
 
@@ -33,7 +34,7 @@ import { useEmployees, useDismissEmployee } from '../hooks/useEmployees';
 import { useStructure } from '../hooks/useStructure';
 import { usePlanningData } from '../hooks/usePlanning';
 
-export default function EmployeeTable({ user }: { onLogout: () => void, user: any }) {
+export default function EmployeeTable({ user }: { onLogout: () => void, user: AppUser }) {
   // Config
   const { data: data = [], isLoading: isEmployeesLoading } = useEmployees();
   const { data: structure = [] } = useStructure();
@@ -264,16 +265,8 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: an
             try {
               const filteredIds = table.getRowModel().rows.map(r => r.original.id);
 
-              const response = await fetch('/api/employees/export', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({ ids: filteredIds })
-              });
-              if (!response.ok) throw new Error('Export failed');
-              const blob = await response.blob();
+              const response = await api.post('/employees/export', { ids: filteredIds }, { responseType: 'blob' });
+              const blob = response.data as Blob;
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;

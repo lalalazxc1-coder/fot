@@ -5,9 +5,10 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { formatMoney } from '../../utils';
 import { RequestAnalytics } from './RequestAnalytics';
+import { RequestRow, HistoryItem } from '../../hooks/useRequests';
 
 interface RequestDetailsModalProps {
-    req: any | null;
+    req: RequestRow | null;
     isOpen: boolean;
     onClose: () => void;
     onAction: (id: number, type: 'approved' | 'rejected') => void;
@@ -16,6 +17,7 @@ interface RequestDetailsModalProps {
 export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestDetailsModalProps) => {
     const pdfRef = useRef<HTMLDivElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const request = req;
 
     const downloadPDF = async () => {
         if (!pdfRef.current) return;
@@ -80,7 +82,7 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                 heightLeft -= pageHeight;
             }
 
-            pdf.save(`Заявка_${req.employee_details?.name?.replace(/\s+/g, '_') || req.id}.pdf`);
+            pdf.save(`Заявка_${request?.employee_details?.name?.replace(/\s+/g, '_') || request?.id}.pdf`);
         } catch (error) {
             console.error("PDF generation failed", error);
         } finally {
@@ -100,10 +102,10 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
         };
     }, [isOpen]);
 
-    if (!isOpen || !req) return null;
+    if (!isOpen || !request) return null;
 
-    const isRaise = req.type === 'raise';
-    const diff = req.requested_value - req.current_value;
+    const isRaise = request.type === 'raise';
+    const diff = request.requested_value - request.current_value;
 
     return createPortal(
         <div className="fixed inset-0 z-[50000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
@@ -135,16 +137,16 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                     <div className="flex justify-between items-start mb-8">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
-                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide ${req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                    req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide ${request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                    request.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
                                         'bg-red-100 text-red-700'
                                     }`}>
-                                    {req.status === 'pending' ? 'Ожидает' : req.status === 'approved' ? 'Согласовано' : 'Отклонено'}
+                                    {request.status === 'pending' ? 'Ожидает' : request.status === 'approved' ? 'Согласовано' : 'Отклонено'}
                                 </span>
-                                <span className="text-slate-400 text-xs">#{req.id}</span>
+                                <span className="text-slate-400 text-xs">#{request.id}</span>
                             </div>
-                            <h2 className="text-2xl font-bold text-slate-900">{req.employee_details.name}</h2>
-                            <p className="text-slate-500">{req.employee_details.position} • {req.employee_details.department || req.employee_details.branch}</p>
+                            <h2 className="text-2xl font-bold text-slate-900">{request.employee_details.name}</h2>
+                            <p className="text-slate-500">{request.employee_details.position} • {request.employee_details.department || request.employee_details.branch}</p>
                         </div>
                     </div>
 
@@ -159,7 +161,7 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                                 <div className="text-right">
                                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">{isRaise ? 'Прирост' : 'Сумма'}</div>
                                     <div className={`text-xl font-bold ${isRaise ? 'text-emerald-600' : 'text-purple-600'}`}>
-                                        +{formatMoney(isRaise ? diff : req.requested_value)}
+                                        +{formatMoney(isRaise ? diff : request.requested_value)}
                                     </div>
                                 </div>
                             </div>
@@ -168,12 +170,12 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                                 <div className="flex items-center justify-between pt-4 border-t border-slate-200">
                                     <div>
                                         <div className="text-xs text-slate-400 mb-0.5">Текущий оклад</div>
-                                        <div className="font-mono text-slate-600">{formatMoney(req.current_value)}</div>
+                                        <div className="font-mono text-slate-600">{formatMoney(request.current_value)}</div>
                                     </div>
                                     <ArrowUpRight className="w-5 h-5 text-slate-300" />
                                     <div className="text-right">
                                         <div className="text-xs text-slate-400 mb-0.5">Новый оклад</div>
-                                        <div className="font-mono text-slate-900 font-bold">{formatMoney(req.requested_value)}</div>
+                                        <div className="font-mono text-slate-900 font-bold">{formatMoney(request.requested_value)}</div>
                                     </div>
                                 </div>
                             )}
@@ -183,7 +185,7 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                         <div>
                             <h3 className="font-bold text-slate-900 mb-2">Обоснование</h3>
                             <div className="text-slate-600 text-sm leading-relaxed bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                {req.reason}
+                                {request.reason}
                             </div>
                         </div>
 
@@ -193,7 +195,7 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                                 <Clock className="w-4 h-4 text-slate-400" /> История согласований
                             </h3>
                             <div className="space-y-4 pl-2 border-l-2 border-slate-100 ml-2">
-                                {req.history.map((h: any) => (
+                                {request.history.map((h: HistoryItem) => (
                                     <div key={h.id} className="relative pl-6 pb-2">
                                         <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white ${h.action === 'approved' ? 'bg-emerald-500' :
                                             h.action === 'rejected' ? 'bg-red-500' : 'bg-slate-300'
@@ -235,31 +237,31 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6">
-                        <RequestAnalytics reqId={req.id} />
+                        <RequestAnalytics reqId={request.id} />
                     </div>
 
                     {/* Quick Actions Footer (Sticky) */}
                     <div id="pdf-actions" className="p-6 bg-white border-t border-slate-200 space-y-3">
-                        {req.can_approve && req.status === 'pending' && (
-                            <div className={`grid gap-3 ${req.is_final ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                                {!req.is_final && (
+                        {request.can_approve && request.status === 'pending' && (
+                            <div className={`grid gap-3 ${request.is_final ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                                {!request.is_final && (
                                     <button
-                                        onClick={() => onAction(req.id, 'rejected')}
+                                        onClick={() => onAction(request.id, 'rejected')}
                                         className="px-4 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-bold border border-red-100 transition-colors"
                                     >
                                         Отклонить
                                     </button>
                                 )}
                                 <button
-                                    onClick={() => onAction(req.id, 'approved')}
-                                    className={`px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold shadow-lg shadow-emerald-600/20 transition-all active:scale-95 ${req.is_final ? 'w-full' : ''}`}
+                                    onClick={() => onAction(request.id, 'approved')}
+                                    className={`px-4 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold shadow-lg shadow-emerald-600/20 transition-all active:scale-95 ${request.is_final ? 'w-full' : ''}`}
                                 >
-                                    {req.is_final ? 'Утвердить' : 'Согласовать'}
+                                    {request.is_final ? 'Утвердить' : 'Согласовать'}
                                 </button>
                             </div>
                         )}
 
-                        {req.status === 'approved' && (
+                        {request.status === 'approved' && (
                             <button
                                 onClick={downloadPDF}
                                 disabled={isDownloading}

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useCreateRequest } from '../../hooks/useRequests';
+import { Employee } from '../../hooks/useEmployees';
 
 interface CreateRequestModalProps {
     isOpen: boolean;
     onClose: () => void;
-    availableEmployees: any[];
+    availableEmployees: Employee[];
 }
 
 export const CreateRequestModal = ({ isOpen, onClose, availableEmployees }: CreateRequestModalProps) => {

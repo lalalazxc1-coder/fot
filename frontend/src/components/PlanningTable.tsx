@@ -9,9 +9,11 @@ import { PageHeader } from './shared';
 
 import SalarySettingsModal from './SalarySettingsModal';
 import Modal from './Modal';
+import { api } from '../lib/api';
 
 import { usePlanningData, useCreatePlanItem, useUpdatePlanItem, useDeletePlanItem, PlanRow } from '../hooks/usePlanning';
 import { useStructure, useFlatStructure } from '../hooks/useStructure';
+import { AppUser } from './payroll/types';
 
 import { PlanningStats } from './planning/PlanningStats';
 import { PlanningFilters } from './planning/PlanningFilters';
@@ -19,7 +21,7 @@ import { PlanningHistory } from './planning/PlanningHistory';
 import { PlanningForm } from './planning/PlanningForm';
 import { createColumns } from './planning/PlanningTableColumns';
 
-export default function PlanningTable({ user }: { user: any }) {
+export default function PlanningTable({ user }: { user: AppUser }) {
     // Hooks
     const { data: data = [], isLoading: isDataLoading } = usePlanningData();
     const { data: structure = [] } = useStructure();
@@ -63,12 +65,12 @@ export default function PlanningTable({ user }: { user: any }) {
     const canEditFinancials = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.edit_financials;
 
     // Helper to check manage permission
-    const checkManagePermission = (user: any) => {
-        return user.role === 'Administrator' || user.permissions?.manage_planning || user.permissions?.admin_access;
+    const checkManagePermission = (userArg: AppUser) => {
+        return userArg.role === 'Administrator' || userArg.permissions?.manage_planning || userArg.permissions?.admin_access;
     };
 
     // Actions
-    const handleSave = async (item: any) => {
+    const handleSave = async (item: PlanRow) => {
         const payload = {
             ...item,
             branch_id: Number(item.branch_id),
@@ -191,22 +193,10 @@ export default function PlanningTable({ user }: { user: any }) {
                     <button
                         onClick={async () => {
                             try {
-                                const filteredIds = table.getRowModel().rows.map((r: any) => r.original.id);
+                                const filteredIds = table.getRowModel().rows.map((r) => r.original.id);
 
-                                const response = await fetch('/api/planning/export', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    credentials: 'include',
-                                    body: JSON.stringify({ ids: filteredIds })
-                                });
-                                if (!response.ok) {
-                                    const text = await response.text();
-                                    console.error('Export error:', response.status, text);
-                                    throw new Error(`Export failed: ${response.status}`);
-                                }
-                                const blob = await response.blob();
+                                const response = await api.post('/planning/export', { ids: filteredIds }, { responseType: 'blob' });
+                                const blob = response.data as Blob;
                                 const url = window.URL.createObjectURL(blob);
                                 const a = document.createElement('a');
                                 a.href = url;
@@ -231,8 +221,20 @@ export default function PlanningTable({ user }: { user: any }) {
                                 <Settings className="w-[18px] h-[18px]" />
                             </button>
                             <button onClick={() => setEditingRow({
-                                id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: ''
-                            } as any)} className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/20 transition-all border-none outline-none shrink-0" title="Добавить позицию">
+                                id: 0,
+                                position: '',
+                                count: 1,
+                                base_net: 0,
+                                base_gross: 0,
+                                kpi_net: 0,
+                                kpi_gross: 0,
+                                bonus_net: 0,
+                                bonus_gross: 0,
+                                department_id: '',
+                                branch_id: '',
+                                schedule: '',
+                                bonus_count: null
+                            } as PlanRow)} className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/20 transition-all border-none outline-none shrink-0" title="Добавить позицию">
                                 <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
                             </button>
                         </>

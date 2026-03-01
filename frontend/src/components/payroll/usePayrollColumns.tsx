@@ -1,6 +1,6 @@
 import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { EmployeeRecord, FinancialValue } from './types';
+import { EmployeeRecord, FinancialValue, AppUser } from './types';
 import { FinancialCell } from './FinancialCell';
 import { EmployeeActionMenu } from './EmployeeActionMenu';
 
@@ -8,7 +8,7 @@ interface UsePayrollColumnsProps {
     onHistory: (e: React.MouseEvent, emp: EmployeeRecord) => void;
     onEdit: (emp: EmployeeRecord) => void;
     onDismiss: (id: number) => void;
-    user: any;
+    user: AppUser;
     activeTab: 'active' | 'dismissed';
 }
 
