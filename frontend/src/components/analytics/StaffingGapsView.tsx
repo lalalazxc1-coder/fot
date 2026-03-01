@@ -18,6 +18,18 @@ interface GapTreeNode extends StaffingGapItem {
     children: GapTreeNode[];
 }
 
+interface TurnoverReasonItem {
+    name: string;
+    value: number;
+}
+
+interface TurnoverResponse {
+    turnover_rate: number;
+    dismissed_count: number;
+    reasons_distribution: TurnoverReasonItem[];
+    staffing_gaps: StaffingGapItem[];
+}
+
 // Tree row component with individual expansion state management
 const GapTreeRows = ({ node, level, expandedNodes, onToggle }: {
     node: GapTreeNode;
@@ -82,7 +94,7 @@ export const StaffingGapsView = () => {
         queryKey: ['analytics', 'turnover', 365],
         queryFn: async () => {
             const res = await api.get('/analytics/turnover?days=365');
-            return res.data;
+            return res.data as TurnoverResponse;
         }
     });
 
@@ -201,7 +213,7 @@ export const StaffingGapsView = () => {
                             />
                             <Tooltip />
                             <Bar dataKey="value" fill="#64748b" radius={[0, 4, 4, 0]}>
-                                {reasons_distribution.map((_: any, index: number) => (
+                                {reasons_distribution.map((_, index: number) => (
                                     <Cell key={`cell-${index}`} fill={['#ef4444', '#f59e0b', '#3b82f6', '#10b981'][index % 4] || '#64748b'} />
                                 ))}
                             </Bar>

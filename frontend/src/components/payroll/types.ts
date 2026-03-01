@@ -3,6 +3,8 @@ export type FinancialValue = { net: number; gross: number };
 export interface EmployeeRecord {
     id: number;
     org_unit_id?: number;
+    branch_id?: number | null;
+    department_id?: number | null;
     full_name: string;
     position: string;
     branch: string;
@@ -10,6 +12,9 @@ export interface EmployeeRecord {
     status: 'Active' | 'Dismissed';
     hire_date: string;
     dismissal_date?: string;
+    gender?: string | null;
+    dob?: string | null;
+    last_raise_date?: string | null;
     base: FinancialValue;
     kpi: FinancialValue;
     bonus: FinancialValue;
@@ -41,4 +46,11 @@ export interface PlanRow {
     kpi_gross: number;
     bonus_net: number;
     bonus_gross: number;
+}
+
+export type UserPermissions = Record<string, boolean>;
+
+export interface AppUser {
+    role: string;
+    permissions: UserPermissions;
 }

@@ -4,6 +4,7 @@ import { useRoles, useUsers } from '../../hooks/useAdmin';
 import { ApprovalStep } from '../../hooks/useWorkflow';
 import { Trash2, Edit2, ArrowDown, ShieldCheck, CheckCircle, User, HelpCircle } from 'lucide-react';
 import Modal from '../../components/Modal';
+import { StepCreatePayload } from '../../types';
 
 export default function WorkflowPage() {
     const { data: steps = [], isLoading } = useWorkflow();
@@ -75,20 +76,19 @@ export default function WorkflowPage() {
         if (form.assign_type === 'user' && !form.user_id) return;
 
         // Prepare payload
-        const payload = {
-            ...form,
-            role_id: form.assign_type === 'role' ? form.role_id : null,
-            user_id: form.assign_type === 'user' ? form.user_id : null,
+        const { assign_type, ...formWithoutAssignType } = form;
+        const payload: StepCreatePayload = {
+            ...formWithoutAssignType,
+            role_id: assign_type === 'role' ? form.role_id : null,
+            user_id: assign_type === 'user' ? form.user_id : null,
             condition_type: form.condition_type === '' ? null : form.condition_type,
             condition_amount: form.condition_amount === 0 ? null : form.condition_amount
         };
-        // Instead of delete, omit assign_type by destructing or just let it send (backend ignores it)
-        const { assign_type, ...finalPayload } = payload as any;
 
         if (editingStep) {
-            await updateStep.mutateAsync({ id: editingStep.id, data: finalPayload });
+            await updateStep.mutateAsync({ id: editingStep.id, data: payload });
         } else {
-            await createStep.mutateAsync(finalPayload);
+            await createStep.mutateAsync(payload);
         }
         setIsModalOpen(false);
     };

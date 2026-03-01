@@ -7,15 +7,28 @@ import { toast } from 'sonner';
 import { MoneyInput } from '../shared';
 import { calculateTaxes, solveGrossFromNet, DEFAULT_CONFIG, SalaryConfig } from '../../utils/salary';
 import { PlanRow } from '../../hooks/usePlanning';
-import { StructureItem, useFlatStructure } from '../../hooks/useStructure';
+import { StructureItem, FlatStructureItem, useFlatStructure } from '../../hooks/useStructure';
 import { usePositions } from '../../hooks/usePositions';
 import { api } from '../../lib/api';
+
+type MoneyField = 'base_net' | 'base_gross' | 'kpi_net' | 'kpi_gross' | 'bonus_net' | 'bonus_gross';
+
+type TreeNode = FlatStructureItem & {
+    children: TreeNode[];
+};
+
+type FinancialGroup = {
+    label: string;
+    net: MoneyField;
+    gross: MoneyField;
+    hasCount?: boolean;
+};
 
 type PlanningFormProps = {
     isOpen: boolean;
     onClose: () => void;
     initialData: PlanRow | null;
-    onSave: (data: any) => Promise<void>;
+    onSave: (data: PlanRow) => Promise<void>;
     structure: StructureItem[];
     canEditFinancials?: boolean;
 };
@@ -42,15 +55,27 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
             setEditingRow({ ...initialData });
         } else {
             setEditingRow({
-                id: 0, position: '', count: 1, base_net: 0, base_gross: 0, kpi_net: 0, kpi_gross: 0, bonus_net: 0, bonus_gross: 0, department_id: '', branch_id: '', bonus_count: null
-            } as any);
+                id: 0,
+                position: '',
+                count: 1,
+                base_net: 0,
+                base_gross: 0,
+                kpi_net: 0,
+                kpi_gross: 0,
+                bonus_net: 0,
+                bonus_gross: 0,
+                department_id: '',
+                branch_id: '',
+                bonus_count: null,
+                schedule: ''
+            });
         }
     }, [initialData, isOpen]);
 
-    const handleMoneyChange = (field: string, val: number, otherField: string) => {
+    const handleMoneyChange = (field: MoneyField, val: number, otherField: MoneyField) => {
         if (!editingRow) return;
 
-        const updates: any = { [field]: val };
+        const updates: Partial<Record<MoneyField, number>> = { [field]: val };
 
         if (useAutoCalc) {
             const isNet = field.includes('_net');
@@ -75,22 +100,26 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
 
     const treeData = useMemo(() => {
         if (!flatStructure) return [];
-        const map = new Map();
-        const roots: any[] = [];
+        const map = new Map<number, TreeNode>();
+        const roots: TreeNode[] = [];
         flatStructure.forEach(item => {
             map.set(item.id, { ...item, children: [] });
         });
         flatStructure.forEach(item => {
+            const node = map.get(item.id);
+            if (!node) return;
+
             if (item.parent_id && map.has(item.parent_id)) {
-                map.get(item.parent_id).children.push(map.get(item.id));
+                const parent = map.get(item.parent_id);
+                if (parent) parent.children.push(node);
             } else {
-                roots.push(map.get(item.id));
+                roots.push(node);
             }
         });
         return roots;
     }, [flatStructure]);
 
-    const handleSelectUnit = (unit: any) => {
+    const handleSelectUnit = (unit: TreeNode) => {
         if (!editingRow) return;
 
         let bId = '';
@@ -101,7 +130,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
         } else {
             dId = unit.id.toString();
             // Trace back to find branch
-            let current = unit;
+            let current: FlatStructureItem = unit;
             while (current.parent_id) {
                 const parent = flatStructure?.find(i => i.id === current.parent_id);
                 if (parent) {
@@ -142,7 +171,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
         return '';
     }, [editingRow?.branch_id, editingRow?.department_id, flatStructure]);
 
-    const renderTreeNode = (node: any, level = 0) => {
+    const renderTreeNode = (node: TreeNode, level = 0) => {
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expandedNodes.has(node.id);
 
@@ -166,12 +195,18 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                 </div>
                 {hasChildren && isExpanded && (
                     <div className="border-l border-slate-100 ml-3">
-                        {node.children.map((child: any) => renderTreeNode(child, level + 1))}
+                        {node.children.map((child) => renderTreeNode(child, level + 1))}
                     </div>
                 )}
             </div>
         )
     };
+
+    const financialGroups: FinancialGroup[] = [
+        { label: 'Оклад', net: 'base_net', gross: 'base_gross' },
+        { label: 'KPI', net: 'kpi_net', gross: 'kpi_gross' },
+        { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross', hasCount: true }
+    ];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -278,11 +313,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                     <div className="grid grid-cols-[1.5fr_2fr_2fr] gap-2 text-[10px] font-bold uppercase text-slate-400 text-center tracking-wider px-1">
                         <div className="text-left">Тип</div><div>Net</div><div>Gross</div>
                     </div>
-                    {[
-                        { label: 'Оклад', net: 'base_net', gross: 'base_gross' },
-                        { label: 'KPI', net: 'kpi_net', gross: 'kpi_gross' },
-                        { label: 'Доплаты', net: 'bonus_net', gross: 'bonus_gross', hasCount: true }
-                    ].map((group, i) => (
+                    {financialGroups.map((group, i) => (
                         <div key={i} className="grid grid-cols-[1.5fr_2fr_2fr] gap-2 items-start pt-1">
                             <div>
                                 <div className="text-xs sm:text-sm font-bold text-slate-700 mt-2">{group.label}</div>
@@ -303,7 +334,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                             <div className="w-full relative">
                                 <MoneyInput
                                     className="bg-white w-full text-xs sm:text-sm h-10 px-2"
-                                    value={(editingRow as any)[group.net]}
+                                    value={editingRow[group.net]}
                                     onChange={val => handleMoneyChange(group.net, val, group.gross)}
                                     disabled={!canEditFinancials}
                                 />
@@ -311,7 +342,7 @@ export const PlanningForm: React.FC<PlanningFormProps> = ({ isOpen, onClose, ini
                             <div className="w-full relative">
                                 <MoneyInput
                                     className="bg-white w-full text-xs sm:text-sm h-10 px-2"
-                                    value={(editingRow as any)[group.gross]}
+                                    value={editingRow[group.gross]}
                                     onChange={val => handleMoneyChange(group.gross, val, group.net)}
                                     disabled={!canEditFinancials}
                                 />

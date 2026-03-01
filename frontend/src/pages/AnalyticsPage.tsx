@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { Users, TrendingUp, Wallet, Target, AlertCircle, PieChart as PieIcon, Briefcase, RefreshCw } from 'lucide-react';
+import { Users, TrendingUp, Wallet, Target, AlertCircle, PieChart as PieIcon, Briefcase, RefreshCw, FileDown } from 'lucide-react';
 import { PageHeader } from '../components/shared';
 import { formatMoney } from '../utils';
 import { useAnalytics, useRefreshAnalytics, BranchComparison } from '../hooks/useAnalytics';
@@ -8,6 +8,25 @@ import { RetentionDashboard } from '../components/analytics/RetentionDashboard';
 import { ESGReport } from '../components/analytics/ESGReport';
 import { StaffingGapsView } from '../components/analytics/StaffingGapsView';
 import { TimeTravelPicker } from '../components/TimeTravelPicker';
+import { AnalyticsEmployeeListModal } from '../components/analytics/AnalyticsEmployeeListModal';
+import Papa from 'papaparse';
+
+type BranchHierarchyNode = BranchComparison & {
+    children: BranchHierarchyNode[];
+};
+
+type FlattenedBranchNode = BranchHierarchyNode & {
+    depth: number;
+};
+
+const ANALYTICS_TABS = [
+    { id: 'budget', label: 'Бюджет и ФОТ', icon: Wallet },
+    { id: 'staffing', label: 'Штат и Текучесть', icon: Users },
+    { id: 'retention', label: 'Удержание', icon: AlertCircle },
+    { id: 'esg', label: 'ESG и Равенство', icon: TrendingUp },
+] as const;
+
+type AnalyticsTabId = (typeof ANALYTICS_TABS)[number]['id'];
 
 // --- Colors ---
 const COLORS = [
@@ -18,30 +37,30 @@ const COLORS = [
 ];
 
 // --- Simple Table Component ---
-const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data }) => {
+const BranchComparisonTable: React.FC<{ data: BranchComparison[], onUnitClick: (id: number, name: string) => void }> = ({ data, onUnitClick }) => {
     const maxFact = Math.max(...data.map(d => d.fact), 1); // Avoid div by zero
 
     // Build hierarchy
-    const itemMap = new Map();
+    const itemMap = new Map<number, BranchHierarchyNode>();
     data.forEach(item => itemMap.set(item.id, { ...item, children: [] }));
 
-    const rootNodes: any[] = [];
+    const rootNodes: BranchHierarchyNode[] = [];
     itemMap.forEach(item => {
         if (item.parent_id && itemMap.has(item.parent_id)) {
-            itemMap.get(item.parent_id).children.push(item);
+            itemMap.get(item.parent_id)?.children.push(item);
         } else {
             rootNodes.push(item);
         }
     });
 
-    const sortNodes = (nodes: any[]) => {
+    const sortNodes = (nodes: BranchHierarchyNode[]) => {
         nodes.sort((a, b) => b.fact - a.fact);
         nodes.forEach(n => sortNodes(n.children));
     };
     sortNodes(rootNodes);
 
-    const flattenNodes = (nodes: any[], depth = 0): any[] => {
-        let result: any[] = [];
+    const flattenNodes = (nodes: BranchHierarchyNode[], depth = 0): FlattenedBranchNode[] => {
+        let result: FlattenedBranchNode[] = [];
         nodes.forEach(node => {
             result.push({ ...node, depth });
             result = result.concat(flattenNodes(node.children, depth + 1));
@@ -83,7 +102,8 @@ const BranchComparisonTable: React.FC<{ data: BranchComparison[] }> = ({ data })
                         return (
                             <tr
                                 key={item.id}
-                                className="group hover:bg-slate-50 transition-colors"
+                                className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                                onClick={() => onUnitClick(item.id, item.name)}
                             >
                                 <td
                                     className={`py-3 font-semibold border-b border-slate-50 relative ${getTypeColor(item.type)}`}
@@ -173,7 +193,7 @@ const DashboardSkeleton = () => (
 );
 
 // --- Main Component ---
-export default function AnalyticsPageOptimized() {
+export default function AnalyticsPage() {
     // Hooks
     const {
         summary: { data: summary, isLoading: isSummaryLoading },
@@ -188,6 +208,60 @@ export default function AnalyticsPageOptimized() {
     // Chart animation state
     const [chartsReady, setChartsReady] = useState(false);
 
+    // Drill-down state
+    const [drillDown, setDrillDown] = useState<{ isOpen: boolean, title: string, filters: { unit_id?: number, position?: string } }>({
+        isOpen: false,
+        title: '',
+        filters: {}
+    });
+
+    const handleUnitClick = (id: number, name: string) => {
+        setDrillDown({
+            isOpen: true,
+            title: `Сотрудники подразделения: ${name}`,
+            filters: { unit_id: id }
+        });
+    };
+
+    const handleExportCSV = () => {
+        const csv = Papa.unparse(branchComparison.map(b => ({
+            "Подразделение": b.name,
+            "Тип": b.type,
+            "План": b.plan,
+            "Факт": b.fact,
+            "Отклонение": b.diff,
+            "Процент": b.percent
+        })));
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `analytics_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // --- Optimization: Group small slices for Pie Chart ---
+    const processedPieData = useMemo(() => {
+        if (!costDistribution || costDistribution.length === 0) return [];
+
+        // Sort by value descending
+        const sorted = [...costDistribution].sort((a, b) => b.value - a.value);
+
+        // If 7 or fewer items, show all
+        if (sorted.length <= 7) return sorted;
+
+        // Otherwise keep top 6 and group rest
+        const top = sorted.slice(0, 6);
+        const othersValue = sorted.slice(6).reduce((acc, curr) => acc + curr.value, 0);
+
+        return [
+            ...top,
+            { name: 'Прочее', value: othersValue }
+        ];
+    }, [costDistribution]);
+
     // Fake ease-in for charts
     useState(() => {
         setTimeout(() => setChartsReady(true), 100);
@@ -198,7 +272,7 @@ export default function AnalyticsPageOptimized() {
     };
 
     // Tab state
-    const [activeTab, setActiveTab] = useState<'budget' | 'staffing' | 'retention' | 'esg'>('budget');
+    const [activeTab, setActiveTab] = useState<AnalyticsTabId>('budget');
 
     // ... (rest of loading checks)
     if (isLoading || isSummaryLoading || !summary) {
@@ -233,15 +307,10 @@ export default function AnalyticsPageOptimized() {
 
             {/* Tab Navigation */}
             <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
-                {[
-                    { id: 'budget', label: 'Бюджет и ФОТ', icon: Wallet },
-                    { id: 'staffing', label: 'Штат и Текучесть', icon: Users },
-                    { id: 'retention', label: 'Удержание', icon: AlertCircle },
-                    { id: 'esg', label: 'ESG и Равенство', icon: TrendingUp },
-                ].map((tab) => (
+                {ANALYTICS_TABS.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
                             ? 'bg-white text-slate-900 shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'
@@ -346,7 +415,6 @@ export default function AnalyticsPageOptimized() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Main Bar Chart */}
                         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100 transition-opacity duration-500" style={{ opacity: chartsReady ? 1 : 0 }}>
-                            {/* ... Chart Header ... */}
                             <div className="flex justify-between items-center mb-6">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -377,7 +445,6 @@ export default function AnalyticsPageOptimized() {
 
                         {/* Distribution Pie Chart */}
                         <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col transition-opacity duration-500 delay-100" style={{ opacity: chartsReady ? 1 : 0 }}>
-                            {/* ... Pie Header ... */}
                             <div className="mb-6">
                                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                                     <PieIcon className="w-5 h-5 text-slate-400" />
@@ -389,7 +456,7 @@ export default function AnalyticsPageOptimized() {
                                 <ResponsiveContainer width="99%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={costDistribution}
+                                            data={processedPieData}
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={60}
@@ -399,7 +466,7 @@ export default function AnalyticsPageOptimized() {
                                             animationDuration={1500}
                                             animationBegin={200}
                                         >
-                                            {costDistribution.map((_, index) => (
+                                            {processedPieData.map((_, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
@@ -436,10 +503,19 @@ export default function AnalyticsPageOptimized() {
 
                         {/* Table */}
                         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-900 mb-6">
-                                Детализация отклонений ({branchComparison.length} филиалов)
-                            </h3>
-                            <BranchComparisonTable data={branchComparison} />
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-slate-900">
+                                    Детализация отклонений ({branchComparison.length} филиалов)
+                                </h3>
+                                <button
+                                    onClick={handleExportCSV}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors text-xs font-bold border border-slate-200"
+                                >
+                                    <FileDown className="w-3.5 h-3.5" />
+                                    Экспорт CSV
+                                </button>
+                            </div>
+                            <BranchComparisonTable data={branchComparison} onUnitClick={handleUnitClick} />
                         </div>
                     </div>
                 </div>
@@ -462,6 +538,13 @@ export default function AnalyticsPageOptimized() {
                     <ESGReport />
                 </div>
             )}
+
+            <AnalyticsEmployeeListModal
+                isOpen={drillDown.isOpen}
+                onClose={() => setDrillDown({ ...drillDown, isOpen: false })}
+                title={drillDown.title}
+                filters={drillDown.filters}
+            />
         </div>
     );
 }

@@ -5,11 +5,19 @@ import { Button, Input } from './ui-mocks';
 import { SalaryConfig, DEFAULT_CONFIG } from '../utils/salary';
 import { HelpCircle } from 'lucide-react';
 
+type SalaryHistoryLog = {
+    id: number;
+    timestamp: string;
+    user?: string;
+    old_values?: Record<string, number | string | null>;
+    new_values?: Record<string, number | string | null>;
+};
+
 export default function SalarySettingsModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const [config, setConfig] = useState<SalaryConfig>(DEFAULT_CONFIG);
     const [loading, setLoading] = useState(false);
     const [tab, setTab] = useState<'settings' | 'history'>('settings');
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<SalaryHistoryLog[]>([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -110,7 +118,12 @@ export default function SalarySettingsModal({ isOpen, onClose }: { isOpen: boole
                                         vosms_employer_rate: 'ОСМС', so_rate: 'СО', sn_rate: 'СН', ipn_rate: 'ИПН',
                                         opv_limit_mzp: 'Лимит ОПВ', vosms_limit_mzp: 'Лимит ВОСМС', ipn_deduction_mrp: 'Вычет ИПН'
                                     };
-                                    const formatVal = (k: string, v: any) => k.includes('rate') ? `${Math.round(Number(v) * 100 * 10) / 10}% ` : v;
+                                    const formatVal = (k: string, v: number | string | null | undefined) => {
+                                        if (v === null || v === undefined) {
+                                            return '-';
+                                        }
+                                        return k.includes('rate') ? `${Math.round(Number(v) * 100 * 10) / 10}% ` : v;
+                                    };
                                     return (
                                         <div key={key} className="flex gap-2">
                                             <span className="font-bold text-slate-500 w-24">{labels[key] || key}:</span>
@@ -204,4 +217,3 @@ export default function SalarySettingsModal({ isOpen, onClose }: { isOpen: boole
         </Modal>
     );
 }
-

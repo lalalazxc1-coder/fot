@@ -1,4 +1,5 @@
 import { useAdminStats } from '../../hooks/useAdmin';
+import type { ReactNode } from 'react';
 import { Users, Building, Briefcase, FileText, Loader2, Activity } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -11,6 +12,13 @@ import {
     ArcElement
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+
+type StatCardProps = {
+    title: string;
+    value: number;
+    icon: ReactNode;
+    color: string;
+};
 
 ChartJS.register(
     CategoryScale,
@@ -170,7 +178,7 @@ export default function AdminDashboard() {
     );
 }
 
-function StatCard({ title, value, icon, color }: any) {
+function StatCard({ title, value, icon, color }: StatCardProps) {
     return (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">

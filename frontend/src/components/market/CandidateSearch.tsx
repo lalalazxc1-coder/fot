@@ -7,12 +7,36 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { isAxiosError } from 'axios';
+
+type CandidateAnalysisResult = {
+    analysis: string;
+    match_score: number;
+};
+
+type CandidateItem = {
+    id: string | number;
+    name: string;
+    position: string;
+    experience?: string;
+    salary?: number | null;
+    skills?: string[];
+    source: string;
+    avatar?: string;
+    url?: string;
+    area?: string;
+    location?: string;
+    citizenship?: string;
+    education?: string;
+    last_work?: string;
+    summary?: string;
+};
 
 export const CandidateSearch = () => {
     const [search, setSearch] = useState('');
     const [jobDescription, setJobDescription] = useState('Senior Python Developer');
     const [isAnalyzing, setIsAnalyzing] = useState<string | null>(null);
-    const [analysisResult, setAnalysisResult] = useState<{ [id: string]: { analysis: string, match_score: number } }>({});
+    const [analysisResult, setAnalysisResult] = useState<Record<string, CandidateAnalysisResult>>({});
     const [isFallbackMode, setIsFallbackMode] = useState(false);
 
     // Check integration status
@@ -28,7 +52,7 @@ export const CandidateSearch = () => {
     const isHHActive = true;
 
     // --- Real Search Query ---
-    const { data: hhCandidates = [], isLoading: isHHSearching, refetch: searchHH } = useQuery({
+    const { data: hhCandidates = [], isLoading: isHHSearching, refetch: searchHH } = useQuery<CandidateItem[]>({
         queryKey: ['hh-candidates', search],
         queryFn: async () => {
             if (!search.trim()) return [];
@@ -37,12 +61,12 @@ export const CandidateSearch = () => {
                 const res = await api.get('/integrations/hh/search', {
                     params: { text: search }
                 });
-                return res.data;
-            } catch (err: any) {
+                return res.data as CandidateItem[];
+            } catch (err: unknown) {
                 console.error("HH Search Error", err);
                 setIsFallbackMode(true);
 
-                if (err.response?.status === 403) {
+                if (isAxiosError(err) && err.response?.status === 403) {
                     toast.error("Доступ к резюме запрещен (403). Переключение на открытый поиск вакансий...");
                 } else {
                     toast.error("Ошибка поиска HH. Показаны демо-данные.");
@@ -72,11 +96,12 @@ export const CandidateSearch = () => {
         }
     };
 
-    const handleAnalyze = async (candidate: any) => {
-        setIsAnalyzing(candidate.id);
+    const handleAnalyze = async (candidate: CandidateItem) => {
+        const candidateId = String(candidate.id);
+        setIsAnalyzing(candidateId);
         // Automatically expand on analysis
-        if (!expandedIds.includes(candidate.id)) {
-            toggleExpand(candidate.id);
+        if (!expandedIds.includes(candidateId)) {
+            toggleExpand(candidateId);
         }
         try {
             const res = await api.post('/integrations/ai-analyze', {
@@ -84,7 +109,7 @@ export const CandidateSearch = () => {
                     name: candidate.name,
                     position: candidate.position,
                     experience: candidate.experience,
-                    skills: candidate.skills,
+                    skills: candidate.skills || [],
                     salary_expectation: candidate.salary,
                     education: candidate.education || "Не указано",
                     last_work: candidate.last_work || "Не указано",
@@ -96,13 +121,13 @@ export const CandidateSearch = () => {
 
             setAnalysisResult(prev => ({
                 ...prev,
-                [candidate.id]: res.data
+                [candidateId]: res.data as CandidateAnalysisResult
             }));
-        } catch (e: any) {
-            console.error("AI Analysis failed", e);
+        } catch (error: unknown) {
+            console.error("AI Analysis failed", error);
             setAnalysisResult(prev => ({
                 ...prev,
-                [candidate.id]: {
+                [candidateId]: {
                     analysis: "Не удалось получить ответ от ИИ. Проверьте настройки ключа.",
                     match_score: 0
                 }
@@ -116,10 +141,10 @@ export const CandidateSearch = () => {
     const showDemo = !isHHActive;
     const effectiveShowDemo = showDemo || isFallbackMode;
 
-    const filtered = effectiveShowDemo
-        ? MOCK_CANDIDATES.filter((c: any) =>
+    const filtered: CandidateItem[] = effectiveShowDemo
+        ? MOCK_CANDIDATES.filter((c: CandidateItem) =>
             c.position.toLowerCase().includes(search.toLowerCase()) ||
-            c.skills.some((s: string) => s.toLowerCase().includes(search.toLowerCase())) ||
+            (c.skills || []).some((s: string) => s.toLowerCase().includes(search.toLowerCase())) ||
             c.name.toLowerCase().includes(search.toLowerCase())
         )
         : hhCandidates;
@@ -197,7 +222,7 @@ export const CandidateSearch = () => {
 
             {/* Results Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filtered.map((candidate: any, index: number) => {
+                {filtered.map((candidate: CandidateItem, index: number) => {
                     // Ensure ID is string for consistency
                     const cId = String(candidate.id || index);
 
@@ -250,7 +275,7 @@ export const CandidateSearch = () => {
                                     </span>
                                 ))}
                                 {(candidate.skills || []).length > 4 && (
-                                    <span className="text-[10px] text-slate-400 self-center">+{candidate.skills.length - 4} ещё</span>
+                                    <span className="text-[10px] text-slate-400 self-center">+{(candidate.skills || []).length - 4} ещё</span>
                                 )}
                             </div>
 

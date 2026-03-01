@@ -5,17 +5,35 @@ from database.models import User
 from schemas import LoginRequest, LoginResponse
 from services.auth_service import AuthService
 import os
+import logging
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger("fot.auth")
 
-from security import verify_password, create_access_token, SECRET_KEY, ALGORITHM
+from security import verify_password, create_access_token, SECRET_KEY, ALGORITHM, generate_csrf_token
 from datetime import timedelta
 
 # NEW-2 FIX: secure=True автоматически включается в production
 # На дев-сервере (HTTP) остаётся False, чтобы не мешать локальной разработке
 SECURE_COOKIES = os.environ.get("ENVIRONMENT", "development") == "production"
 
-@router.post("/login", response_model=LoginResponse)
+
+def _set_csrf_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="csrf_token",
+        value=token,
+        httponly=False,
+        secure=SECURE_COOKIES,
+        samesite="lax",
+    )
+
+
+def _ensure_csrf_cookie(request: Request, response: Response) -> str:
+    csrf_token = request.cookies.get("csrf_token") or generate_csrf_token()
+    _set_csrf_cookie(response, csrf_token)
+    return csrf_token
+
+@router.post("/login", response_model=LoginResponse, response_model_exclude_none=True)
 def login(creds: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     """
     Login endpoint. Returns JWT token and user info, and sets HttpOnly cookie.
@@ -41,11 +59,14 @@ def login(creds: LoginRequest, request: Request, response: Response, db: Session
             key="refresh_token", value=auth_data["refresh_token"],
             httponly=True, secure=SECURE_COOKIES, samesite="lax", max_age=max_age
         )
+        _set_csrf_cookie(response, generate_csrf_token())
         safe_auth_data = {k: v for k, v in auth_data.items() if k not in ('access_token', 'refresh_token')}
         return safe_auth_data
     except Exception as e:
-        if isinstance(e, HTTPException): raise e
-        raise HTTPException(status_code=400, detail=str(e))
+        if isinstance(e, HTTPException):
+            raise e
+        logger.exception("Unexpected error during login")
+        raise HTTPException(status_code=400, detail="Login failed")
 
 from jose import jwt, JWTError
 
@@ -84,6 +105,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         secure=SECURE_COOKIES,  # NEW-2
         samesite="lax",
     )
+    _ensure_csrf_cookie(request, response)
     
     return {"status": "ok"}
 
@@ -129,7 +151,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
                 if exp:
                     blacklist_token(token, exp)
             except JWTError:
-                pass
+                logger.debug("Skipping blacklist for invalid token during logout")
 
     # Записываем logout в лог сессий
     _write_login_log(db, "logout", user_id=current_user.id,
@@ -137,10 +159,12 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
 
     response.delete_cookie(key="access_token", httponly=True, samesite="lax", secure=SECURE_COOKIES)
     response.delete_cookie(key="refresh_token", httponly=True, samesite="lax", secure=SECURE_COOKIES)
+    response.delete_cookie(key="csrf_token", httponly=False, samesite="lax", secure=SECURE_COOKIES)
     return {"status": "logged_out", "message": "Cookie cleared"}
 
 @router.get("/me")
-def get_me(current_user: User = Depends(get_current_active_user)):
+def get_me(request: Request, response: Response, current_user: User = Depends(get_current_active_user)):
+    _ensure_csrf_cookie(request, response)
     role_name = current_user.role_rel.name if current_user.role_rel else "No Role"
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     
@@ -153,6 +177,12 @@ def get_me(current_user: User = Depends(get_current_active_user)):
         "scope_branches": current_user.scope_branches or [],
         "scope_departments": current_user.scope_departments or []
     }
+
+
+@router.get("/csrf")
+def get_csrf_token(request: Request, response: Response):
+    token = _ensure_csrf_cookie(request, response)
+    return {"csrf_token": token}
 
 @router.get("/notifications")
 def get_notifications(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):

@@ -2,13 +2,25 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
+type ESGItem = {
+    category: string;
+    count: number;
+    avg_salary: number;
+};
+
+type ESGResponse = {
+    gender_equity: ESGItem[];
+    age_equity: ESGItem[];
+    cached_at?: string;
+};
+
 export const ESGReport = () => {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<ESGResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         api.get('/analytics/esg/pay-equity').then(res => {
-            setData(res.data);
+            setData(res.data as ESGResponse);
             setLoading(false);
         }).catch(err => {
             console.error(err);
@@ -17,6 +29,7 @@ export const ESGReport = () => {
     }, []);
 
     if (loading) return <div className="p-10 text-center text-slate-500">Загрузка метрик ESG...</div>;
+    if (!data) return <div className="p-10 text-center text-slate-500">Нет данных ESG</div>;
 
     const formatMoney = (val: number) => {
         return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'KZT', minimumFractionDigits: 0 }).format(val);
@@ -88,7 +101,7 @@ export const ESGReport = () => {
                     <div>
                         <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">По полу</h4>
                         <ul className="space-y-2">
-                            {data.gender_equity.map((item: any) => (
+                            {data.gender_equity.map((item) => (
                                 <li key={item.category} className="flex justify-between border-b border-slate-50 pb-2">
                                     <span className="text-slate-600 font-medium">{translateCategory(item.category)}</span>
                                     <span className="font-mono text-emerald-600">{formatMoney(item.avg_salary)}</span>
@@ -99,7 +112,7 @@ export const ESGReport = () => {
                     <div>
                         <h4 className="text-sm font-bold text-slate-400 uppercase mb-2">По поколениям</h4>
                         <ul className="space-y-2">
-                            {data.age_equity.map((item: any) => (
+                            {data.age_equity.map((item) => (
                                 <li key={item.category} className="flex justify-between border-b border-slate-50 pb-2">
                                     <span className="text-slate-600 font-medium">{translateCategory(item.category)}</span>
                                     <span className="font-mono text-blue-600">{formatMoney(item.avg_salary)}</span>

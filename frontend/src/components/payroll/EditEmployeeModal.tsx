@@ -3,14 +3,42 @@ import { Button, Input } from '../ui-mocks';
 import Modal from '../Modal';
 import { MoneyInput } from '../shared';
 import { useUpdateEmployee } from '../../hooks/useEmployees';
-import { useFlatStructure } from '../../hooks/useStructure';
+import { useFlatStructure, FlatStructureItem } from '../../hooks/useStructure';
 import { ChevronRight, ChevronDown, Building2, Users } from 'lucide-react';
+import { PlanRow } from '../../hooks/usePlanning';
+import { EmployeeRecord } from './types';
+import { EmployeeUpdatePayload } from '../../types';
+
+type TreeNode = FlatStructureItem & {
+    children: TreeNode[];
+};
+
+type FinancialField = 'base_net' | 'base_gross' | 'kpi_net' | 'kpi_gross';
+
+type EditDetails = {
+    id: number;
+    full_name: string;
+    gender: string;
+    dob: string;
+    org_unit_id: number;
+    branch_id: number;
+    department_id: number | null;
+    position_title: string;
+    base_net: number;
+    base_gross: number;
+    kpi_net: number;
+    kpi_gross: number;
+    bonus_net: number;
+    bonus_gross: number;
+    hire_date: string;
+    last_raise_date: string;
+};
 
 interface EditEmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    employee: any;
-    planningData: any[];
+    employee: EmployeeRecord | null;
+    planningData: PlanRow[];
 }
 
 export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
@@ -21,7 +49,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 }) => {
     const { data: flatStructure } = useFlatStructure();
     const updateMutation = useUpdateEmployee();
-    const [editDetails, setEditDetails] = useState<any>(null);
+    const [editDetails, setEditDetails] = useState<EditDetails | null>(null);
 
     // Bonus logic
     const [applyBonus, setApplyBonus] = useState(false);
@@ -49,7 +77,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 p.branch_id?.toString() === employee.branch_id?.toString() &&
                 p.department_id?.toString() === employee.department_id?.toString()
             );
-            const planItem = planPositions.find((p: any) => p.position === employee.position);
+            const planItem = planPositions.find((p) => p.position === employee.position);
 
             const pNet = planItem?.bonus_net || 0;
             const pGross = planItem?.bonus_gross || 0;
@@ -63,9 +91,9 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 full_name: employee.full_name,
                 gender: employee.gender || 'Male',
                 dob: employee.dob || '1990-01-01',
-                org_unit_id: employee.org_unit_id,
-                branch_id: employee.branch_id?.toString() || '',
-                department_id: employee.department_id?.toString() || '',
+                org_unit_id: employee.org_unit_id || employee.department_id || employee.branch_id || 0,
+                branch_id: employee.branch_id || 0,
+                department_id: employee.department_id ?? null,
                 position_title: employee.position,
                 base_net: employee.base.net,
                 base_gross: employee.base.gross,
@@ -90,30 +118,35 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
 
     const treeData = React.useMemo(() => {
         if (!flatStructure) return [];
-        const map = new Map();
-        const roots: any[] = [];
+        const map = new Map<number, TreeNode>();
+        const roots: TreeNode[] = [];
         flatStructure.forEach(item => map.set(item.id, { ...item, children: [] }));
         flatStructure.forEach(item => {
+            const node = map.get(item.id);
+            if (!node) return;
             if (item.parent_id && map.has(item.parent_id)) {
-                map.get(item.parent_id).children.push(map.get(item.id));
+                const parent = map.get(item.parent_id);
+                if (parent) parent.children.push(node);
             } else {
-                roots.push(map.get(item.id));
+                roots.push(node);
             }
         });
         return roots;
     }, [flatStructure]);
 
-    const handleSelectUnit = (unit: any) => {
+    const handleSelectUnit = (unit: TreeNode) => {
+        if (!editDetails) return;
+
         // Resolve IDs similar to AddEmployeeModal logic
-        let bId: string | number = '';
-        let dId: string | number = '';
+        let bId: number | null = null;
+        let dId: number | null = null;
 
         if (unit.type === 'branch') {
             bId = unit.id;
         } else {
             dId = unit.id;
             // Backtrack to find branch
-            let current = unit;
+            let current: FlatStructureItem = unit;
             while (current.parent_id) {
                 const parent = flatStructure?.find(i => i.id === current.parent_id);
                 if (parent && parent.type === 'branch') {
@@ -131,14 +164,14 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
         setEditDetails({
             ...editDetails,
             org_unit_id: unit.id,
-            branch_id: bId,
+            branch_id: bId || editDetails.branch_id,
             department_id: dId,
             position_title: '' // resetting position as positions depend on unit
         });
         setIsTreeOpen(false);
     };
 
-    const renderTreeNode = (node: any, level = 0) => {
+    const renderTreeNode = (node: TreeNode, level = 0) => {
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expandedNodes.has(node.id);
         return (
@@ -161,7 +194,7 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                 </div>
                 {hasChildren && isExpanded && (
                     <div className="border-l border-slate-100 ml-3">
-                        {node.children.map((child: any) => renderTreeNode(child, level + 1))}
+                        {node.children.map((child) => renderTreeNode(child, level + 1))}
                     </div>
                 )}
             </div>
@@ -173,18 +206,15 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     if (!editDetails && isOpen) return null;
     if (!editDetails) return null;
 
-    if (!editDetails && isOpen) return null;
-    if (!editDetails) return null;
-
     const selectedUnitName = flatStructure?.find(u => u.id === editDetails.org_unit_id)?.name || 'Неизвестно';
 
     const editPositions = planningData.filter(p =>
-        p.branch_id?.toString() === editDetails.branch_id &&
-        p.department_id?.toString() === editDetails.department_id
+        p.branch_id?.toString() === String(editDetails.branch_id) &&
+        p.department_id?.toString() === String(editDetails.department_id ?? '')
     );
 
     const handleSyncPlan = () => {
-        const planItem = editPositions.find((p: any) => p.position === editDetails.position_title);
+        const planItem = editPositions.find((p) => p.position === editDetails.position_title);
         if (planItem) {
             const pNet = planItem?.bonus_net || 0;
             const pGross = planItem?.bonus_gross || 0;
@@ -207,7 +237,23 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
     const handleSaveDetails = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await updateMutation.mutateAsync({ id: editDetails.id, data: editDetails });
+            const payload: EmployeeUpdatePayload = {
+                full_name: editDetails.full_name,
+                branch_id: editDetails.branch_id,
+                department_id: editDetails.department_id ?? undefined,
+                position_title: editDetails.position_title,
+                base_net: Number(editDetails.base_net),
+                base_gross: Number(editDetails.base_gross),
+                kpi_net: Number(editDetails.kpi_net),
+                kpi_gross: Number(editDetails.kpi_gross),
+                bonus_net: Number(editDetails.bonus_net),
+                bonus_gross: Number(editDetails.bonus_gross),
+                gender: editDetails.gender,
+                dob: editDetails.dob,
+                hire_date: editDetails.hire_date || undefined,
+                last_raise_date: editDetails.last_raise_date || undefined,
+            };
+            await updateMutation.mutateAsync({ id: editDetails.id, data: payload });
             onClose();
         } catch (error) {
             console.error(error);
@@ -296,10 +342,10 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                         required
                         value={editDetails.position_title}
                         onChange={e => setEditDetails({ ...editDetails, position_title: e.target.value })}
-                        disabled={!editDetails.branch_id}
+                        disabled={editDetails.branch_id <= 0}
                     >
                         <option value={editDetails.position_title}>{editDetails.position_title} (Текущая)</option>
-                        {[...new Set(editPositions.map((p: any) => p.position))].map((pos: any) => <option key={pos} value={pos}>{pos}</option>)}
+                        {[...new Set(editPositions.map((p) => p.position))].map((pos) => <option key={pos} value={pos}>{pos}</option>)}
                     </select>
                 </div>
 
@@ -317,23 +363,26 @@ export const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({
                     {[
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
                         { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] }
-                    ].map((group, i) => (
+                    ].map((group, i) => {
+                        const [netField, grossField] = group.fields as [FinancialField, FinancialField];
+                        return (
                         <div key={i} className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>
                             <MoneyInput
                                 className="bg-slate-100 text-slate-500 cursor-not-allowed"
-                                value={(editDetails as any)[group.fields[0]] || 0}
+                                value={editDetails[netField] || 0}
                                 onChange={() => { }}
                                 disabled
                             />
                             <MoneyInput
                                 className="bg-slate-100 text-slate-500 cursor-not-allowed"
-                                value={(editDetails as any)[group.fields[1]] || 0}
+                                value={editDetails[grossField] || 0}
                                 onChange={() => { }}
                                 disabled
                             />
                         </div>
-                    ))}
+                        );
+                    })}
 
                     {/* Бонусы (Доплаты) с переключателем */}
                     <div className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center mt-2 pt-2 border-t border-slate-200">

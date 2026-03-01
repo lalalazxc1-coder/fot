@@ -3,14 +3,39 @@ import { Button, Input } from '../ui-mocks';
 import Modal from '../Modal';
 import { MoneyInput } from '../shared';
 import { useCreateEmployee } from '../../hooks/useEmployees';
-import { useFlatStructure } from '../../hooks/useStructure';
+import { useFlatStructure, FlatStructureItem } from '../../hooks/useStructure';
 import { ChevronRight, ChevronDown, Building2, Users } from 'lucide-react';
+import { PlanRow } from '../../hooks/usePlanning';
+
+type TreeNode = FlatStructureItem & {
+    children: TreeNode[];
+};
+
+type FinancialField = 'base_net' | 'base_gross' | 'kpi_net' | 'kpi_gross';
+
+type NewEmployeeState = {
+    full_name: string;
+    hire_date: string;
+    org_unit_id: number | null;
+    branch_id: number | null;
+    department_id: number | null;
+    is_head: boolean;
+    position_title: string;
+    gender: string;
+    dob: string;
+    base_net: number;
+    base_gross: number;
+    kpi_net: number;
+    kpi_gross: number;
+    bonus_net: number;
+    bonus_gross: number;
+    last_raise_date: string;
+};
 
 interface AddEmployeeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    // structure: any[]; // Deprecated, using useFlatStructure internal logic
-    planningData: any[];
+    planningData: PlanRow[];
 }
 
 export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
@@ -21,12 +46,12 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     const createMutation = useCreateEmployee();
     const { data: flatStructure } = useFlatStructure();
 
-    const [newEmployee, setNewEmployee] = useState({
+    const [newEmployee, setNewEmployee] = useState<NewEmployeeState>({
         full_name: '',
         hire_date: new Date().toISOString().split('T')[0],
-        org_unit_id: '', // New single source of truth
-        branch_id: '' as string | number, // Type assertion for mixed usage
-        department_id: '' as string | number, // Kept for backend compatibility
+        org_unit_id: null,
+        branch_id: null,
+        department_id: null,
         is_head: false,
         position_title: '',
         gender: 'Male',
@@ -67,24 +92,27 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
     const treeData = useMemo(() => {
         if (!flatStructure) return [];
-        const map = new Map();
-        const roots: any[] = [];
+        const map = new Map<number, TreeNode>();
+        const roots: TreeNode[] = [];
         // First pass: create node objects
         flatStructure.forEach(item => {
             map.set(item.id, { ...item, children: [] });
         });
         // Second pass: link parents
         flatStructure.forEach(item => {
+            const node = map.get(item.id);
+            if (!node) return;
             if (item.parent_id && map.has(item.parent_id)) {
-                map.get(item.parent_id).children.push(map.get(item.id));
+                const parent = map.get(item.parent_id);
+                if (parent) parent.children.push(node);
             } else {
-                roots.push(map.get(item.id));
+                roots.push(node);
             }
         });
         return roots;
     }, [flatStructure]);
 
-    const handleSelectUnit = (unit: any) => {
+    const handleSelectUnit = (unit: TreeNode) => {
         // Determine branch_id and department_id based on selection
         // Logic: if type is branch -> branch_id=id, dept_id=null
         // if type is dept -> dept_id=id, branch_id = (find top level parent?? or just kept blank if backend handles it?)
@@ -102,8 +130,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         // Actually, let's trace up to find the "Branch" type parent for `branch_id` just in case backend enforces it.
         // Simplified: We will set `org_unit_id` in state for UI, and `branch_id`/`department_id` for payload.
 
-        let bId: string | number = '';
-        let dId: string | number = '';
+        let bId: number | null = null;
+        let dId: number | null = null;
 
         if (unit.type === 'branch') {
             bId = unit.id;
@@ -116,7 +144,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             // So we MUST find the branch. 
 
             // Backtracking to find branch_id
-            let current = unit;
+            let current: FlatStructureItem = unit;
             while (current.parent_id) {
                 const parent = flatStructure?.find(i => i.id === current.parent_id);
                 if (parent) {
@@ -148,11 +176,11 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
     const selectedUnitName = useMemo(() => {
         if (!newEmployee.org_unit_id || !flatStructure) return '';
-        const u = flatStructure.find(i => i.id === parseInt(newEmployee.org_unit_id as string));
+        const u = flatStructure.find(i => i.id === newEmployee.org_unit_id);
         return u ? u.name : 'Неизвестно';
     }, [newEmployee.org_unit_id, flatStructure]);
 
-    const renderTreeNode = (node: any, level = 0) => {
+    const renderTreeNode = (node: TreeNode, level = 0) => {
         const hasChildren = node.children && node.children.length > 0;
         const isExpanded = expandedNodes.has(node.id);
 
@@ -176,7 +204,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 </div>
                 {hasChildren && isExpanded && (
                     <div className="border-l border-slate-100 ml-3">
-                        {node.children.map((child: any) => renderTreeNode(child, level + 1))}
+                        {node.children.map((child) => renderTreeNode(child, level + 1))}
                     </div>
                 )}
             </div>
@@ -188,21 +216,21 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     const availablePositions = useMemo(() => {
         if (!newEmployee.org_unit_id) return [];
 
-        const targetDeptId = newEmployee.department_id ? String(newEmployee.department_id) : '';
-        const targetBranchId = newEmployee.branch_id ? String(newEmployee.branch_id) : '';
+        const targetDeptId = newEmployee.department_id;
+        const targetBranchId = newEmployee.branch_id;
 
         return planningData.filter(p => {
-            const planDeptId = p.department_id ? String(p.department_id) : '';
-            const planBranchId = p.branch_id ? String(p.branch_id) : '';
+            const planDeptId = p.department_id ? Number(p.department_id) : null;
+            const planBranchId = p.branch_id ? Number(p.branch_id) : null;
 
             // 1. Strict Department Match: If target has Dept, Plan must match Dept
-            if (targetDeptId) {
+            if (targetDeptId !== null) {
                 return planDeptId === targetDeptId;
             }
 
             // 2. Strict Branch Match: If target has NO Dept (is Branch), Plan must match Branch AND have NO Dept
-            if (targetBranchId) {
-                return planBranchId === targetBranchId && !planDeptId;
+            if (targetBranchId !== null) {
+                return planBranchId === targetBranchId && planDeptId === null;
             }
 
             return false;
@@ -242,8 +270,9 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             // Prepare payload: convert empty strings to null/undefined or numbers
             const payload = {
                 ...newEmployee,
-                branch_id: newEmployee.branch_id ? Number(newEmployee.branch_id) : undefined,
-                department_id: newEmployee.department_id ? Number(newEmployee.department_id) : undefined,
+                org_unit_id: newEmployee.org_unit_id ?? undefined,
+                branch_id: newEmployee.branch_id ?? undefined,
+                department_id: newEmployee.department_id ?? undefined,
                 gender: newEmployee.gender,
                 dob: newEmployee.dob,
                 is_head: newEmployee.is_head,
@@ -263,9 +292,9 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             setNewEmployee({
                 full_name: '',
                 hire_date: new Date().toISOString().split('T')[0],
-                org_unit_id: '',
-                branch_id: '',
-                department_id: '',
+                org_unit_id: null,
+                branch_id: null,
+                department_id: null,
                 is_head: false,
                 position_title: '',
                 gender: 'Male',
@@ -409,25 +438,28 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     {[
                         { label: 'Оклад', fields: ['base_net', 'base_gross'] },
                         { label: 'KPI', fields: ['kpi_net', 'kpi_gross'] }
-                    ].map((group, i) => (
+                    ].map((group, i) => {
+                        const [netField, grossField] = group.fields as [FinancialField, FinancialField];
+                        return (
                         <div key={i} className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center">
                             <span className="text-sm font-medium text-slate-600">{group.label}</span>
                             <MoneyInput
-                                value={(newEmployee as any)[group.fields[0]] || 0}
+                                value={newEmployee[netField] || 0}
                                 onChange={() => { }}
                                 placeholder="Net"
                                 disabled
                                 className="bg-slate-100 text-slate-500 cursor-not-allowed"
                             />
                             <MoneyInput
-                                value={(newEmployee as any)[group.fields[1]] || 0}
+                                value={newEmployee[grossField] || 0}
                                 onChange={() => { }}
                                 placeholder="Gross"
                                 disabled
                                 className="bg-slate-100 text-slate-500 cursor-not-allowed"
                             />
                         </div>
-                    ))}
+                        );
+                    })}
 
                     {/* Бонусы (Доплаты) с переключателем */}
                     <div className="grid grid-cols-[1fr_1.5fr_1.5fr] gap-2 items-center mt-2 pt-2 border-t border-slate-200">
