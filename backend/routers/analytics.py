@@ -11,7 +11,7 @@ import threading
 import logging
 
 from dependencies import get_db, get_current_active_user, require_admin
-from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position
+from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position, AnalyticsConfig
 from sqlalchemy import func, and_, or_, desc
 from sqlalchemy.orm import joinedload
 from datetime import timedelta
@@ -479,8 +479,182 @@ def get_cost_distribution(
     return get_cached_or_compute(f'cost_distribution_{current_user.id}_{date}', compute)
 
 
+@router.get("/employees")
+def get_analytics_employees(
+    unit_id: Optional[int] = Query(None),
+    position: Optional[str] = Query(None),
+    risk_level: Optional[str] = Query(None),
+    date: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Drill-down endpoint to see employees behind the metrics
+    """
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
+    # 1. Latest financial records subquery (respecting date)
+    fact_subquery_base = db.query(
+        FinancialRecord.employee_id,
+        func.max(FinancialRecord.id).label('max_id')
+    )
+    if date: fact_subquery_base = fact_subquery_base.filter(FinancialRecord.created_at <= date)
+    fact_subquery = fact_subquery_base.group_by(FinancialRecord.employee_id).subquery()
+
+    # 2. Main Query
+    query = db.query(
+        Employee.id,
+        Employee.full_name,
+        Position.title.label('position'),
+        OrganizationUnit.name.label('unit_name'),
+        FinancialRecord.total_net
+    ).join(
+        fact_subquery,
+        Employee.id == fact_subquery.c.employee_id
+    ).join(
+        FinancialRecord,
+        and_(
+            FinancialRecord.employee_id == fact_subquery.c.employee_id,
+            FinancialRecord.id == fact_subquery.c.max_id
+        )
+    ).join(
+        Position, Employee.position_id == Position.id, isouter=True
+    ).join(
+        OrganizationUnit, Employee.org_unit_id == OrganizationUnit.id, isouter=True
+    ).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
+    
+    # 3. Scope filtering
+    if allowed_ids is not None:
+        query = query.filter(Employee.org_unit_id.in_(allowed_ids))
+    
+    # 4. Unit Filtering (with hierarchy)
+    if unit_id:
+        from services.org_unit_service import build_children_map
+        children_map = build_children_map(db)
+        desc_ids = get_unit_with_descendants(unit_id, children_map)
+        query = query.filter(Employee.org_unit_id.in_(desc_ids))
+        
+    if position:
+        query = query.filter(Position.title == position)
+        
+    results = query.all()
+    logger.info("Drill-down: unit_id=%s, date=%s, results_count=%d", unit_id, date, len(results))
+    
+    return [
+        {
+            "id": r.id,
+            "full_name": r.full_name,
+            "position": r.position or "Нет должности",
+            "unit_name": r.unit_name or "Нет подразделения",
+            "total_net": float(r.total_net or 0)
+        } for r in results
+    ]
+
+@router.get("/budget-trend")
+def get_budget_trend(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Returns monthly budget trend (historical) + 3 months forecast
+    """
+    allowed_ids = get_allowed_unit_ids(db, current_user)
+    
+    def compute():
+        now = datetime.now()
+        
+        # 1. Calculate current plan total (constant for all months in this view)
+        plan_query = db.query(
+            func.sum(
+                (PlanningPosition.base_net + PlanningPosition.kpi_net) * PlanningPosition.count + 
+                PlanningPosition.bonus_net * func.coalesce(PlanningPosition.bonus_count, PlanningPosition.count)
+            ).label('total_net')
+        ).filter(PlanningPosition.scenario_id == None)
+        
+        if allowed_ids is not None:
+            plan_query = plan_query.filter(
+                or_(
+                    PlanningPosition.branch_id.in_(allowed_ids),
+                    PlanningPosition.department_id.in_(allowed_ids)
+                )
+            )
+        
+        plan_total = float(plan_query.scalar() or 0)
+
+        # 2. Historical data (Last 6 months)
+        months = []
+        for i in range(6, -1, -1):
+            months.append((now - relativedelta(months=i)).replace(day=1))
+            
+        history = []
+        for m in months:
+            # Reuse logic from summary but simplified
+            fact_sub = db.query(
+                FinancialRecord.employee_id,
+                func.max(FinancialRecord.id).label('max_id')
+            ).filter(FinancialRecord.created_at <= m.replace(day=28).isoformat()).group_by(FinancialRecord.employee_id).subquery()
+            
+            fact_query = db.query(func.sum(FinancialRecord.total_net)).join(
+                fact_sub, FinancialRecord.id == fact_sub.c.max_id
+            ).join(Employee, Employee.id == FinancialRecord.employee_id).filter(or_(Employee.status != 'Dismissed', Employee.status == None))
+            
+            if allowed_ids: fact_query = fact_query.filter(Employee.org_unit_id.in_(allowed_ids))
+            
+            total = fact_query.scalar() or 0
+            history.append({
+                "month": m.strftime("%b %Y"),
+                "value": float(total),
+                "plan_value": plan_total,
+                "type": "actual"
+            })
+            
+        # 3. Forecast: simple growth based on last 3 months average growth rate
+        if len(history) >= 3:
+            last_val = history[-1]['value']
+            
+            forecast = []
+            for i in range(1, 4):
+                f_month = (now + relativedelta(months=i)).strftime("%b %Y")
+                # Simple projection: last_val * (1.02 ^ i)
+                val = last_val * (1 + (0.015 * i)) 
+                forecast.append({
+                    "month": f_month,
+                    "value": round(val, 2),
+                    "plan_value": plan_total,
+                    "type": "forecast"
+                })
+                
+            return history + forecast
+        return history
+
+    return get_cached_or_compute(f'budget_trend_{current_user.id}', compute)
+
+@router.get("/config")
+def get_analytics_config(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Get all analytics configurations"""
+    configs = db.query(AnalyticsConfig).all()
+    return {c.key: {"value": c.value, "description": c.description} for c in configs}
+
+@router.post("/config")
+def update_analytics_config(
+    payload: dict[str, str],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Update analytics configurations"""
+    for key, value in payload.items():
+        config = db.query(AnalyticsConfig).filter(AnalyticsConfig.key == key).first()
+        if config:
+            config.value = value
+    db.commit()
+    invalidate_analytics_cache()
+    return {"status": "success"}
+
 @router.post("/clear-cache")
-def clear_analytics_cache(current_user: User = Depends(get_current_active_user)):
+def clear_analytics_cache(current_user: User = Depends(require_admin)):
     """FIX A3: Clear analytics cache"""
     invalidate_analytics_cache()
     return {"message": "Cache cleared", "cleared_at": datetime.now().isoformat()}
@@ -496,6 +670,24 @@ def get_retention_risk(
     allowed_ids = get_allowed_unit_ids(db, current_user)
     
     def compute():
+        # Fetch Dynamic Thresholds with fallback
+        STAGNATION_LIMIT = 12
+        GAP_LIMIT = 15.0
+        
+        try:
+            configs = db.query(AnalyticsConfig).filter(AnalyticsConfig.key.in_([
+                'retention_stagnation_months', 
+                'retention_market_gap_percent'
+            ])).all()
+            config_map = {c.key: c.value for c in configs}
+            
+            if 'retention_stagnation_months' in config_map:
+                STAGNATION_LIMIT = int(config_map['retention_stagnation_months'])
+            if 'retention_market_gap_percent' in config_map:
+                GAP_LIMIT = float(config_map['retention_market_gap_percent'])
+        except Exception as e:
+            logger.warning("Could not fetch analytics config, using defaults: %s", e)
+
         # 1. Fetch Active Employees with Position and OrgUnit
         query = db.query(Employee).options(
             joinedload(Employee.position),
@@ -562,11 +754,11 @@ def get_retention_risk(
                 gap_percent = ((median - current_salary) / median) * 100
             
             # Risk Score
-            # High: >12mo AND >15% gap
-            # Medium: >12mo OR >15% gap
+            # High: >STAGNATION_LIMIT AND >GAP_LIMIT
+            # Medium: >STAGNATION_LIMIT OR >GAP_LIMIT
             score = 0
-            if months_stagnant > 12: score += 50
-            if gap_percent > 15: score += 50
+            if months_stagnant > STAGNATION_LIMIT: score += 50
+            if gap_percent > GAP_LIMIT: score += 50
             
             risk_level = "Low"
             if score >= 100: risk_level = "High"

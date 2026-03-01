@@ -38,13 +38,13 @@ class OrganizationUnit(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
-    parent_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("organization_units.id", use_alter=True, name="fk_organization_units_parent_id"), nullable=True)
     
     parent = relationship("OrganizationUnit", remote_side=[id])
     children = relationship("OrganizationUnit", back_populates="parent")
 
     # New: Head of Unit
-    head_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    head_id = Column(Integer, ForeignKey("employees.id", use_alter=True, name="fk_organization_units_head_id"), nullable=True)
     head = relationship("Employee", foreign_keys=[head_id])
 
 class Position(Base):
@@ -52,6 +52,13 @@ class Position(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     grade = Column(Integer, default=1)
+
+class AnalyticsConfig(Base):
+    __tablename__ = 'analytics_config'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(String(255), nullable=False)
+    description = Column(String(255))
 
 class Employee(Base):
     __tablename__ = "employees"
@@ -405,4 +412,3 @@ class WelcomePageConfig(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     branch = relationship("OrganizationUnit", foreign_keys=[branch_id])
-

@@ -195,7 +195,7 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
             raise HTTPException(403, "Out of scope")
 
     changes = {}
-    update_data = plan.dict(exclude_unset=True)
+    update_data = plan.model_dump(exclude_unset=True)
     
     for key, val in update_data.items():
         db_key = key
@@ -283,6 +283,11 @@ class ExportRequest(BaseModel):
 
 @router.post("/planning/export")
 def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    can_export = bool(perms.get("admin_access") or perms.get("manage_planning") or perms.get("view_financial_reports"))
+    if not can_export:
+        raise HTTPException(403, "Permission 'manage_planning' required")
+
     try:
         # Optimized: Pre-fetch Organization Units to avoid N+1 queries
         from sqlalchemy import select
@@ -383,6 +388,6 @@ def export_planning_excel(req: ExportRequest, db: Session = Depends(get_db), cur
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
-    except Exception as e:
-        logger.exception("Error exporting planning: %s", e)
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+    except Exception:
+        logger.exception("Error exporting planning")
+        raise HTTPException(status_code=500, detail="Export failed. Please try again later.")

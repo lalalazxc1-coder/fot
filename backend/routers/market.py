@@ -2,12 +2,30 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 import httpx
+import logging
 from database.database import get_db
 from database.models import MarketData, MarketEntry, User
 from schemas import MarketDataCreate, MarketDataUpdate, MarketEntryCreate, MarketEntryResponse
 from dependencies import get_current_active_user
 
 router = APIRouter(prefix="/api/market", tags=["market"])
+logger = logging.getLogger("fot.market")
+
+
+def _has_market_view_permission(current_user: User) -> bool:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    return bool(perms.get("admin_access") or perms.get("view_market") or perms.get("edit_market"))
+
+
+def _require_market_view_permission(current_user: User) -> None:
+    if not _has_market_view_permission(current_user):
+        raise HTTPException(403, "Permission 'view_market' required")
+
+
+def _require_market_edit_permission(current_user: User) -> None:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    if not (perms.get("admin_access") or perms.get("edit_market")):
+        raise HTTPException(403, "Permission 'edit_market' required")
 
 def recalculate_stats(db: Session, market_id: int):
     # Fetch all entries for this market_id
@@ -50,27 +68,18 @@ def recalculate_stats(db: Session, market_id: int):
 
 @router.get("")
 def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Check View Permission
-    has_perm = False
-    if current_user.role_rel:
-        permissions = current_user.role_rel.permissions or {}
-        if permissions.get('admin_access') or permissions.get('view_market') or permissions.get('edit_market'): has_perm = True
-    
-    if not has_perm:
-        # Check if user has specific branch scope maybe? For now strict
-        pass
-        # raise HTTPException(403, "Permission 'view_market' required")
+    _require_market_view_permission(current_user)
 
     return db.query(MarketData).options(joinedload(MarketData.entries)).all()
 
 @router.get("/{id}/entries", response_model=list[MarketEntryResponse])
 def get_market_entries(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    _require_market_view_permission(current_user)
     return db.query(MarketEntry).filter(MarketEntry.market_id == id).all()
 
 @router.post("")
 def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Check Edit Permission
-    # ... (Permission check same as before)
+    _require_market_edit_permission(current_user)
     
     # Check duplicate (Title + Branch)
     query = db.query(MarketData).filter(MarketData.position_title == data.position_title)
@@ -100,8 +109,7 @@ def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), cu
 
 @router.post("/entries", response_model=MarketEntryResponse)
 def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Check permission
-    # ...
+    _require_market_edit_permission(current_user)
     
     market_item = db.get(MarketData, entry.market_id)
     if not market_item:
@@ -124,13 +132,8 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
 
 @router.delete("/entries/{id}")
 def delete_market_entry(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # FIX #8: Permission check for market entry deletion
-    has_perm = False
-    if current_user.role_rel:
-        permissions = current_user.role_rel.permissions or {}
-        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
-    if not has_perm:
-        raise HTTPException(403, "Permission 'edit_market' required")
+    _require_market_edit_permission(current_user)
+
     entry = db.get(MarketEntry, id)
     if not entry:
         raise HTTPException(404, "Entry not found")
@@ -144,13 +147,8 @@ def delete_market_entry(id: int, db: Session = Depends(get_db), current_user: Us
 
 @router.delete("/{id}")
 def delete_market_data(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # FIX #8: Permission check for market data deletion
-    has_perm = False
-    if current_user.role_rel:
-        permissions = current_user.role_rel.permissions or {}
-        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
-    if not has_perm:
-        raise HTTPException(403, "Permission 'edit_market' required")
+    _require_market_edit_permission(current_user)
+
     item = db.get(MarketData, id)
     if not item: raise HTTPException(404, "Not found")
     
@@ -163,16 +161,8 @@ def delete_market_data(id: int, db: Session = Depends(get_db), current_user: Use
 
 @router.post("/{id}/sync-hh")
 async def sync_market_with_hh(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Check Edit Permission
-    has_perm = False
-    if current_user.role_rel:
-        permissions = current_user.role_rel.permissions or {}
-        if permissions.get('admin_access') or permissions.get('edit_market'): has_perm = True
-        
-    if not has_perm:
-        # allow for now or raise
-        pass
-        
+    _require_market_edit_permission(current_user)
+
     item = db.get(MarketData, id)
     if not item:
         raise HTTPException(404, "Market data not found")
@@ -194,7 +184,12 @@ async def sync_market_with_hh(id: int, db: Session = Depends(get_db), current_us
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, params=params, headers=headers)
         if resp.status_code != 200:
-            raise HTTPException(500, f"HH API Error: {resp.status_code} - {resp.text}")
+            logger.warning("HH sync failed: status=%s body=%s", resp.status_code, resp.text)
+            if resp.status_code == 429:
+                raise HTTPException(429, "HH API rate limit reached. Please try again later.")
+            if 500 <= resp.status_code < 600:
+                raise HTTPException(502, "HH API temporarily unavailable. Please try again later.")
+            raise HTTPException(502, "HH API request failed. Please try again later.")
             
         data = resp.json()
         

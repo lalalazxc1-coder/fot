@@ -3,13 +3,27 @@ from sqlalchemy.orm import Session
 from typing import List
 from database.database import get_db
 from database import models
+from database.models import User
+from dependencies import get_current_active_user
 import schemas
 from datetime import datetime
 
 router = APIRouter(prefix="/api/offer-templates", tags=["Job Offer Templates"])
 
+
+def _ensure_template_permissions(current_user: User) -> None:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    if not (perms.get("admin_access") or perms.get("manage_offers") or perms.get("manage_planning")):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
 @router.post("/", response_model=schemas.JobOfferTemplateResponse)
-def create_template(data: schemas.JobOfferTemplateCreate, db: Session = Depends(get_db)):
+def create_template(
+    data: schemas.JobOfferTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ensure_template_permissions(current_user)
+
     db_template = models.JobOfferTemplate(
         name=data.name,
         company_name=data.company_name,
@@ -17,13 +31,13 @@ def create_template(data: schemas.JobOfferTemplateCreate, db: Session = Depends(
         welcome_text=data.welcome_text,
         description_text=data.description_text,
         theme_color=data.theme_color,
-        custom_sections=[s.dict() for s in data.custom_sections] if data.custom_sections else [],
+        custom_sections=[s.model_dump() for s in data.custom_sections] if data.custom_sections else [],
         probation_period=data.probation_period,
         working_hours=data.working_hours,
         lunch_break=data.lunch_break,
         non_compete_text=data.non_compete_text,
-        signatories=[s.dict() for s in data.signatories] if data.signatories else [],
-        welcome_content=data.welcome_content.dict() if data.welcome_content else None
+        signatories=[s.model_dump() for s in data.signatories] if data.signatories else [],
+        welcome_content=data.welcome_content.model_dump() if data.welcome_content else None
     )
     db.add(db_template)
     db.commit()
@@ -34,14 +48,25 @@ def create_template(data: schemas.JobOfferTemplateCreate, db: Session = Depends(
     return db_template
 
 @router.get("/", response_model=List[schemas.JobOfferTemplateResponse])
-def list_templates(db: Session = Depends(get_db)):
+def list_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ensure_template_permissions(current_user)
+
     templates = db.query(models.JobOfferTemplate).all()
     for t in templates:
         t.created_at = t.created_at.isoformat()
     return templates
 
 @router.get("/{template_id}", response_model=schemas.JobOfferTemplateResponse)
-def get_template(template_id: int, db: Session = Depends(get_db)):
+def get_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ensure_template_permissions(current_user)
+
     template = db.query(models.JobOfferTemplate).filter(models.JobOfferTemplate.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -49,7 +74,14 @@ def get_template(template_id: int, db: Session = Depends(get_db)):
     return template
 
 @router.put("/{template_id}", response_model=schemas.JobOfferTemplateResponse)
-def update_template(template_id: int, data: schemas.JobOfferTemplateUpdate, db: Session = Depends(get_db)):
+def update_template(
+    template_id: int,
+    data: schemas.JobOfferTemplateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ensure_template_permissions(current_user)
+
     template = db.query(models.JobOfferTemplate).filter(models.JobOfferTemplate.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
@@ -60,13 +92,13 @@ def update_template(template_id: int, data: schemas.JobOfferTemplateUpdate, db: 
     template.welcome_text = data.welcome_text
     template.description_text = data.description_text
     template.theme_color = data.theme_color
-    template.custom_sections = [s.dict() for s in data.custom_sections] if data.custom_sections else []
+    template.custom_sections = [s.model_dump() for s in data.custom_sections] if data.custom_sections else []
     template.probation_period = data.probation_period
     template.working_hours = data.working_hours
     template.lunch_break = data.lunch_break
     template.non_compete_text = data.non_compete_text
-    template.signatories = [s.dict() for s in data.signatories] if data.signatories else []
-    template.welcome_content = data.welcome_content.dict() if data.welcome_content else None
+    template.signatories = [s.model_dump() for s in data.signatories] if data.signatories else []
+    template.welcome_content = data.welcome_content.model_dump() if data.welcome_content else None
     
     db.commit()
     db.refresh(template)
@@ -74,7 +106,13 @@ def update_template(template_id: int, data: schemas.JobOfferTemplateUpdate, db: 
     return template
 
 @router.delete("/{template_id}")
-def delete_template(template_id: int, db: Session = Depends(get_db)):
+def delete_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _ensure_template_permissions(current_user)
+
     template = db.query(models.JobOfferTemplate).filter(models.JobOfferTemplate.id == template_id).first()
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")

@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from database.database import get_db
-from database.models import ApprovalStep, Role, User, SalaryRequest
+from database.models import ApprovalStep, SalaryRequest
 from schemas import ApprovalStepCreate, ApprovalStepResponse
-from dependencies import get_current_active_user
+from dependencies import require_admin
 
-router = APIRouter(prefix="/api/workflow", tags=["workflow"])
+router = APIRouter(prefix="/api/workflow", tags=["workflow"], dependencies=[Depends(require_admin)])
 
 @router.get("/steps", response_model=list[ApprovalStepResponse])
 def get_approval_steps(db: Session = Depends(get_db)):
@@ -26,12 +26,8 @@ def get_approval_steps(db: Session = Depends(get_db)):
 @router.post("/steps")
 def create_approval_step(
     step: ApprovalStepCreate, 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db),
 ):
-    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"):
-        raise HTTPException(403, "Only Admin")
-    
     if not step.role_id and not step.user_id:
         raise HTTPException(400, "Must provide either role_id or user_id")
         
@@ -55,12 +51,8 @@ def create_approval_step(
 def update_approval_step(
     id: int, 
     step: ApprovalStepCreate, 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db),
 ):
-    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): 
-        raise HTTPException(403, "Only Admin")
-    
     existing = db.get(ApprovalStep, id)
     if not existing: raise HTTPException(404, "Step not found")
     
@@ -80,12 +72,8 @@ def update_approval_step(
 @router.delete("/steps/{id}")
 def delete_approval_step(
     id: int, 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db),
 ):
-    if not current_user.role_rel or not current_user.role_rel.permissions.get("admin_access"): 
-        raise HTTPException(403, "Only Admin")
-    
     existing = db.get(ApprovalStep, id)
     if not existing: raise HTTPException(404, "Step not found")
     

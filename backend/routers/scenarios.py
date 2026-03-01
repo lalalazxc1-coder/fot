@@ -12,6 +12,17 @@ from typing import Optional, List
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
+
+def _require_scenarios_view_permission(current_user: User) -> None:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    can_view = bool(
+        perms.get("admin_access")
+        or perms.get("view_scenarios")
+        or perms.get("manage_planning")
+    )
+    if not can_view:
+        raise HTTPException(403, "Permission 'view_scenarios' required")
+
 # --- Schemas ---
 
 class ScenarioCreate(BaseModel):
@@ -30,7 +41,11 @@ class MassUpdateInput(BaseModel):
 # --- Endpoints ---
 
 @router.get("/")
-def list_scenarios(db: Session = Depends(get_db)):
+def list_scenarios(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    _require_scenarios_view_permission(current_user)
     return db.query(Scenario).filter(Scenario.status != 'archived').all()
 
 @router.post("/")
@@ -91,7 +106,12 @@ def delete_scenario(
     return {"status": "deleted"}
 
 @router.get("/{id}/comparison")
-def compare_scenario(id: int, db: Session = Depends(get_db)):
+def compare_scenario(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    _require_scenarios_view_permission(current_user)
     """
     Compare Scenario vs Live
     """

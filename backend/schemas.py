@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Dict, List, Literal
 
 # Auth & Users
@@ -220,9 +220,8 @@ class PositionUpdate(PositionBase):
 
 class PositionResponse(PositionBase):
     id: int
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ApprovalStepBase(BaseModel):
     step_order: int
@@ -242,9 +241,8 @@ class ApprovalStepResponse(ApprovalStepBase):
     id: int
     role_name: Optional[str] = None
     user_name: Optional[str] = None # New!
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class RequestHistoryResponse(BaseModel):
     id: int
@@ -255,9 +253,8 @@ class RequestHistoryResponse(BaseModel):
     action: str
     comment: Optional[str]
     created_at: str
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class PaginatedRequestsResponse(BaseModel):
     items: List[Dict]
@@ -378,9 +375,8 @@ class JobOfferResponse(BaseModel):
     start_date: Optional[str] = None
     signatories: Optional[List[Signatory]] = []
     welcome_content: Optional[WelcomeContent] = None
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class JobOfferTemplateBase(BaseModel):
     name: str
@@ -407,5 +403,4 @@ class JobOfferTemplateResponse(JobOfferTemplateBase):
     id: int
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

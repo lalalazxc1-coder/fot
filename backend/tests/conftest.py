@@ -76,6 +76,7 @@ def admin_role(db):
         "view_financial_reports": True,
         "manage_planning": True,
         "view_market": True,
+        "edit_market": True,
     })
     db.add(role)
     db.commit()
@@ -129,8 +130,17 @@ def auth_headers(client, admin_user):
         "username": "admin@test.com",
         "password": "admin123"
     })
-    token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    assert resp.status_code == 200
+    data = resp.json()
+    token = data.get("access_token") or resp.cookies.get("access_token")
+    csrf = resp.cookies.get("csrf_token")
+
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    if csrf:
+        headers["X-CSRF-Token"] = csrf
+    return headers
 
 
 @pytest.fixture
@@ -140,8 +150,17 @@ def viewer_headers(client, viewer_user):
         "username": "viewer@test.com",
         "password": "viewer123"
     })
-    token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    assert resp.status_code == 200
+    data = resp.json()
+    token = data.get("access_token") or resp.cookies.get("access_token")
+    csrf = resp.cookies.get("csrf_token")
+
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    if csrf:
+        headers["X-CSRF-Token"] = csrf
+    return headers
 
 
 @pytest.fixture

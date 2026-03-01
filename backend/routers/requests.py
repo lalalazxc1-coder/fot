@@ -23,8 +23,18 @@ def check_step_condition(step, req_data) -> bool:
 
 router = APIRouter(prefix="/api/requests", tags=["requests"])
 
+
+def _is_admin_user(current_user: User) -> bool:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    return bool((current_user.role_rel and current_user.role_rel.name == "Administrator") or perms.get("admin_access"))
+
 @router.post("")
 def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    can_create = bool(perms.get("admin_access") or perms.get("manage_planning") or perms.get("manage_requests"))
+    if not can_create:
+        raise HTTPException(403, "Permission 'manage_planning' required")
+
     # Check if employee exists
     emp = db.get(Employee, data.employee_id)
     if not emp: raise HTTPException(404, "Employee not found")
@@ -283,10 +293,7 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
             is_approver = True
     
     # Check Admin
-    is_admin = False
-    if current_user.role_rel:
-        if current_user.role_rel.name == 'Administrator': is_admin = True
-        if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+    is_admin = _is_admin_user(current_user)
     
     if not is_approver and not is_admin:
         raise HTTPException(403, "You are not the designated approver for this step.")
@@ -400,10 +407,7 @@ def delete_request(req_id: int, db: Session = Depends(get_db), current_user: Use
     # Only Owner can delete pending? Or Admin anywhere?
     if req.requester_id != current_user.id:
          # Check admin
-         is_admin = False
-         if current_user.role_rel:
-            if current_user.role_rel.name == 'Administrator': is_admin = True
-            if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+         is_admin = _is_admin_user(current_user)
          if not is_admin:
              raise HTTPException(403, "Not allowed")
              
@@ -433,10 +437,7 @@ def get_request_analytics(req_id: int, db: Session = Depends(get_db), current_us
         elif step.role_id == current_user.role_id and step.user_id is None:
             can_approve = True
     
-    is_admin = False
-    if current_user.role_rel:
-        if current_user.role_rel.name == 'Administrator': is_admin = True
-        if current_user.role_rel.permissions.get('admin_access'): is_admin = True
+    is_admin = _is_admin_user(current_user)
         
     if not (can_approve or is_admin):
         return None  

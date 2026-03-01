@@ -1,14 +1,14 @@
-
-import requests
-import time
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+import random
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from database.models import IntegrationSettings
 from dependencies import get_db, get_current_active_user
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/integrations/hh", tags=["integrations-hh"])
+logger = logging.getLogger("fot.integrations.hh")
 
 class CandidateSchema(BaseModel):
     id: str
@@ -25,12 +25,10 @@ class CandidateSchema(BaseModel):
 @router.get("/search", response_model=List[CandidateSchema])
 async def search_candidates(
     text: str,
-    area: Optional[int] = 1, 
+    area: Optional[int] = 160,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_active_user)
 ):
-    import httpx
-    
     # 1. We bypass the strict OAuth check for Resumes because HH Resumes API requires 
     # a paid employer account. Instead, for this demo/MVP, we will fetch public vacancies
     # and "invert" them into candidate profiles to provide live market data without 403 errors.
@@ -40,7 +38,7 @@ async def search_candidates(
         "text": text,
         "search_field": "name",
         "per_page": 20,
-        "area": 160  # Default to Almaty for relevance, can be made dynamic
+        "area": area or 160
     }
     
     headers = {
@@ -48,17 +46,30 @@ async def search_candidates(
     }
     
     async with httpx.AsyncClient() as client:
-        resp = await client.get(url, params=params, headers=headers, timeout=10)
-        
+        try:
+            resp = await client.get(url, params=params, headers=headers, timeout=10)
+        except httpx.RequestError:
+            logger.exception("HH search request failed")
+            raise HTTPException(status_code=502, detail="Сервис HH временно недоступен. Попробуйте позже.")
+
         if resp.status_code != 200:
-            raise HTTPException(500, f"HH API Error: {resp.status_code} - {resp.text}")
-            
-        data = resp.json()
+            logger.warning("HH search failed with status %s", resp.status_code)
+            if resp.status_code in {400, 401, 403}:
+                detail = "Не удалось получить данные из HH. Проверьте параметры запроса."
+            elif resp.status_code == 429:
+                detail = "HH временно ограничил количество запросов. Попробуйте позже."
+            else:
+                detail = "Сервис HH временно недоступен. Попробуйте позже."
+            raise HTTPException(status_code=429 if resp.status_code == 429 else 502, detail=detail)
+
+        try:
+            data = resp.json()
+        except ValueError:
+            logger.warning("HH search returned invalid JSON")
+            raise HTTPException(status_code=502, detail="Сервис HH вернул некорректный ответ.")
         
     vacancies = data.get("items", [])
     results = []
-    
-    import random
     
     fake_names = ["Александр", "Мадияр", "Айгерим", "Евгений", "Тимур", "Дана", "Алихан", "Илья", "Алина", "Руслан"]
     fake_surnames = ["И.", "С.", "К.", "М.", "А.", "Н.", "Т.", "В."]

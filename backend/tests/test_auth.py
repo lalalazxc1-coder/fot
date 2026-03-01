@@ -11,7 +11,12 @@ def test_login_success(client, admin_user):
     data = resp.json()
     assert data["full_name"] == "Test Admin"
     assert data["role"] == "Administrator"
-    assert "access_token" in data
+    assert "access_token" not in data
+
+    cookies = resp.cookies
+    assert cookies.get("access_token")
+    assert cookies.get("refresh_token")
+    assert cookies.get("csrf_token")
 
 
 def test_login_wrong_password(client, admin_user):

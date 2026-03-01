@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
+import logging
 
 from dependencies import get_db, require_admin
 from database.models import SalaryConfiguration, User, AuditLog, PlanningPosition, Employee, FinancialRecord
 
 router = APIRouter(prefix="/api/salary-config", tags=["salary-config"])
+logger = logging.getLogger("fot.salary_config")
 
 # --- Models ---
 
@@ -156,7 +158,7 @@ def update_config(
 ):
     config = get_or_create_config(db)
     changes = {}
-    data = update.dict(exclude_unset=True)
+    data = update.model_dump(exclude_unset=True)
     
     for k, v in data.items():
         old_val = getattr(config, k)
@@ -191,8 +193,10 @@ def get_config_history(db: Session = Depends(get_db)):
     for log in logs:
         user_name = "Unknown"
         try:
-            if log.user: user_name = log.user.full_name or log.user.email
-        except Exception: pass
+            if log.user:
+                user_name = log.user.full_name or log.user.email
+        except AttributeError:
+            logger.warning("Salary config history log has invalid user relation", extra={"log_id": log.id})
         result.append({
             "id": log.id, 
             "timestamp": log.timestamp, 

@@ -56,3 +56,8 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def generate_csrf_token() -> str:
+    """Generate a random CSRF token for double-submit protection."""
+    return secrets.token_urlsafe(32)

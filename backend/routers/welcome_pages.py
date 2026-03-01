@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from database.database import get_db
 from database import models
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from dependencies import get_current_active_user
 from database.models import User
@@ -48,8 +48,7 @@ class WelcomePageConfigResponse(BaseModel):
     vision: Optional[str] = None
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def _serialize(cfg: models.WelcomePageConfig) -> dict:
@@ -93,7 +92,7 @@ def create_welcome_page(data: WelcomePageConfigCreate, db: Session = Depends(get
         address=data.address,
         first_day_instructions=data.first_day_instructions or [],
         merch_info=data.merch_info,
-        team_members=[m.dict() for m in (data.team_members or [])],
+        team_members=[m.model_dump() for m in (data.team_members or [])],
         company_description=data.company_description,
         mission=data.mission,
         vision=data.vision,
@@ -120,7 +119,7 @@ def update_welcome_page(config_id: int, data: WelcomePageConfigCreate, db: Sessi
     cfg.address = data.address
     cfg.first_day_instructions = data.first_day_instructions or []
     cfg.merch_info = data.merch_info
-    cfg.team_members = [m.dict() for m in (data.team_members or [])]
+    cfg.team_members = [m.model_dump() for m in (data.team_members or [])]
     cfg.company_description = data.company_description
     cfg.mission = data.mission
     cfg.vision = data.vision

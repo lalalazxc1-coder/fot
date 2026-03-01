@@ -11,16 +11,15 @@ router = APIRouter(prefix="/api/positions", tags=["positions"])
 
 @router.get("/", response_model=List[PositionResponse])
 def get_positions(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # Check view permission
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     has_access = (
         perms.get('admin_access') or 
         perms.get('view_positions') or
-        perms.get('edit_positions') # Edit implies view
+        perms.get('edit_positions')
     )
-    # Positions are often public, so maybe allow everyone? 
-    # If not, uncomment next line:
-    # if not has_access: raise HTTPException(403, "Access Denied")
+    if not has_access:
+        raise HTTPException(403, "Permission 'view_positions' required")
+
     return db.query(Position).all()
 
 @router.post("/", response_model=PositionResponse, dependencies=[Depends(PermissionChecker('edit_positions'))])

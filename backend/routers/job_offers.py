@@ -1,4 +1,5 @@
 import secrets
+import hmac
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -24,7 +25,7 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
     # Resolve welcome_content: from explicit field OR from config_id
     welcome_content = None
     if data.welcome_content:
-        welcome_content = data.welcome_content.dict()
+        welcome_content = data.welcome_content.model_dump()
     elif data.welcome_page_config_id:
         cfg = db.query(WelcomePageConfig).filter(WelcomePageConfig.id == data.welcome_page_config_id).first()
         if cfg:
@@ -59,7 +60,7 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
         welcome_text=data.welcome_text,
         description_text=data.description_text,
         theme_color=data.theme_color,
-        custom_sections=[s.dict() for s in data.custom_sections],
+        custom_sections=[s.model_dump() for s in data.custom_sections],
         probation_period=data.probation_period,
         working_hours=data.working_hours,
         lunch_break=data.lunch_break,
@@ -67,7 +68,7 @@ def create_offer(data: JobOfferCreate, db: Session = Depends(get_db), current_us
         president_name=data.president_name,
         hr_name=data.hr_name,
         start_date=data.start_date,
-        signatories=[s.dict() for s in data.signatories],
+        signatories=[s.model_dump() for s in data.signatories],
         welcome_content=welcome_content,
         status="pending"
     )
@@ -107,7 +108,7 @@ def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_
     offer.welcome_text = data.welcome_text
     offer.description_text = data.description_text
     offer.theme_color = data.theme_color
-    offer.custom_sections = [s.dict() for s in data.custom_sections]
+    offer.custom_sections = [s.model_dump() for s in data.custom_sections]
     offer.probation_period = data.probation_period
     offer.working_hours = data.working_hours
     offer.lunch_break = data.lunch_break
@@ -115,8 +116,8 @@ def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_
     offer.president_name = data.president_name
     offer.hr_name = data.hr_name
     offer.start_date = data.start_date
-    offer.signatories = [s.dict() for s in data.signatories]
-    offer.welcome_content = data.welcome_content.dict() if data.welcome_content else None
+    offer.signatories = [s.model_dump() for s in data.signatories]
+    offer.welcome_content = data.welcome_content.model_dump() if data.welcome_content else None
     
     db.commit()
     db.refresh(offer)
@@ -127,10 +128,17 @@ from utils.rate_limiter import check_rate_limit as _check_rl
 
 PIN_RATE_LIMIT_WINDOW = 900  # 15 minutes
 PIN_RATE_LIMIT_MAX = 5       # max attempts per token
+PIN_ACTION_RATE_LIMIT_WINDOW = 900  # 15 minutes
+PIN_ACTION_RATE_LIMIT_MAX = 5       # max action attempts per token
 
 def _check_pin_rate_limit(token: str) -> bool:
     """Returns True if rate limited. Uses Redis (multi-worker safe)."""
     return _check_rl(f"pin:{token}", PIN_RATE_LIMIT_MAX, PIN_RATE_LIMIT_WINDOW)
+
+
+def _check_pin_action_rate_limit(token: str) -> bool:
+    """Returns True if action PIN checks are rate limited."""
+    return _check_rl(f"pin_action:{token}", PIN_ACTION_RATE_LIMIT_MAX, PIN_ACTION_RATE_LIMIT_WINDOW)
 
 
 @router.get("/public/{token}")
@@ -175,7 +183,7 @@ def unlock_offer_with_pin(token: str, data: PinVerifyRequest, db: Session = Depe
     if _check_pin_rate_limit(token):
         raise HTTPException(status_code=429, detail="Слишком много попыток. Попробуйте позже.")
 
-    if data.pin != offer.access_code:
+    if not hmac.compare_digest(str(data.pin), str(offer.access_code or "")):
         raise HTTPException(status_code=403, detail="Неверный PIN-код")
 
     # PIN верный — возвращаем полные данные
@@ -216,9 +224,12 @@ def job_offer_action(token: str, data: JobOfferActionRequest, db: Session = Depe
     offer = db.query(JobOffer).filter(JobOffer.token == token).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
+
+    if _check_pin_action_rate_limit(token):
+        raise HTTPException(status_code=429, detail="Слишком много попыток. Попробуйте позже.")
     
     # FIX #7: Require PIN verification before action
-    if data.pin != offer.access_code:
+    if not hmac.compare_digest(str(data.pin), str(offer.access_code or "")):
         raise HTTPException(status_code=403, detail="Неверный PIN-код")
     
     if offer.status != "pending":

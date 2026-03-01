@@ -1,12 +1,43 @@
+import logging
 import requests
+from requests import RequestException
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 from pydantic import BaseModel
 from database.models import IntegrationSettings
-from dependencies import get_db, get_current_active_user, require_admin
+from dependencies import get_db, require_admin
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
+logger = logging.getLogger("fot.integrations")
+
+
+def _hh_test_error_message(status_code: int) -> str:
+    if status_code in {400, 401, 403}:
+        return "Не удалось авторизоваться в HH. Проверьте Client ID и Client Secret."
+    if status_code == 429:
+        return "HH временно ограничил количество запросов. Попробуйте позже."
+    if status_code >= 500:
+        return "Сервис HH временно недоступен. Попробуйте позже."
+    return "Не удалось проверить подключение к HH."
+
+
+def _ai_test_error_message(status_code: int) -> str:
+    if status_code in {400, 401, 403}:
+        return "Не удалось авторизоваться у AI-провайдера. Проверьте API ключ и Base URL."
+    if status_code == 429:
+        return "Превышен лимит запросов к AI-провайдеру. Попробуйте позже."
+    if status_code >= 500:
+        return "AI-провайдер временно недоступен. Попробуйте позже."
+    return "Не удалось проверить подключение к AI-провайдеру."
+
+
+def _ai_analyze_error_message(status_code: int) -> str:
+    if status_code in {400, 401, 403}:
+        return "Не удалось выполнить запрос к AI-провайдеру. Проверьте настройки интеграции."
+    if status_code == 429:
+        return "Превышен лимит запросов к AI-провайдеру. Попробуйте позже."
+    return "AI-провайдер временно недоступен. Попробуйте позже."
 
 # --- Schemas ---
 class IntegrationSettingsUpdate(BaseModel):
@@ -68,13 +99,16 @@ def get_integration_settings(db: Session = Depends(get_db), current_user = Depen
             settings.append(new_setting)
             
     for s in settings:
+        s_row = cast(Any, s)
+        s_api_key = s_row.api_key
+        s_client_secret = s_row.client_secret
         response.append({
             "id": s.id,
             "service_name": s.service_name,
             "is_active": s.is_active,
-            "has_api_key": bool(s.api_key),
-            "has_client_secret": bool(s.client_secret),
-            "client_id": s.client_id,
+            "has_api_key": bool(s_api_key),
+            "has_client_secret": bool(s_client_secret),
+            "client_id": s_row.client_id,
             "updated_at": s.updated_at
         })
         
@@ -93,18 +127,19 @@ def update_integration_settings(
     if not setting:
         setting = IntegrationSettings(service_name=data.service_name)
         db.add(setting)
+    setting_row = cast(Any, setting)
     
     # Update fields only if provided (to allow partial updates without re-sending secrets)
     if data.api_key is not None: # Allow clearing if empty string passed? Or explicit null? treating non-None as update
-        setting.api_key = data.api_key
+        setting_row.api_key = data.api_key
     if data.client_id is not None:
-        setting.client_id = data.client_id
+        setting_row.client_id = data.client_id
     if data.client_secret is not None:
-        setting.client_secret = data.client_secret
+        setting_row.client_secret = data.client_secret
         
-    setting.is_active = data.is_active
-    if data.additional_params:
-        setting.additional_params = data.additional_params
+    setting_row.is_active = data.is_active
+    if data.additional_params is not None:
+        setting_row.additional_params = data.additional_params
         
     db.commit()
     db.refresh(setting)
@@ -113,9 +148,9 @@ def update_integration_settings(
         "id": setting.id,
         "service_name": setting.service_name,
         "is_active": setting.is_active,
-        "has_api_key": bool(setting.api_key),
-        "has_client_secret": bool(setting.client_secret),
-        "client_id": setting.client_id,
+        "has_api_key": bool(setting_row.api_key),
+        "has_client_secret": bool(setting_row.client_secret),
+        "client_id": setting_row.client_id,
         "updated_at": setting.updated_at
     }
 
@@ -128,11 +163,15 @@ def test_connection(
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == data.service_name).first()
     if not setting:
         setting = IntegrationSettings(service_name=data.service_name)
+    setting_row = cast(Any, setting)
 
     # Use provided keys if available, else fallback to DB
-    client_id = data.client_id or setting.client_id
-    client_secret = data.client_secret or setting.client_secret
-    api_key = data.api_key or setting.api_key
+    client_id_raw = data.client_id if data.client_id is not None else setting_row.client_id
+    client_secret_raw = data.client_secret if data.client_secret is not None else setting_row.client_secret
+    api_key_raw = data.api_key if data.api_key is not None else setting_row.api_key
+    client_id = str(client_id_raw).strip() if client_id_raw else None
+    client_secret = str(client_secret_raw).strip() if client_secret_raw else None
+    api_key = str(api_key_raw).strip() if api_key_raw else None
 
     if data.service_name == 'hh':
         if not client_id or not client_secret:
@@ -148,25 +187,27 @@ def test_connection(
             }
             # HH requires User-Agent
             headers = {"User-Agent": "FOT-Manager/1.0 (test@example.com)"}
-            
+
             resp = requests.post(token_url, data=payload, headers=headers, timeout=5)
-            
+
             if resp.status_code == 200:
                  return {"success": True, "message": "Connection successful! Token received."}
-            elif resp.status_code == 400 or resp.status_code == 401:
-                 return {"success": False, "message": f"Auth failed from HH: {resp.json().get('error_description', 'Invalid credentials')}"}
-            else:
-                 return {"success": False, "message": f"HH API Error: {resp.status_code}"}
 
-        except Exception as e:
-            return {"success": False, "message": f"Connection error: {str(e)}"}
+            logger.warning("HH test connection failed with status %s", resp.status_code)
+            return {"success": False, "message": _hh_test_error_message(resp.status_code)}
+
+        except RequestException:
+            logger.exception("HH test connection request failed")
+            return {"success": False, "message": "Не удалось подключиться к HH. Попробуйте позже."}
 
     elif data.service_name == 'openai':
         if not api_key:
              return {"success": False, "message": "API Key is required"}
         
         # Determine base URL: Priority: Request param > DB param > default OpenAI
-        base_url = data.base_url or (setting.additional_params or {}).get('base_url') or "https://api.openai.com/v1"
+        setting_params = setting_row.additional_params if isinstance(setting_row.additional_params, dict) else {}
+        raw_base_url = data.base_url or (setting_params or {}).get('base_url') or "https://api.openai.com/v1"
+        base_url = str(raw_base_url)
         
         # Ensure base_url doesn't end with slash for consistency if we append /models
         base_url = base_url.rstrip('/')
@@ -180,19 +221,17 @@ def test_connection(
             # Use /models for testing general connectivity
             test_url = f"{base_url}/models"
             resp = requests.get(test_url, headers=headers, timeout=10)
-            
+
             if resp.status_code == 200:
                 provider = "DeepSeek" if "deepseek" in base_url.lower() else ("OpenRouter" if "openrouter" in base_url.lower() else "AI")
                 return {"success": True, "message": f"Соединение с {provider} успешно установлено!"}
-            else:
-                try:
-                    error_detail = resp.json().get('error', {}).get('message', f"HTTP {resp.status_code}")
-                except Exception:
-                    error_detail = f"HTTP {resp.status_code}"
-                return {"success": False, "message": f"Ошибка {resp.status_code}: {error_detail}"}
-                
-        except Exception as e:
-            return {"success": False, "message": f"Ошибка соединения: {str(e)}"}
+
+            logger.warning("AI test connection failed with status %s", resp.status_code)
+            return {"success": False, "message": _ai_test_error_message(resp.status_code)}
+
+        except RequestException:
+            logger.exception("AI test connection request failed")
+            return {"success": False, "message": "Не удалось подключиться к AI-провайдеру. Попробуйте позже."}
 
     return {"success": False, "message": "Unknown service"}
 
@@ -204,11 +243,16 @@ def ai_analyze(
 ):
     """Real AI Analysis using configured provider"""
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == 'openai').first()
-    if not setting or not setting.api_key:
+    if not setting:
         raise HTTPException(status_code=400, detail="AI Integration not configured")
 
-    api_key = setting.api_key
-    base_url = (setting.additional_params or {}).get('base_url') or "https://api.openai.com/v1"
+    setting_row = cast(Any, setting)
+    api_key = str(setting_row.api_key).strip() if setting_row.api_key else ""
+    if not api_key:
+        raise HTTPException(status_code=400, detail="AI Integration not configured")
+
+    setting_params = setting_row.additional_params if isinstance(setting_row.additional_params, dict) else {}
+    base_url = str((setting_params or {}).get('base_url') or "https://api.openai.com/v1")
     base_url = base_url.rstrip('/')
 
     prompt = f"""
@@ -230,14 +274,14 @@ def ai_analyze(
                 {"role": "user", "content": prompt}
             ]
         }
-        
+
         # response_format only supported by some
         if "openai" in base_url.lower() or "deepseek" in base_url.lower():
              payload["response_format"] = { "type": "json_object" }
 
         # Adjust for OpenRouter/DeepSeek default models
         if "openrouter" in base_url.lower():
-            payload["model"] = "openai/gpt-3.5-turbo" 
+            payload["model"] = "openai/gpt-3.5-turbo"
         elif "deepseek" in base_url.lower():
             payload["model"] = "deepseek-chat"
 
@@ -245,15 +289,23 @@ def ai_analyze(
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        
-        resp = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=30)
-        
+
+        try:
+            resp = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=30)
+        except RequestException:
+            logger.exception("AI analyze request failed")
+            raise HTTPException(status_code=502, detail="AI-провайдер временно недоступен. Попробуйте позже.")
+
         if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=f"AI API Error: {resp.text}")
-            
+            logger.warning("AI analyze failed with status %s", resp.status_code)
+            raise HTTPException(
+                status_code=429 if resp.status_code == 429 else 502,
+                detail=_ai_analyze_error_message(resp.status_code),
+            )
+
         result = resp.json()
         content = result['choices'][0]['message']['content']
-        
+
         import json
         try:
             # Clean possible markdown
@@ -261,11 +313,15 @@ def ai_analyze(
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-            
+
             ai_data = json.loads(content)
             return AnalyzeResponse(**ai_data)
-        except Exception as e:
+        except Exception:
+            logger.info("AI analyze returned non-JSON payload; using fallback response")
             return AnalyzeResponse(analysis=content, match_score=70)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("AI analyze failed unexpectedly")
+        raise HTTPException(status_code=500, detail="Не удалось выполнить анализ кандидата. Попробуйте позже.")

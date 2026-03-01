@@ -3,9 +3,10 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
-from routers.salary import calculate_taxes, solve_gross_from_net, SalaryConfiguration
+from services.salary_service import calculate_taxes, solve_gross_from_net
+from database.models import SalaryConfiguration
 from pydantic import ValidationError
-from routers.salary import SalaryBreakdown
+from routers.salary_config import SalaryBreakdown
 
 # Mock Config
 config = SalaryConfiguration(
