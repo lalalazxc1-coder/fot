@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
 from database.database import get_db
 from database.models import SalaryRequest, User, Employee
 from schemas import SalaryRequestCreate, SalaryRequestUpdate
 from dependencies import get_current_active_user, require_admin
+from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
 
 def check_step_condition(step, req_data) -> bool:
     if not step.condition_type:
@@ -50,6 +50,7 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
             break
     
     current_step_id = first_step.id if first_step else None
+    req_created_at = now_iso()
     
     req = SalaryRequest(
         requester_id=current_user.id,
@@ -60,11 +61,11 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
         reason=data.reason,
         status="pending",
         current_step_id=current_step_id,
-        created_at=datetime.now().strftime("%d.%m.%Y %H:%M")
+        created_at=req_created_at,
+        created_at_dt=to_utc_datetime(req_created_at)
     )
     db.add(req)
-    db.commit()
-    db.refresh(req)
+    db.flush()
     
     # 2. Add History Log
     log = RequestHistory(
@@ -73,7 +74,8 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
         actor_id=current_user.id,
         action="created",
         comment="Created request",
-        created_at=datetime.now().strftime("%d.%m.%Y %H:%M")
+        created_at=req_created_at,
+        created_at_dt=to_utc_datetime(req_created_at)
     )
     db.add(log)
     db.commit()
@@ -96,6 +98,8 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
             users = db.query(User).filter(User.role_id == s.role_id).all()
             for u in users:
                 _notify(db, u.id, f"Создана новая заявка (Ожидает {first_step.label if first_step else '?'})", link="/requests")
+
+    db.commit()
     
     return req
 
@@ -242,7 +246,7 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
                 "actor_branch": actor_branch,
                 "action": h.action,
                 "comment": h.comment,
-                "created_at": h.created_at
+                "created_at": to_iso_utc(h.created_at) or h.created_at
             })
 
         res.append({
@@ -255,7 +259,7 @@ def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100)
             "requested_value": r.requested_value,
             "reason": r.reason,
             "status": r.status,
-            "created_at": r.created_at,
+            "created_at": to_iso_utc(r.created_at) or r.created_at,
             "current_step_label": current_step_label,
             "current_step_type": r.current_step.step_type if r.current_step else "approval",
             "is_final": r.current_step.is_final if r.current_step else False,
@@ -300,6 +304,7 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
 
     # 2. Handle Rejection
     if data.status == 'rejected':
+        rejected_at = now_iso()
         req.status = 'rejected'
         req.current_step_id = None # Workflow ends
         
@@ -310,7 +315,8 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
             actor_id=current_user.id,
             action="rejected",
             comment=data.comment if data.comment else "Отклонено пользователем",
-            created_at=datetime.now().strftime("%d.%m.%Y %H:%M")
+            created_at=rejected_at,
+            created_at_dt=to_utc_datetime(rejected_at)
         )
         db.add(log)
         db.commit()
@@ -318,6 +324,7 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
 
     # 3. Handle Approval
     if data.status == 'approved':
+        approved_action_at = now_iso()
         # Log approval
         log = RequestHistory(
             request_id=req.id,
@@ -325,7 +332,8 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
             actor_id=current_user.id,
             action="approved",
             comment=data.comment if data.comment else "Этап согласован",
-            created_at=datetime.now().strftime("%d.%m.%Y %H:%M")
+            created_at=approved_action_at,
+            created_at_dt=to_utc_datetime(approved_action_at)
         )
         db.add(log)
         
@@ -334,10 +342,10 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
         # Check if final
         if current_step and current_step.is_final:
             req.status = 'approved'
-            req.approved_at = datetime.now().strftime("%d.%m.%Y %H:%M")
+            req.approved_at = now_iso()
+            req.approved_at_dt = to_utc_datetime(req.approved_at)
             req.approver_id = current_user.id
             req.current_step_id = None
-            db.commit()
             response_data = {"status": "approved_final"}
             
         else:
@@ -354,50 +362,51 @@ def update_status(req_id: int, data: SalaryRequestUpdate, db: Session = Depends(
             
             if next_step:
                 req.current_step_id = next_step.id
-                db.commit()
                 response_data = {"status": "moved_to_next_step", "next_step": next_step.label}
             else:
                 # Fallback
                 req.status = 'approved'
                 req.current_step_id = None
-                db.commit()
                 response_data = {"status": "approved_fallback"}
 
         # --- Notifications ---
         if req.status == 'approved':
-             # Notify requester
-             _notify(db, req.requester_id, f"Ваша заявка на {req.employee.full_name} была полностью одобрена!", link="/requests")
-             
-             # Notify those who should be notified on completion
-             notify_steps = db.query(ApprovalStep).filter(ApprovalStep.notify_on_completion == True).all()
-             for ns in notify_steps:
-                 users_to_notify = db.query(User).filter(User.role_id == ns.role_id).all()
-                 for u in users_to_notify:
-                     _notify(db, u.id, f"Заявка на {req.employee.full_name} успешно утверждена.", link="/requests")
-        
+              # Notify requester
+              _notify(db, req.requester_id, f"Ваша заявка на {req.employee.full_name} была полностью одобрена!", link="/requests")
+              
+              # Notify those who should be notified on completion
+              notify_steps = db.query(ApprovalStep).filter(ApprovalStep.notify_on_completion == True).all()
+              for ns in notify_steps:
+                  users_to_notify = db.query(User).filter(User.role_id == ns.role_id).all()
+                  for u in users_to_notify:
+                      _notify(db, u.id, f"Заявка на {req.employee.full_name} успешно утверждена.", link="/requests")
+         
         elif req.current_step_id:
             # Notify people in the NEW current step
-             new_step = db.get(ApprovalStep, req.current_step_id)
-             if new_step:
-                 if new_step.user_id:
-                     _notify(db, new_step.user_id, f"Заявка согласована предыдущим этапом. Теперь ваша очередь: {req.employee.full_name}", link="/requests")
-                 elif new_step.role_id:
-                     users_to_notify = db.query(User).filter(User.role_id == new_step.role_id).all()
-                     for u in users_to_notify:
-                        _notify(db, u.id, f"Заявка согласована предыдущим этапом. Теперь ваша очередь: {req.employee.full_name}", link="/requests")
-        
+              new_step = db.get(ApprovalStep, req.current_step_id)
+              if new_step:
+                  if new_step.user_id:
+                      _notify(db, new_step.user_id, f"Заявка согласована предыдущим этапом. Теперь ваша очередь: {req.employee.full_name}", link="/requests")
+                  elif new_step.role_id:
+                      users_to_notify = db.query(User).filter(User.role_id == new_step.role_id).all()
+                      for u in users_to_notify:
+                         _notify(db, u.id, f"Заявка согласована предыдущим этапом. Теперь ваша очередь: {req.employee.full_name}", link="/requests")
+
+        db.commit()
+         
         return response_data
 
 def _notify(db: Session, user_id: int, message: str, link: str = None):
     from database.models import Notification
+    created_at = now_iso()
     note = Notification(
         user_id=user_id,
         message=message,
-        created_at=datetime.now().strftime("%d.%m.%Y %H:%M"),
+        created_at=created_at,
+        created_at_dt=to_utc_datetime(created_at),
         link=link
     )
     db.add(note)
-    db.commit()
 
 @router.delete("/{req_id}")
 def delete_request(req_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):

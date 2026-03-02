@@ -50,6 +50,8 @@ services:
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?ALLOWED_ORIGINS must be set in .env (e.g. https://your-domain.com)}
+      - TRUSTED_PROXY_IPS=${TRUSTED_PROXY_IPS:?TRUSTED_PROXY_IPS must be set in .env (e.g. 127.0.0.1,172.16.0.0/12)}
+      - FORWARDED_ALLOW_IPS=${FORWARDED_ALLOW_IPS:?FORWARDED_ALLOW_IPS must be set in .env (e.g. 127.0.0.1,172.16.0.0/12)}
       - TZ=Asia/Almaty
       - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-15}

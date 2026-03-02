@@ -7,6 +7,7 @@ from database.database import get_db
 from database.models import MarketData, MarketEntry, User
 from schemas import MarketDataCreate, MarketDataUpdate, MarketEntryCreate, MarketEntryResponse
 from dependencies import get_current_active_user
+from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 logger = logging.getLogger("fot.market")
@@ -39,7 +40,8 @@ def recalculate_stats(db: Session, market_id: int):
         market_item.min_salary = 0
         market_item.max_salary = 0
         market_item.median_salary = 0
-        market_item.updated_at = datetime.now().strftime("%d.%m.%Y")
+        market_item.updated_at = now_iso()
+        market_item.updated_at_dt = to_utc_datetime(market_item.updated_at)
         db.commit()
         return
 
@@ -59,7 +61,8 @@ def recalculate_stats(db: Session, market_id: int):
         median = int((mid1 + mid2) / 2)
     
     market_item.median_salary = median
-    market_item.updated_at = datetime.now().strftime("%d.%m.%Y")
+    market_item.updated_at = now_iso()
+    market_item.updated_at_dt = to_utc_datetime(market_item.updated_at)
     
     # Update source text based on entries count or names
     # Maybe keep it manual or append "Based on X entries"
@@ -70,12 +73,47 @@ def recalculate_stats(db: Session, market_id: int):
 def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     _require_market_view_permission(current_user)
 
-    return db.query(MarketData).options(joinedload(MarketData.entries)).all()
+    items = db.query(MarketData).options(joinedload(MarketData.entries)).all()
+    result = []
+    for item in items:
+        result.append({
+            "id": item.id,
+            "position_title": item.position_title,
+            "branch_id": item.branch_id,
+            "min_salary": item.min_salary,
+            "max_salary": item.max_salary,
+            "median_salary": item.median_salary,
+            "source": item.source,
+            "updated_at": to_iso_utc(item.updated_at) or item.updated_at,
+            "points": [
+                {
+                    "id": e.id,
+                    "market_id": e.market_id,
+                    "company_name": e.company_name,
+                    "salary": e.salary,
+                    "created_at": to_iso_utc(e.created_at) or e.created_at,
+                    "url": e.url,
+                }
+                for e in item.entries
+            ],
+        })
+    return result
 
 @router.get("/{id}/entries", response_model=list[MarketEntryResponse])
 def get_market_entries(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     _require_market_view_permission(current_user)
-    return db.query(MarketEntry).filter(MarketEntry.market_id == id).all()
+    entries = db.query(MarketEntry).filter(MarketEntry.market_id == id).all()
+    return [
+        {
+            "id": e.id,
+            "market_id": e.market_id,
+            "company_name": e.company_name,
+            "salary": e.salary,
+            "created_at": to_iso_utc(e.created_at) or e.created_at,
+            "url": e.url,
+        }
+        for e in entries
+    ]
 
 @router.post("")
 def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
@@ -92,6 +130,8 @@ def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), cu
     
     if existing:
         return existing
+
+    now = now_iso()
     
     new_data = MarketData(
         position_title=data.position_title,
@@ -100,7 +140,8 @@ def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), cu
         max_salary=data.max_salary,
         median_salary=data.median_salary,
         source=data.source or "System",
-        updated_at=datetime.now().strftime("%d.%m.%Y")
+        updated_at=now,
+        updated_at_dt=to_utc_datetime(now)
     )
     db.add(new_data)
     db.commit()
@@ -114,12 +155,15 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
     market_item = db.get(MarketData, entry.market_id)
     if not market_item:
         raise HTTPException(404, "Market data not found")
+
+    now = now_iso()
         
     new_entry = MarketEntry(
         market_id=entry.market_id,
         company_name=entry.company_name,
         salary=entry.salary,
-        created_at=datetime.now().strftime("%d.%m.%Y %H:%M")
+        created_at=now,
+        created_at_dt=to_utc_datetime(now)
     )
     db.add(new_entry)
     db.commit()
@@ -128,7 +172,14 @@ def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), cu
     # Recalculate
     recalculate_stats(db, entry.market_id)
     
-    return new_entry
+    return {
+        "id": new_entry.id,
+        "market_id": new_entry.market_id,
+        "company_name": new_entry.company_name,
+        "salary": new_entry.salary,
+        "created_at": to_iso_utc(new_entry.created_at) or new_entry.created_at,
+        "url": new_entry.url,
+    }
 
 @router.delete("/entries/{id}")
 def delete_market_entry(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
@@ -227,12 +278,14 @@ async def sync_market_with_hh(id: int, db: Session = Depends(get_db), current_us
         
         emp = vac.get("employer", {}).get("name", "HH.kz")
         company_name = f"HH.kz: {emp[:30]}"
+        now = now_iso()
         
         entry = MarketEntry(
             market_id=id,
             company_name=company_name,
             salary=val,
-            created_at=datetime.now().strftime("%d.%m.%Y %H:%M"),
+            created_at=now,
+            created_at_dt=to_utc_datetime(now),
             url=vac.get("alternate_url")
         )
         db.add(entry)

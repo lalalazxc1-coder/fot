@@ -84,6 +84,8 @@ class FinancialRecord(Base):
     employee_id = Column(Integer, ForeignKey("employees.id"))
     created_at = Column(String, default=lambda: datetime.now().isoformat())
     last_raise_date = Column(String, nullable=True)  # FIX #M5: отдельное поле для даты повышения зарплаты
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
+    last_raise_date_dt = Column(DateTime(timezone=True), nullable=True)
     month = Column(String)
     
     # Base Salary
@@ -190,6 +192,7 @@ class SalaryRequest(Base):
     reason = Column(String)
     status = Column(String, default="pending") # pending, approved, rejected
     created_at = Column(String)
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
     
     requester = relationship("User", foreign_keys=[requester_id])
     employee = relationship("Employee")
@@ -197,6 +200,7 @@ class SalaryRequest(Base):
     # Approval info
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Last approver or deprecated if using history
     approved_at = Column(String, nullable=True)
+    approved_at_dt = Column(DateTime(timezone=True), nullable=True)
     approver = relationship("User", foreign_keys=[approver_id])
     
     # NEW: Workflow state
@@ -237,6 +241,7 @@ class RequestHistory(Base):
     action = Column(String) # 'created', 'approved', 'rejected'
     comment = Column(String)
     created_at = Column(String)
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
     
     request = relationship("SalaryRequest", back_populates="history")
     actor = relationship("User")
@@ -249,6 +254,7 @@ class Notification(Base):
     message = Column(String)
     is_read = Column(Boolean, default=False)
     created_at = Column(String)
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
     link = Column(String, nullable=True)
     
     user = relationship("User")
@@ -263,6 +269,7 @@ class MarketData(Base):
     median_salary = Column(Integer, default=0)
     source = Column(String) # Generic source name or kept for legacy
     updated_at = Column(String)
+    updated_at_dt = Column(DateTime(timezone=True), nullable=True)
 
     branch = relationship("OrganizationUnit")
     entries = relationship("MarketEntry", back_populates="market_data", cascade="all, delete-orphan")
@@ -274,6 +281,7 @@ class MarketEntry(Base):
     company_name = Column(String)
     salary = Column(Integer)
     created_at = Column(String)
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
     url = Column(String, nullable=True) # Link to vacancy
 
     market_data = relationship("MarketData", back_populates="entries")
@@ -304,6 +312,7 @@ class SalaryConfiguration(Base):
     ipn_deduction_mrp = Column(Integer, default=14)
     
     updated_at = Column(String)
+    updated_at_dt = Column(DateTime(timezone=True), nullable=True)
     updated_by = Column(Integer, nullable=True)
 
 class IntegrationSettings(Base):
@@ -316,6 +325,7 @@ class IntegrationSettings(Base):
     is_active = Column(Boolean, default=False)
     additional_params = Column(JSON, default={}) # For future flexibility
     updated_at = Column(String, default=lambda: datetime.now().isoformat())
+    updated_at_dt = Column(DateTime(timezone=True), nullable=True)
 
 class JobOffer(Base):
     __tablename__ = "job_offers"
@@ -340,6 +350,7 @@ class JobOffer(Base):
     valid_until = Column(String, nullable=True)
     status = Column(String, default="pending") # pending, accepted, rejected, expired
     created_at = Column(String, default=lambda: datetime.now().isoformat())
+    created_at_dt = Column(DateTime(timezone=True), nullable=True)
     
     # Metadata for the offer page
     company_name = Column(String, nullable=True)

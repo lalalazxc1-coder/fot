@@ -2,11 +2,15 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const getBaseUrl = () => {
-  // Use relative path by default to leverage Vite's proxy and avoid cross-origin cookie issues
   const url = import.meta.env.VITE_API_URL || '';
-  if (!url) return '/api';
-  if (url.endsWith('/api')) return url;
-  return `${url}/api`;
+
+  if (!url || url.includes('backend:8000')) {
+    return '/api';
+  } else if (url.endsWith('/api')) {
+    return url;
+  } else {
+    return `${url}/api`;
+  }
 };
 
 const api = axios.create({

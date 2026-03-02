@@ -43,13 +43,15 @@ services:
       - ENVIRONMENT=development
       - LOG_LEVEL=DEBUG
       - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - TRUSTED_PROXY_IPS=127.0.0.1,::1,172.16.0.0/12
+      - FORWARDED_ALLOW_IPS=127.0.0.1,172.16.0.0/12
       - TZ=Asia/Almaty
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
     command: >
-      /bin/sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips '*'"
+      /bin/sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips ${FORWARDED_ALLOW_IPS:-127.0.0.1}"
     depends_on:
       db:
         condition: service_healthy

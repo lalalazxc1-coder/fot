@@ -10,6 +10,7 @@ import { Notification } from '../hooks/useAdmin';
 import { NavBar } from './ui/tubelight-navbar';
 import { ExpandableTabs } from './ui/expandable-tabs';
 import { useOnClickOutside } from 'usehooks-ts';
+import { formatDateTime } from '../utils';
 
 type User = {
     full_name: string;
@@ -319,7 +320,7 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                                             >
                                                 <div className="text-sm text-slate-700">{n.message}</div>
                                                 <div className="text-[10px] text-slate-400 mt-1 flex justify-between items-center">
-                                                    <span>{n.created_at}</span>
+                                                    <span>{formatDateTime(n.created_at)}</span>
                                                     {!n.is_read && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>}
                                                 </div>
                                             </div>

@@ -19,6 +19,14 @@ export default defineConfig({
             '/api': {
                 target: process.env.BACKEND_URL || 'http://localhost:8000',
                 changeOrigin: true,
+                // FIX: Ensure redirects don't point to internal Docker hostnames
+                configure: (proxy, options) => {
+                    proxy.on('proxyRes', (proxyRes, req, res) => {
+                        if (proxyRes.headers.location) {
+                            proxyRes.headers.location = proxyRes.headers.location.replace('http://backend:8000', '');
+                        }
+                    });
+                }
             },
             '/docs': {
                 target: process.env.BACKEND_URL || 'http://localhost:8000',

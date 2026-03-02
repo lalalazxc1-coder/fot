@@ -34,18 +34,50 @@ def parse_date_flexible(date_str: str | None) -> datetime | None:
     """
     if not date_str:
         return None
+
+    value = date_str.strip()
+    if not value:
+        return None
+
+    iso_candidate = value.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(iso_candidate)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError:
+        pass
+
     formats = [
-        "%Y-%m-%dT%H:%M:%S.%f%z",  # ISO с timezone
-        "%Y-%m-%dT%H:%M:%S%z",      # ISO с timezone (без µs)
-        "%Y-%m-%dT%H:%M:%S.%f",     # ISO без timezone
-        "%Y-%m-%dT%H:%M:%S",        # ISO без timezone (без µs)
-        "%d.%m.%Y %H:%M",           # Старый формат проекта
-        "%d.%m.%Y",                  # Дата без времени
-        "%Y-%m-%d",                  # ISO дата
+        "%d.%m.%Y %H:%M",
+        "%d.%m.%Y",
+        "%Y-%m-%d",
     ]
     for fmt in formats:
         try:
-            return datetime.strptime(date_str, fmt)
+            dt = datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+            return dt
         except ValueError:
             continue
+
     return None
+
+
+def to_utc_datetime(value: str | datetime | None) -> datetime | None:
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt
+
+    return parse_date_flexible(value)
+
+
+def to_iso_utc(value: str | datetime | None) -> str | None:
+    dt = to_utc_datetime(value)
+    return dt.isoformat() if dt else None

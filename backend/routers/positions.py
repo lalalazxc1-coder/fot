@@ -9,7 +9,7 @@ from dependencies import get_current_active_user, PermissionChecker
 
 router = APIRouter(prefix="/api/positions", tags=["positions"])
 
-@router.get("/", response_model=List[PositionResponse])
+@router.get("", response_model=List[PositionResponse])
 def get_positions(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     has_access = (
@@ -22,7 +22,7 @@ def get_positions(db: Session = Depends(get_db), current_user: User = Depends(ge
 
     return db.query(Position).all()
 
-@router.post("/", response_model=PositionResponse, dependencies=[Depends(PermissionChecker('edit_positions'))])
+@router.post("", response_model=PositionResponse, dependencies=[Depends(PermissionChecker('edit_positions'))])
 def create_position(data: PositionCreate, db: Session = Depends(get_db)):
     # Check duplicate
     existing = db.query(Position).filter(Position.title == data.title).first()

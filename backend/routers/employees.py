@@ -7,6 +7,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from io import BytesIO
+from utils.date_utils import to_iso_utc
 
 from database.database import get_db
 from database.models import User, AuditLog, Employee, OrganizationUnit, Position, FinancialRecord
@@ -237,7 +238,7 @@ def get_employee_history(
         
         for k in sorted_keys:
              formatted_logs.append({
-                "date": log.timestamp,
+                "date": to_iso_utc(log.timestamp) or log.timestamp,
                 "user": user_name,
                 "field": k,
                 "oldVal": str(log.old_values.get(k, '') if log.old_values else ''),
@@ -245,4 +246,3 @@ def get_employee_history(
             })
             
     return formatted_logs
-

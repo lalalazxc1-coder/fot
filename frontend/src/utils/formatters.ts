@@ -47,6 +47,9 @@ export const parseMoney = (value: string): number => {
  */
 export const formatDate = (date: string | Date): string => {
     const d = typeof date === 'string' ? new Date(date) : date;
+    if (Number.isNaN(d.getTime())) {
+        return typeof date === 'string' ? date : '—';
+    }
     return d.toLocaleDateString('ru-RU');
 };
 
@@ -57,6 +60,9 @@ export const formatDate = (date: string | Date): string => {
  */
 export const formatDateTime = (date: string | Date): string => {
     const d = typeof date === 'string' ? new Date(date) : date;
+    if (Number.isNaN(d.getTime())) {
+        return typeof date === 'string' ? date : '—';
+    }
     return d.toLocaleString('ru-RU');
 };
 

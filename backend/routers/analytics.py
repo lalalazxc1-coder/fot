@@ -686,6 +686,7 @@ def get_retention_risk(
             if 'retention_market_gap_percent' in config_map:
                 GAP_LIMIT = float(config_map['retention_market_gap_percent'])
         except Exception as e:
+            db.rollback()
             logger.warning("Could not fetch analytics config, using defaults: %s", e)
 
         # 1. Fetch Active Employees with Position and OrgUnit
@@ -734,10 +735,11 @@ def get_retention_risk(
             if not fr: continue
             
             # Stagnation
-            # Parse created_at. If None (legacy), assume old (2 years ago)
+            # Prefer last_raise_date as source of truth; fallback to created_at for legacy records.
             created_dt = now - timedelta(days=365*2)
-            if fr.created_at:
-                try: created_dt = datetime.fromisoformat(fr.created_at)
+            source_date = fr.last_raise_date or fr.created_at
+            if source_date:
+                try: created_dt = datetime.fromisoformat(source_date)
                 except (ValueError, TypeError): pass
             
             delta = relativedelta(now, created_dt)
@@ -772,7 +774,7 @@ def get_retention_risk(
                     "full_name": emp.full_name,
                     "position": emp.position.title if emp.position else "-",
                     "branch": emp.org_unit.name if emp.org_unit else "-",
-                    "last_update": fr.created_at or created_dt.isoformat(),
+                    "last_update": source_date or created_dt.isoformat(),
                     "months_stagnant": months_stagnant,
                     "current_salary": float(current_salary),
                     "market_median": float(median),

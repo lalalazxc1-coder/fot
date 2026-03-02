@@ -8,6 +8,7 @@ from sqlalchemy import desc
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from database.models import SalaryConfiguration, Position, Employee, FinancialRecord, PlanningPosition, AuditLog, User, OrganizationUnit
+from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
 
 # --- Tax Calculation Logic (Decimal precision) ---
 
@@ -187,9 +188,13 @@ def sync_employee_financials(db: Session, plan: PlanningPosition, changes: dict,
                         user_id=user.id,
                         target_entity="employee",
                         target_entity_id=emp.id,
-                        timestamp=audit_ts,
+                        timestamp=to_iso_utc(audit_ts) or audit_ts,
                         old_values={k: v['old'] for k,v in emp_audit_changes.items()},
                         new_values={k: v['new'] for k,v in emp_audit_changes.items()}
                     ))
+
+                if emp_audit_changes:
+                    fin.last_raise_date = now_iso()
+                    fin.last_raise_date_dt = to_utc_datetime(fin.last_raise_date)
     
     return sync_count

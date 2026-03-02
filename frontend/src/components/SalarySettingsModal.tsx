@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { Button, Input } from './ui-mocks';
 import { SalaryConfig, DEFAULT_CONFIG } from '../utils/salary';
 import { HelpCircle } from 'lucide-react';
+import { formatDateTime } from '../utils';
 
 type SalaryHistoryLog = {
     id: number;
@@ -108,7 +109,7 @@ export default function SalarySettingsModal({ isOpen, onClose }: { isOpen: boole
                         <div key={log.id} className="bg-white p-3 rounded-lg border border-slate-200 text-xs shadow-sm">
                             <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
                                 <span className="font-bold text-slate-700">{log.user || 'Система'}</span>
-                                <span className="text-slate-400">{new Date(log.timestamp).toLocaleString()}</span>
+                                <span className="text-slate-400">{formatDateTime(log.timestamp)}</span>
                             </div>
                             <div className="space-y-1">
                                 {Object.keys(log.new_values || {}).map(key => {

@@ -125,7 +125,7 @@ class SalaryRequestCreate(BaseModel):
     reason: str = Field(..., min_length=3, max_length=2000)
 
 class SalaryRequestUpdate(BaseModel):
-    status: str # 'approved', 'rejected'
+    status: Literal['approved', 'rejected']
     comment: Optional[str] = None
 
 class MarketEntryCreate(BaseModel):

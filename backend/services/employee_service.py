@@ -3,6 +3,7 @@ from sqlalchemy import desc, or_
 from fastapi import HTTPException
 from datetime import datetime
 from typing import List, Optional, Any
+from utils.date_utils import now_iso
 
 from database.models import Employee, FinancialRecord, Position, OrganizationUnit, AuditLog, User
 from schemas import EmployeeCreate, FinancialUpdate, EmployeeUpdate, EmpDetailsUpdate
@@ -118,7 +119,11 @@ class EmployeeService:
                 "hire_date": emp.hire_date,
                 "gender": emp.gender,
                 "dob": emp.dob,
-                "last_raise_date": fin.created_at.split('T')[0] if fin and fin.created_at else None
+                "last_raise_date": (
+                    (fin.last_raise_date or fin.created_at).split('T')[0]
+                    if fin and (fin.last_raise_date or fin.created_at)
+                    else None
+                )
             })
         return results
 
@@ -158,8 +163,8 @@ class EmployeeService:
         total_g = data.base_gross + data.kpi_gross + data.bonus_gross
         
         
-        # Determine created_at for the financial record
-        created_at_val = datetime.now().isoformat()
+        # Determine last raise date for the financial record
+        created_at_val = now_iso()
         if data.last_raise_date:
             # If only date provided, append time to make it ISO-ish
             if len(data.last_raise_date) == 10: # YYYY-MM-DD
@@ -170,6 +175,9 @@ class EmployeeService:
         fin = FinancialRecord(
             employee_id=new_emp.id,
             created_at=created_at_val,
+            last_raise_date=created_at_val,
+            created_at_dt=datetime.fromisoformat(created_at_val),
+            last_raise_date_dt=datetime.fromisoformat(created_at_val),
             month=datetime.now().strftime("%Y-%m"),
             base_net=data.base_net, base_gross=data.base_gross,
             kpi_net=data.kpi_net, kpi_gross=data.kpi_gross,
@@ -240,6 +248,13 @@ class EmployeeService:
         fin_record.total_payment = fin_record.total_net
 
         if changes:
+             prev_raise_date = fin_record.last_raise_date
+             fin_record.last_raise_date = now_iso()
+             fin_record.last_raise_date_dt = datetime.fromisoformat(fin_record.last_raise_date)
+             changes['Дата изменения ЗП'] = {
+                 'old': prev_raise_date.split('T')[0] if prev_raise_date else None,
+                 'new': fin_record.last_raise_date.split('T')[0]
+             }
              EmployeeService._log_changes_dict(db, user, emp_id, changes)
              db.commit()
              
@@ -310,7 +325,9 @@ class EmployeeService:
                 kpi_net=data.kpi_net, kpi_gross=data.kpi_gross,
                 bonus_net=data.bonus_net, bonus_gross=data.bonus_gross,
                 total_net=total_n, total_gross=total_g,
-                base_salary=data.base_net, kpi_amount=data.kpi_net, total_payment=total_n
+                base_salary=data.base_net, kpi_amount=data.kpi_net, total_payment=total_n,
+                created_at=now_iso(),
+                created_at_dt=datetime.fromisoformat(now_iso())
              )
              db.add(fin)
              changes['Финансы'] = {'old': 'Не было', 'new': 'Создана запись'}
@@ -333,17 +350,22 @@ class EmployeeService:
             fin.base_salary = fin.base_net; fin.kpi_amount = fin.kpi_net; fin.total_payment = fin.total_net
 
         if data.last_raise_date:
-            created_at_val = datetime.now().isoformat()
+            created_at_val = now_iso()
             if len(data.last_raise_date) == 10:
                  created_at_val = f"{data.last_raise_date}T12:00:00.000000"
             else:
                  created_at_val = data.last_raise_date
 
-            old_str = fin.created_at.split('T')[0] if fin.created_at else ''
+            old_dt = fin.last_raise_date or fin.created_at
+            old_str = old_dt.split('T')[0] if old_dt else ''
             new_str = created_at_val.split('T')[0]
             if old_str != new_str:
                  changes['Дата изменения ЗП'] = {'old': old_str, 'new': new_str}
-                 fin.created_at = created_at_val
+                 fin.last_raise_date = created_at_val
+                 try:
+                     fin.last_raise_date_dt = datetime.fromisoformat(created_at_val)
+                 except (ValueError, TypeError):
+                     fin.last_raise_date_dt = None
 
         if changes:
              EmployeeService._log_changes_dict(db, user, emp_id, changes)

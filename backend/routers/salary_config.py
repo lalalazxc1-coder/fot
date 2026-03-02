@@ -7,6 +7,7 @@ import logging
 
 from dependencies import get_db, require_admin
 from database.models import SalaryConfiguration, User, AuditLog, PlanningPosition, Employee, FinancialRecord
+from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
 
 router = APIRouter(prefix="/api/salary-config", tags=["salary-config"])
 logger = logging.getLogger("fot.salary_config")
@@ -62,6 +63,7 @@ class SalaryBreakdown(BaseModel):
 def get_or_create_config(db: Session) -> SalaryConfiguration:
     config = db.query(SalaryConfiguration).first()
     if not config:
+        now = now_iso()
         config = SalaryConfiguration(
             mrp=4325,
             mzp=85000,
@@ -76,7 +78,8 @@ def get_or_create_config(db: Session) -> SalaryConfiguration:
             opvr_limit_mzp=50,
             vosms_limit_mzp=10,
             ipn_deduction_mrp=14,
-            updated_at=datetime.now().isoformat()
+            updated_at=now,
+            updated_at_dt=to_utc_datetime(now),
         )
         db.add(config)
         db.commit()
@@ -146,7 +149,10 @@ def recalculate_database(config_id: int, user_id: int):
 # --- Endpoints ---
 
 @router.get("/")
-def get_config(db: Session = Depends(get_db)):
+def get_config(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     return get_or_create_config(db)
 
 @router.post("/")
@@ -167,14 +173,16 @@ def update_config(
             changes[k] = {'old': old_val, 'new': v}
             
     if changes:
-        config.updated_at = datetime.now().isoformat()
+        now = now_iso()
+        config.updated_at = now
+        config.updated_at_dt = to_utc_datetime(now)
         config.updated_by = current_user.id
         
         db.add(AuditLog(
             user_id=current_user.id,
             target_entity="salary_config",
             target_entity_id=config.id,
-            timestamp=datetime.now().isoformat(),
+            timestamp=now,
             old_values={k: v['old'] for k,v in changes.items()},
             new_values={k: v['new'] for k,v in changes.items()}
         ))
@@ -187,7 +195,10 @@ def update_config(
     return config
 
 @router.get("/history")
-def get_config_history(db: Session = Depends(get_db)):
+def get_config_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     logs = db.query(AuditLog).filter(AuditLog.target_entity == "salary_config").order_by(AuditLog.timestamp.desc()).limit(50).all()
     result = []
     for log in logs:
@@ -199,7 +210,7 @@ def get_config_history(db: Session = Depends(get_db)):
             logger.warning("Salary config history log has invalid user relation", extra={"log_id": log.id})
         result.append({
             "id": log.id, 
-            "timestamp": log.timestamp, 
+            "timestamp": to_iso_utc(log.timestamp) or log.timestamp, 
             "user": user_name,
             "old_values": log.old_values, 
             "new_values": log.new_values

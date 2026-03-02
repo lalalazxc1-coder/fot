@@ -1,6 +1,7 @@
 # Глубокий аудит проекта (Backend + Frontend + Infra)
 
-Дата: 2026-03-01
+Дата первичного аудита: 2026-03-01
+Обновление статуса: 2026-03-02
 
 ## Что проверено
 
@@ -9,12 +10,14 @@
 - Инфраструктура (Docker, Caddy, Nginx, env-конфиги, CORS, proxy).
 - Миграции Alembic (цепочка ревизий, консистентность).
 - Валидация качества через запуск:
-  - `backend`: `pytest` -> **64 passed**
+  - `backend`: `pytest` -> **75 passed**
   - `frontend`: `npm run build` -> **успешно** (есть warning про deprecated CJS API Vite)
 
 ## Краткий вывод
 
-Проект в рабочем состоянии (тесты и сборка проходят), но есть критичные проблемы в контроле доступа и в консистентности данных по датам.
+Проект в рабочем состоянии (тесты и сборка проходят).
+
+На 2026-03-02 закрыты все задачи P0 и часть задач P1/P2: исправлены критичные пробелы RBAC, закрыт публичный read-доступ к salary config, устранено доверие к `X-Forwarded-For` без trust boundary, переведена retention-логика на `last_raise_date`, убран per-item `commit()` в `_notify`, добавлены enum/allowlist ограничения.
 
 ## Найденные проблемы
 
@@ -81,22 +84,22 @@
 
 ### P0 (срочно, блокеры релиза)
 
-- [ ] Закрыть все write-endpoints `scenarios` проверкой прав (`admin_access`/`manage_planning`/`view_scenarios` по политике).
-- [ ] Добавить `require_admin` (или эквивалент) на `GET /api/salary-config/` и `GET /api/salary-config/history`.
-- [ ] Добавить backend тесты на отрицательные кейсы RBAC для `scenarios` и `salary-config`.
+- [x] Закрыть все write-endpoints `scenarios` проверкой прав (`admin_access`/`manage_planning`/`view_scenarios` по политике).
+- [x] Добавить `require_admin` (или эквивалент) на `GET /api/salary-config/` и `GET /api/salary-config/history`.
+- [x] Добавить backend тесты на отрицательные кейсы RBAC для `scenarios` и `salary-config`.
 
 ### P1 (безопасность и корректность данных)
 
-- [ ] Ограничить доверенные прокси для `X-Forwarded-For` (убрать `'*'`, задать whitelist).
+- [x] Ограничить доверенные прокси для `X-Forwarded-For` (убрать `'*'`, задать whitelist).
 - [ ] Перевести ключевые date/time поля с `str` на `DateTime` (+ миграции + безопасная обратная совместимость).
-- [ ] Переключить retention-логику на `last_raise_date`, а не `created_at`.
+- [x] Переключить retention-логику на `last_raise_date`, а не `created_at`.
 - [ ] Нормализовать формат дат в API (ISO 8601 везде).
 
 ### P2 (надежность и производительность)
 
-- [ ] Переделать `_notify` на batched insert + единый `commit` в рамках операции.
-- [ ] Ввести enum/валидацию для `SalaryRequestUpdate.status`.
-- [ ] Добавить allowlist полей в `mass_update_scenario`.
+- [x] Переделать `_notify` на batched insert + единый `commit` в рамках операции.
+- [x] Ввести enum/валидацию для `SalaryRequestUpdate.status`.
+- [x] Добавить allowlist полей в `mass_update_scenario`.
 - [ ] Добавить индексы под тяжелые аналитические запросы (после `EXPLAIN`).
 
 ### P3 (качество и техдолг)
@@ -108,8 +111,8 @@
 
 ## Критерии приемки (Definition of Done)
 
-- [ ] Все P0 задачи закрыты.
-- [ ] Добавлены автотесты на новые ограничения доступа.
-- [ ] `pytest` зеленый, `npm run build` зеленый.
-- [ ] Нет незащищенных write-endpoints для финансовых сущностей.
+- [x] Все P0 задачи закрыты.
+- [x] Добавлены автотесты на новые ограничения доступа.
+- [x] `pytest` зеленый, `npm run build` зеленый.
+- [x] Нет незащищенных write-endpoints для финансовых сущностей.
 - [ ] Документированы изменения в `CHANGELOG`/релиз-нотах.

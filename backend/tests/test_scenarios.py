@@ -100,6 +100,30 @@ def test_mass_update_with_branch_filter(client, auth_headers, planning_position,
     assert resp.status_code == 200
 
 
+def test_mass_update_rejects_unknown_field(client, auth_headers, planning_position, salary_config):
+    create = client.post("/api/scenarios/", headers=auth_headers, json={"name": "Unknown Field Test"})
+    sc_id = create.json()["id"]
+
+    resp = client.post(f"/api/scenarios/{sc_id}/apply-change", headers=auth_headers, json={
+        "field": "unknown_field",
+        "change_type": "percent",
+        "value": 5.0,
+    })
+    assert resp.status_code == 422
+
+
+def test_mass_update_rejects_unknown_change_type(client, auth_headers, planning_position, salary_config):
+    create = client.post("/api/scenarios/", headers=auth_headers, json={"name": "Unknown Change Type Test"})
+    sc_id = create.json()["id"]
+
+    resp = client.post(f"/api/scenarios/{sc_id}/apply-change", headers=auth_headers, json={
+        "field": "base_net",
+        "change_type": "multiply",
+        "value": 5.0,
+    })
+    assert resp.status_code == 422
+
+
 def test_commit_scenario(client, auth_headers, planning_position, salary_config):
     create = client.post("/api/scenarios/", headers=auth_headers, json={"name": "Commit Test"})
     sc_id = create.json()["id"]

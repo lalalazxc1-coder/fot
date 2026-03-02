@@ -8,19 +8,28 @@ from routers.auth import get_current_active_user  # noqa: F401 — kept for back
 from dependencies import get_current_active_user  # NEW-5: правильный источник
 from services.salary_service import calculate_taxes, solve_gross_from_net, sync_employee_financials
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Literal
+from utils.date_utils import now_iso
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios"])
 
 
-def _require_scenarios_view_permission(current_user: User) -> None:
+def _has_scenarios_access(current_user: User) -> bool:
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
-    can_view = bool(
+    return bool(
         perms.get("admin_access")
         or perms.get("view_scenarios")
         or perms.get("manage_planning")
     )
-    if not can_view:
+
+
+def _require_scenarios_view_permission(current_user: User) -> None:
+    if not _has_scenarios_access(current_user):
+        raise HTTPException(403, "Permission 'view_scenarios' required")
+
+
+def _require_scenarios_write_permission(current_user: User) -> None:
+    if not _has_scenarios_access(current_user):
         raise HTTPException(403, "Permission 'view_scenarios' required")
 
 # --- Schemas ---
@@ -34,8 +43,8 @@ class MassUpdateInput(BaseModel):
     target_department_id: Optional[int] = None
     position_filter: Optional[str] = None
     
-    field: str # 'base_net', 'base_gross', etc.
-    change_type: str # 'percent', 'fixed_add', 'fixed_set'
+    field: Literal['base_net', 'base_gross', 'kpi_net', 'kpi_gross', 'bonus_net', 'bonus_gross']
+    change_type: Literal['percent', 'fixed_add', 'fixed_set']
     value: float
 
 # --- Endpoints ---
@@ -54,12 +63,13 @@ def create_scenario(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    _require_scenarios_write_permission(current_user)
     # 1. Create Scenario Record
     scenario = Scenario(
         name=input.name,
         description=input.description,
         status="draft",
-        created_at=datetime.now().isoformat()
+        created_at=now_iso()
     )
     db.add(scenario)
     db.commit()
@@ -97,6 +107,7 @@ def delete_scenario(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    _require_scenarios_write_permission(current_user)
     scenario = db.get(Scenario, id)
     if not scenario: raise HTTPException(404, "Scenario not found")
     
@@ -196,6 +207,7 @@ def mass_update_scenario(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    _require_scenarios_write_permission(current_user)
     """
     Mass update rows in a scenario.
     Example: Increase base_net by 10% for Department X.
@@ -267,6 +279,7 @@ def commit_scenario(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    _require_scenarios_write_permission(current_user)
     """
     Apply Scenario to Live Budget.
     1. Backup Live to 'Archived {Date}'
@@ -301,7 +314,7 @@ def commit_scenario(
     
     # 2. Smart Merge Scenario to Live
     scenario_rows = db.query(PlanningPosition).filter(PlanningPosition.scenario_id == id).all()
-    now_ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+    now_ts = now_iso()
     sync_total = 0
     
     # Map existing live positions by a unique key to identify updates vs news

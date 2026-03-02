@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from io import BytesIO
 import logging
+from utils.date_utils import now_iso, to_iso_utc
 
 logger = logging.getLogger("fot.planning")
 
@@ -145,7 +146,7 @@ def create_plan(plan: PlanCreate, db: Session = Depends(get_db), current_user: U
     db.query(AuditLog).filter_by(target_entity="planning", target_entity_id=new_plan.id).delete()
     
     # Audit
-    ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+    ts = now_iso()
     audit = AuditLog(
         user_id=current_user.id,
         target_entity="planning",
@@ -208,7 +209,7 @@ def update_plan(plan_id: int, plan: PlanUpdate, db: Session = Depends(get_db), c
             setattr(db_plan, db_key, val)
             
     if changes:
-        ts = datetime.now().strftime("%d.%m.%Y %H:%M")
+        ts = now_iso()
         audit = AuditLog(
             user_id=current_user.id,
             target_entity="planning",
@@ -268,7 +269,7 @@ def get_plan_history(plan_id: int, db: Session = Depends(get_db), current_user: 
         
         for k in keys:
              formatted_logs.append({
-                "date": log.timestamp,
+                "date": to_iso_utc(log.timestamp) or log.timestamp,
                 "user": user_map.get(log.user_id, "Unknown"),
                 "field": k,
                 "oldVal": str(log.old_values.get(k, '') if log.old_values else ''),
