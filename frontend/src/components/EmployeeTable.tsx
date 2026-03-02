@@ -25,7 +25,8 @@ import {
   usePayrollColumns,
   EmployeeRecord,
   AuditLog,
-  AppUser
+  AppUser,
+  ImportOneCModal
 } from './payroll';
 
 
@@ -33,6 +34,8 @@ import {
 import { useEmployees, useDismissEmployee } from '../hooks/useEmployees';
 import { useStructure } from '../hooks/useStructure';
 import { usePlanningData } from '../hooks/usePlanning';
+import { useIntegrations } from '../hooks/useIntegrations';
+import { Database } from 'lucide-react';
 
 export default function EmployeeTable({ user }: { onLogout: () => void, user: AppUser }) {
   // Config
@@ -65,6 +68,12 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [dismissEmployee, setDismissEmployee] = useState<EmployeeRecord | null>(null);
   const [isDismissOpen, setIsDismissOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
+  const { data: integrations = [] } = useIntegrations();
+  const isOneCActive = useMemo(() =>
+    integrations.find(i => i.service_name === 'onec')?.is_active ?? false,
+    [integrations]);
 
   const handleHistoryClick = async (e: React.MouseEvent, emp: EmployeeRecord) => {
     e.stopPropagation();
@@ -224,25 +233,11 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
 
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeader
         title="Список сотрудников"
         subtitle="Реестр сотрудников и начислений"
-        extra={
-          <button
-            onClick={() => setIsHelpOpen(true)}
-            className="mt-2 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
-          >
-            <HelpCircle className="w-5 h-5" />
-            Как это работает?
-          </button>
-        }
-      >
-        <EmployeeStats
-          totalNet={filteredData.reduce((acc, curr) => acc + curr.total.net, 0)}
-          totalGross={filteredData.reduce((acc, curr) => acc + curr.total.gross, 0)}
-        />
-      </PageHeader>
+      />
 
       {/* Tabs */}
       <EmployeeTabs
@@ -260,6 +255,17 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
         onDepartmentFilterChange={setDepartmentFilter}
         structure={structure}
       >
+        <EmployeeStats
+          totalNet={filteredData.reduce((acc, curr) => acc + curr.total.net, 0)}
+          totalGross={filteredData.reduce((acc, curr) => acc + curr.total.gross, 0)}
+        />
+        <button
+          onClick={() => setIsHelpOpen(true)}
+          className="flex items-center justify-center w-10 h-10 p-0 m-0 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all outline-none shrink-0 shadow-sm"
+          title="Как это работает?"
+        >
+          <HelpCircle className="w-[18px] h-[18px]" />
+        </button>
         <button
           onClick={async () => {
             try {
@@ -287,6 +293,16 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
         {(user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
           <button className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-900/20 transition-all border-none outline-none shrink-0" title="Добавить сотрудника" onClick={() => setIsAddOpen(true)}>
             <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+          </button>
+        )}
+
+        {isOneCActive && (user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access) && activeTab === 'active' && (
+          <button
+            className="w-10 h-10 p-0 m-0 rounded-xl flex items-center justify-center bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all border-none outline-none shrink-0"
+            title="Импорт из 1С"
+            onClick={() => setIsImportOpen(true)}
+          >
+            <Database className="w-[18px] h-[18px]" strokeWidth={2.5} />
           </button>
         )}
       </EmployeeTableFilters>
@@ -435,6 +451,11 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
         onClose={() => setIsDismissOpen(false)}
         onConfirm={confirmDismiss}
         employeeName={dismissEmployee?.full_name || ''}
+      />
+
+      <ImportOneCModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
       />
     </div>
   );

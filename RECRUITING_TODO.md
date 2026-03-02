@@ -3,14 +3,14 @@
 Данный план описывает шаги по интеграции модуля "Рекрутинг" (Hiring Plan & Pipeline) в текущую архитектуру проекта FOT (FastAPI + SQLAlchemy).
 
 ## Чек-лист задач
-- [ ] Create Database Models (`Vacancy`, `Candidate`, `Comment`)
-- [ ] Generate and apply Alembic migration for the new tables
-- [ ] Create Pydantic schemas for the Recruiting models
-- [ ] Create FastAPI routes for Vacancies (CRUD + Status updates)
-- [ ] Create FastAPI routes for Candidates (CRUD + Stage transitions)
-- [ ] Create FastAPI routes for Comments (Polymorphic: target_type, target_id)
-- [ ] Implement system-generated comments for status changes
-- [ ] Register new router in `main.py`
+- [x] Create Database Models (`Vacancy`, `Candidate`, `Comment`)
+- [x] Generate and apply Alembic migration for the new tables
+- [x] Create Pydantic schemas for the Recruiting models
+- [x] Create FastAPI routes for Vacancies (CRUD + Status updates)
+- [x] Create FastAPI routes for Candidates (CRUD + Stage transitions)
+- [x] Create FastAPI routes for Comments (Polymorphic: target_type, target_id)
+- [x] Implement system-generated comments for status changes
+- [x] Register new router in `main.py`
 
 ## Описание архитектуры
 

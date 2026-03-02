@@ -124,7 +124,7 @@ def get_integration_settings(db: Session = Depends(get_db), current_user = Depen
     response = []
     
     # Ensure default entries exist if not found (lazy init)
-    services = ['hh', 'openai']
+    services = ['hh', 'openai', 'onec']
     existing_services = [s.service_name for s in settings]
     
     for service in services:
@@ -291,6 +291,26 @@ def test_connection(
         except RequestException:
             logger.exception("AI test connection request failed")
             return {"success": False, "message": "Не удалось подключиться к AI-провайдеру. Попробуйте позже."}
+
+    elif data.service_name == 'onec':
+        # Default base_url from request or DB
+        setting_params = setting_row.additional_params if isinstance(setting_row.additional_params, dict) else {}
+        base_url = data.base_url or (setting_params or {}).get('base_url')
+        
+        if not base_url:
+            return {"success": False, "message": "Base URL is required (e.g. http://192.168.1.10/mybase)"}
+        
+        from services.onec_service import OneCService
+        service = OneCService(base_url, client_id, client_secret)
+        
+        try:
+            if service.test_connection():
+                return {"success": True, "message": "Соединение с 1С успешно установлено!"}
+            else:
+                return {"success": False, "message": "Не удалось получить данные из 1С. Проверьте URL и учетные данные."}
+        except Exception as e:
+            logger.exception("1C test connection failed")
+            return {"success": False, "message": f"Ошибка подключения к 1С: {str(e)}"}
 
     return {"success": False, "message": "Unknown service"}
 

@@ -163,22 +163,11 @@ export default function PlanningTable({ user }: { user: AppUser }) {
     if (isDataLoading || isStructureLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <PageHeader
                 title="Фонд оплаты труда"
                 subtitle="Управление штатными позициями и бюджетом"
-                extra={
-                    <button
-                        onClick={() => setIsHelpOpen(true)}
-                        className="mt-2 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
-                    >
-                        <HelpCircle className="w-5 h-5" />
-                        Как это работает?
-                    </button>
-                }
-            >
-                <PlanningStats data={filteredData} />
-            </PageHeader>
+            />
 
             {/* Filters & Actions */}
             <div className="flex flex-col xl:flex-row items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-100">
@@ -190,6 +179,14 @@ export default function PlanningTable({ user }: { user: AppUser }) {
                 />
 
                 <div className="w-full xl:w-auto xl:ml-auto flex flex-col sm:flex-row justify-end items-center gap-2 shrink-0">
+                    <PlanningStats data={filteredData} />
+                    <button
+                        onClick={() => setIsHelpOpen(true)}
+                        className="flex items-center justify-center w-10 h-10 p-0 m-0 rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all outline-none shrink-0 shadow-sm"
+                        title="Как это работает?"
+                    >
+                        <HelpCircle className="w-[18px] h-[18px]" />
+                    </button>
                     <button
                         onClick={async () => {
                             try {

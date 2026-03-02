@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { Card } from '../ui-mocks';
 import { formatMoney } from '../../utils';
 import { PlanRow } from '../../hooks/usePlanning';
 
@@ -19,15 +18,16 @@ export const PlanningStats: React.FC<PlanningStatsProps> = ({ data }) => {
     }, 0), [data]);
 
     return (
-        <div className="flex gap-4">
-            <Card className="px-6 py-4 shadow-xl shadow-slate-200/60 border border-white bg-white min-w-[180px] rounded-2xl">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Общая сумма NETTO</div>
-                <div className="text-3xl font-bold text-slate-900 leading-none tracking-tight">{formatMoney(totalNet)}</div>
-            </Card>
-            <Card className="px-6 py-4 shadow-xl shadow-slate-200/60 border border-white bg-white min-w-[180px] rounded-2xl">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Общая сумма GROSS</div>
-                <div className="text-3xl font-bold text-slate-900 leading-none tracking-tight">{formatMoney(totalGross)}</div>
-            </Card>
+        <div className="flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 shrink-0 hidden sm:flex">
+            <div className="flex flex-col">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">NETTO</span>
+                <span className="text-sm font-bold text-slate-900 leading-none mt-0.5">{formatMoney(totalNet)}</span>
+            </div>
+            <div className="w-px h-6 bg-slate-200"></div>
+            <div className="flex flex-col">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">GROSS</span>
+                <span className="text-sm font-bold text-slate-900 leading-none mt-0.5">{formatMoney(totalGross)}</span>
+            </div>
         </div>
     );
 };

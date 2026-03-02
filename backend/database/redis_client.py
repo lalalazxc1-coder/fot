@@ -7,25 +7,50 @@ from typing import Optional
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
+
+def _get_positive_float_env(name: str, default: float) -> float:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    try:
+        parsed = float(value)
+        if parsed > 0:
+            return parsed
+    except (TypeError, ValueError):
+        pass
+    return default
+
+
+REDIS_CONNECT_TIMEOUT = _get_positive_float_env("REDIS_CONNECT_TIMEOUT", 2.0)
+REDIS_SOCKET_TIMEOUT = _get_positive_float_env("REDIS_SOCKET_TIMEOUT", 2.0)
+
 logger = logging.getLogger("fot.redis")
 
 # Setup Redis client for Token Blacklist
 # FIX #C1: Fail-CLOSED — если Redis недоступен, токены не проходят проверку
 # (пользователь будет вынужден перезайти, но отозванные токены не будут приняты)
 redis_client: Optional[redis.Redis] = None
-try:
-    client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=2)
-    if client is not None:
-        client.ping()
-    redis_client = client
-    logger.info("Redis connected successfully: %s", REDIS_URL)
-except Exception as e:
-    logger.error(
-        "Redis connection FAILED: %s. "
-        "SECURITY: Token blacklist is ENFORCED (fail-closed) — all requests will require re-login.",
-        e
-    )
-    redis_client = None
+if ENVIRONMENT == "testing":
+    logger.info("Skipping Redis connection in testing environment")
+else:
+    try:
+        client = redis.from_url(
+            REDIS_URL,
+            decode_responses=True,
+            socket_connect_timeout=REDIS_CONNECT_TIMEOUT,
+            socket_timeout=REDIS_SOCKET_TIMEOUT,
+        )
+        if client is not None:
+            client.ping()
+        redis_client = client
+        logger.info("Redis connected successfully: %s", REDIS_URL)
+    except Exception as e:
+        logger.error(
+            "Redis connection FAILED: %s. "
+            "SECURITY: Token blacklist is ENFORCED (fail-closed) — all requests will require re-login.",
+            e
+        )
+        redis_client = None
 
 
 def blacklist_token(token: str, exp_timestamp: int):

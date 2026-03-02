@@ -286,40 +286,44 @@ export default function AnalyticsPage() {
             <PageHeader
                 title="Аналитика ФОТ"
                 subtitle="Комплексный обзор расходов и показателей эффективности"
-                extra={summary.cached_at && (
-                    <p className="text-xs text-slate-400 mt-2 italic shadow-sm bg-slate-50 inline-block px-2 py-1 rounded">
-                        Обновлено: {new Date(summary.cached_at).toLocaleString('ru-RU')}
-                    </p>
-                )}
-            >
-                <div className="flex gap-2">
-                    <TimeTravelPicker />
-                    <button
-                        onClick={handleRefresh}
-                        disabled={refreshMutation.isPending}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 whitespace-nowrap shadow-lg shadow-slate-900/10"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-                        Обновить
-                    </button>
-                </div>
-            </PageHeader>
+            />
 
-            {/* Tab Navigation */}
-            <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
-                {ANALYTICS_TABS.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        <tab.icon className="w-4 h-4" />
-                        {tab.label}
-                    </button>
-                ))}
+            {/* Tab Navigation and Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+                <div className="flex p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
+                    {ANALYTICS_TABS.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <tab.icon className="w-4 h-4" />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {summary.cached_at && (
+                        <p className="text-xs text-slate-400 italic">
+                            Обновлено: {new Date(summary.cached_at).toLocaleString('ru-RU')}
+                        </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <TimeTravelPicker />
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshMutation.isPending}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 whitespace-nowrap shadow-lg shadow-slate-900/10"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                            Обновить
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Content Content - Budget Tab */}

@@ -12,6 +12,7 @@ const RequestsPage = lazy(() => import('./pages/RequestsPage'));
 const MarketPage = lazy(() => import('./pages/MarketPage'));
 const ScenariosPage = lazy(() => import('./pages/ScenariosPage'));
 const JobOffersPage = lazy(() => import('./pages/JobOffersPage'));
+const RecruitingPage = lazy(() => import('./pages/RecruitingPage'));
 const PublicOfferPage = lazy(() => import('./pages/requests/PublicOfferPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -227,6 +228,7 @@ function App() {
                             <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
                             <Route path="/requests" element={<RequestsPage />} />
                             <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
+                            <Route path="/recruiting" element={<ProtectedOffersRoute user={user}><RecruitingPage /></ProtectedOffersRoute>} />
                             <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />
 
                             <Route path="/market" element={

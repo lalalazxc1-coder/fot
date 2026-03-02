@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Save, Info, CheckCircle, XCircle, Key, Loader2, Trash2, Play } from 'lucide-react';
+import { Save, Info, CheckCircle, XCircle, Key, Loader2, Trash2, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -82,7 +82,7 @@ export default function IntegrationsPage() {
             <div className="grid gap-6">
                 {settings.map((service) => (
                     <IntegrationCard
-                        key={service.id}
+                        key={`${service.id}-${service.updated_at}`}
                         service={service}
                         onSave={(data) => updateMutation.mutate({ ...data, service_name: service.service_name })}
                         isSaving={updateMutation.isPending}
@@ -105,10 +105,17 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
     const [clientSecret, setClientSecret] = useState('');
     const [isActive, setIsActive] = useState(service.is_active);
     const [isTesting, setIsTesting] = useState(false);
-    const [baseUrl, setBaseUrl] = useState((service.additional_params?.base_url as string) || 'https://api.openai.com/v1');
-
+    const [isExpanded, setIsExpanded] = useState(false);
     const isHH = service.service_name === 'hh';
     const isAI = service.service_name === 'openai';
+    const isOneC = service.service_name === 'onec';
+
+    const [baseUrl, setBaseUrl] = useState(() => {
+        if (service.additional_params?.base_url) return service.additional_params.base_url as string;
+        if (isAI) return 'https://api.openai.com/v1';
+        if (isOneC) return 'http://host.docker.internal/mybase';
+        return '';
+    });
 
     const handleSave = () => {
         const payload: IntegrationSettingsPayload = { is_active: isActive };
@@ -117,7 +124,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
         if (clientId.trim()) payload.client_id = clientId.trim();
         if (clientSecret.trim()) payload.client_secret = clientSecret.trim();
 
-        if (isAI) {
+        if (isAI || isOneC) {
             payload.additional_params = { ...service.additional_params, base_url: baseUrl };
         }
 
@@ -141,7 +148,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
             if (apiKey.trim()) payload.api_key = apiKey.trim();
             if (clientId.trim()) payload.client_id = clientId.trim();
             if (clientSecret.trim()) payload.client_secret = clientSecret.trim();
-            if (isAI) payload.base_url = baseUrl;
+            if (isAI || isOneC) payload.base_url = baseUrl;
 
             const res = await api.post<TestConnectionResponse>('/integrations/test-connection', payload);
             if (res.data.success) {
@@ -156,16 +163,37 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
         }
     };
 
+    const getIcon = () => {
+        if (isHH) return <p className="font-bold text-lg">hh.ru</p>;
+        if (isAI) return <p className="font-bold text-lg">AI</p>;
+        if (isOneC) return <p className="font-bold text-lg text-yellow-600">1C</p>;
+        return <Info className="w-6 h-6" />;
+    };
+
+    const getTitle = () => {
+        if (isHH) return 'HeadHunter API';
+        if (isAI) return 'ИИ Ассистент (OpenAI/DeepSeek)';
+        if (isOneC) return '1С:Предприятие (ЗУП/ERP)';
+        return service.service_name;
+    };
+
+    const cardColorClass = isActive
+        ? (isHH ? 'bg-red-100 text-red-600' : (isAI ? 'bg-emerald-100 text-emerald-600' : 'bg-yellow-100 text-yellow-700'))
+        : 'bg-slate-200 text-slate-500';
+
     return (
-        <div className={`p-6 rounded-2xl border transition-all ${isActive ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
-            <div className="flex items-start justify-between mb-6">
+        <div className={`p-6 rounded-2xl border transition-all ${isExpanded ? 'bg-white border-blue-200 shadow-md ring-1 ring-blue-50' : (isActive ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300' : 'bg-slate-50 border-slate-200 opacity-80 hover:opacity-100')}`}>
+            <div
+                className="flex items-center justify-between cursor-pointer group"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
                 <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-xl ${isActive ? (isHH ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600') : 'bg-slate-200 text-slate-500'}`}>
-                        {isHH ? <p className="font-bold text-lg">hh.ru</p> : <p className="font-bold text-lg">AI</p>}
+                    <div className={`p-3 rounded-xl transition-colors ${cardColorClass}`}>
+                        {getIcon()}
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-900">
-                            {isHH ? 'HeadHunter API' : 'ИИ Ассистент (OpenAI/DeepSeek)'}
+                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {getTitle()}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
                             {isActive ? (
@@ -184,49 +212,91 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
                     </div>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
-                </label>
+                <div className="flex items-center gap-6" onClick={e => e.stopPropagation()}>
+                    <label className="relative inline-flex items-center cursor-pointer" title={isActive ? 'Отключить интеграцию' : 'Включить интеграцию'}>
+                        <input type="checkbox" className="sr-only peer" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
+                    </label>
+                    <button
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                        }}
+                    >
+                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                    </button>
+                </div>
             </div>
 
-            {isActive && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            {isExpanded && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300 mt-6 pt-6 border-t border-slate-100 relative">
+                    {!isAI && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                {isOneC ? 'Адрес сервера (Base URL)' : 'Client ID'}
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={isOneC ? baseUrl : clientId}
+                                    onChange={e => isOneC ? setBaseUrl(e.target.value) : setClientId(e.target.value)}
+                                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                                    placeholder={isOneC ? "http://192.168.1.10/mybase" : "Введите Client ID приложения"}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {isOneC && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Имя пользователя (Логин)</label>
+                            <input
+                                type="text"
+                                value={clientId}
+                                onChange={e => setClientId(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                                placeholder="Admin"
+                            />
+                        </div>
+                    )}
+
+                    {(isHH || isOneC) && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                {isOneC ? 'Пароль' : 'Client Secret'}
+                            </label>
+                            <div className="flex gap-2 relative">
+                                <input
+                                    type="password"
+                                    value={clientSecret}
+                                    onChange={e => setClientSecret(e.target.value)}
+                                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 pr-10"
+                                    placeholder={service.has_client_secret ? "•••••••• (Сохранен)" : (isOneC ? "Введите пароль" : "Введите Client Secret")}
+                                />
+                                <Key className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                            </div>
+                        </div>
+                    )}
+
                     {isHH && (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Client ID</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={clientId}
-                                        onChange={e => setClientId(e.target.value)}
-                                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
-                                        placeholder="Введите Client ID приложения"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Client Secret</label>
-                                <div className="flex gap-2 relative">
-                                    <input
-                                        type="password"
-                                        value={clientSecret}
-                                        onChange={e => setClientSecret(e.target.value)}
-                                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 pr-10"
-                                        placeholder={service.has_client_secret ? "•••••••• (Сохранен)" : "Введите Client Secret"}
-                                    />
-                                    <Key className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
-                                </div>
-                            </div>
-                            <div className="bg-blue-50 p-3 rounded-lg flex gap-3 text-sm text-blue-700">
-                                <Info className="w-5 h-5 flex-shrink-0" />
-                                <p>
-                                    Зарегистрируйте приложение на <a href="https://dev.hh.ru/admin" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-blue-900">dev.hh.ru</a>.
-                                    Используйте <code>Client Credentials</code> Grant Type.
-                                </p>
-                            </div>
-                        </>
+                        <div className="bg-blue-50 p-3 rounded-lg flex gap-3 text-sm text-blue-700">
+                            <Info className="w-5 h-5 flex-shrink-0" />
+                            <p>
+                                Зарегистрируйте приложение на <a href="https://dev.hh.ru/admin" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-blue-900">dev.hh.ru</a>.
+                                Используйте <code>Client Credentials</code> Grant Type.
+                            </p>
+                        </div>
+                    )}
+
+                    {isOneC && (
+                        <div className="bg-yellow-50 p-3 rounded-lg flex gap-3 text-sm text-yellow-800 border border-yellow-100">
+                            <Info className="w-5 h-5 flex-shrink-0" />
+                            <p>
+                                Для интеграции 1С должен быть опубликован HTTP-сервис.
+                                Проверьте, что адрес доступен с сервера приложения.
+                            </p>
+                        </div>
                     )}
 
                     {isAI && (
@@ -291,10 +361,9 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
                         </button>
 
                         <div className="flex gap-3">
-                            {/* Test Button only if saved or has values */}
                             <button
                                 onClick={handleTest}
-                                disabled={isTesting || (!service.has_api_key && !apiKey && !service.has_client_secret)}
+                                disabled={isTesting || (!service.has_api_key && !apiKey && !service.has_client_secret && !clientSecret && !clientId)}
                                 className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-100 transition-colors flex items-center gap-2 disabled:opacity-50"
                             >
                                 {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}

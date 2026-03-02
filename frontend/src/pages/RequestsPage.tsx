@@ -94,26 +94,10 @@ export default function RequestsPage() {
             <PageHeader
                 title="Заявки на пересмотр"
                 subtitle="Управление запросами на повышение и бонусы"
-                extra={
-                    <button
-                        onClick={() => setIsHelpOpen(true)}
-                        className="mt-2 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium"
-                    >
-                        <HelpCircle className="w-5 h-5" />
-                        Как это работает?
-                    </button>
-                }
-            >
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-slate-900/20 transition-all active:scale-95 whitespace-nowrap"
-                >
-                    <Plus className="w-4 h-4" /> Создать заявку
-                </button>
-            </PageHeader>
+            />
 
             {/* Controls */}
-            <div className="flex justify-between items-center bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-2 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex gap-2">
                     <button
                         onClick={() => setViewMode('pending')}
@@ -126,6 +110,22 @@ export default function RequestsPage() {
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === 'history' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                     >
                         История
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button
+                        onClick={() => setIsHelpOpen(true)}
+                        className="flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-sm font-medium shrink-0"
+                    >
+                        <HelpCircle className="w-5 h-5" />
+                        Как это работает?
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-slate-900/20 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                        <Plus className="w-4 h-4" /> Создать заявку
                     </button>
                 </div>
             </div>
