@@ -16,7 +16,8 @@ from database.models import (
     User, Role, OrganizationUnit, Position, Employee,
     FinancialRecord, PlanningPosition, Scenario,
     SalaryConfiguration, SalaryRequest, ApprovalStep,
-    Notification, MarketData, MarketEntry, AuditLog
+    Notification, MarketData, MarketEntry, AuditLog,
+    IntegrationSettings, Vacancy, Candidate, Comment
 )
 from security import get_password_hash
 from main import app
@@ -94,6 +95,15 @@ def viewer_role(db):
 
 
 @pytest.fixture
+def scenarios_viewer_role(db):
+    role = Role(name="Scenarios Viewer", permissions={"view_scenarios": True})
+    db.add(role)
+    db.commit()
+    db.refresh(role)
+    return role
+
+
+@pytest.fixture
 def admin_user(db, admin_role):
     user = User(
         email="admin@test.com",
@@ -116,6 +126,20 @@ def viewer_user(db, viewer_role):
         hashed_password=get_password_hash("viewer123"),
         full_name="Test Viewer",
         role_id=viewer_role.id,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def scenarios_viewer_user(db, scenarios_viewer_role):
+    user = User(
+        email="scenarios_viewer@test.com",
+        hashed_password=get_password_hash("viewer123"),
+        full_name="Scenarios View Only",
+        role_id=scenarios_viewer_role.id,
     )
     db.add(user)
     db.commit()
@@ -161,6 +185,48 @@ def viewer_headers(client, viewer_user):
     if csrf:
         headers["X-CSRF-Token"] = csrf
     return headers
+
+
+@pytest.fixture
+def scenarios_viewer_headers(client, scenarios_viewer_user):
+    """Login as view_scenarios-only user and return Authorization header."""
+    resp = client.post("/api/auth/login", json={
+        "username": "scenarios_viewer@test.com",
+        "password": "viewer123"
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    token = data.get("access_token") or resp.cookies.get("access_token")
+    csrf = resp.cookies.get("csrf_token")
+
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    if csrf:
+        headers["X-CSRF-Token"] = csrf
+    return headers
+
+
+@pytest.fixture
+def integration_settings(db):
+    hh = IntegrationSettings(
+        service_name="hh",
+        client_id="hh-client",
+        client_secret="hh-secret",
+        is_active=True,
+    )
+    openai = IntegrationSettings(
+        service_name="openai",
+        api_key="openai-key",
+        is_active=True,
+        additional_params={"base_url": "https://api.openai.com/v1"},
+    )
+    db.add(hh)
+    db.add(openai)
+    db.commit()
+    db.refresh(hh)
+    db.refresh(openai)
+    return {"hh": hh, "openai": openai}
 
 
 @pytest.fixture
@@ -221,7 +287,7 @@ def employee(db, org_structure, position):
         full_name="Иванов Иван",
         position_id=position.id,
         org_unit_id=org_structure["department"].id,
-        status="Active",
+        status="Активен",
     )
     db.add(emp)
     db.flush()

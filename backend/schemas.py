@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Dict, List, Literal
 
@@ -44,7 +46,7 @@ class UserUpdate(BaseModel):
 # Structure
 class OrgUnitCreate(BaseModel):
     name: str
-    type: str 
+    type: Literal['branch', 'department', 'head_office']
     parent_id: Optional[int] = None
     head_id: Optional[int] = None
 
@@ -71,7 +73,7 @@ class EmployeeCreate(BaseModel):
     bonus_gross: float = 0
     
     hire_date: Optional[str] = None
-    status: str = "Активен"
+    status: Literal['Активен', 'Уволен', 'В отпуске'] = "Активен"
     gender: Optional[str] = None
     dob: Optional[str] = None
     last_raise_date: Optional[str] = None
@@ -223,6 +225,90 @@ class PositionResponse(PositionBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class VacancyCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    department_id: int = Field(..., gt=0)
+    location: Optional[str] = Field(None, max_length=255)
+    planned_count: int = Field(1, ge=1)
+    status: str = Field("Draft", min_length=1, max_length=100)
+    priority: str = Field("Medium", min_length=1, max_length=100)
+
+
+class VacancyUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    department_id: Optional[int] = Field(None, gt=0)
+    location: Optional[str] = Field(None, max_length=255)
+    planned_count: Optional[int] = Field(None, ge=1)
+    status: Optional[str] = Field(None, min_length=1, max_length=100)
+    priority: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
+class VacancyStatusUpdate(BaseModel):
+    status: str = Field(..., min_length=1, max_length=100)
+
+
+class VacancyResponse(BaseModel):
+    id: int
+    title: str
+    department_id: int
+    location: Optional[str] = None
+    planned_count: int
+    status: str
+    priority: str
+    creator_id: int
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CandidateCreate(BaseModel):
+    vacancy_id: int = Field(..., gt=0)
+    first_name: str = Field(..., min_length=1, max_length=200)
+    last_name: str = Field(..., min_length=1, max_length=200)
+    stage: str = Field("New", min_length=1, max_length=100)
+
+
+class CandidateUpdate(BaseModel):
+    vacancy_id: Optional[int] = Field(None, gt=0)
+    first_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    stage: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
+class CandidateStageUpdate(BaseModel):
+    stage: str = Field(..., min_length=1, max_length=100)
+
+
+class CandidateResponse(BaseModel):
+    id: int
+    vacancy_id: int
+    first_name: str
+    last_name: str
+    stage: str
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CommentCreate(BaseModel):
+    target_type: Literal["vacancy", "candidate"]
+    target_id: int = Field(..., gt=0)
+    content: str = Field(..., min_length=1, max_length=5000)
+
+
+class CommentResponse(BaseModel):
+    id: int
+    target_type: str
+    target_id: int
+    author_id: int
+    content: str
+    is_system: bool
+    created_at: str
+    author_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class ApprovalStepBase(BaseModel):
     step_order: int
     role_id: Optional[int] = None
@@ -344,6 +430,15 @@ class JobOfferCreate(BaseModel):
     signatories: Optional[List[Signatory]] = []
     welcome_content: Optional[WelcomeContent] = None
     welcome_page_config_id: Optional[int] = None  # ID конфига Welcome Page; бэкенд снапшотит его в welcome_content
+
+    @field_validator("theme_color")
+    @classmethod
+    def validate_theme_color(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if not re.fullmatch(r"^#[0-9a-fA-F]{6}$", value):
+            raise ValueError("theme_color must match #RRGGBB")
+        return value
 
 class JobOfferResponse(BaseModel):
     id: int

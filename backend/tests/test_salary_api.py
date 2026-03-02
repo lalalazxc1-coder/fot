@@ -36,6 +36,14 @@ def test_calculate_endpoint_gross(client, auth_headers, salary_config):
     assert "osms" in data
 
 
+def test_calculate_endpoint_requires_auth(client, salary_config):
+    resp = client.post("/api/salary-config/calculate", json={
+        "amount": 300000,
+        "type": "gross"
+    })
+    assert resp.status_code == 401
+
+
 def test_calculate_endpoint_net(client, auth_headers, salary_config):
     """Calculate from net — should reverse-solve to gross."""
     resp = client.post("/api/salary-config/calculate", headers=auth_headers, json={

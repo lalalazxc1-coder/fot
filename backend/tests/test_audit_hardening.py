@@ -2,6 +2,7 @@
 
 import pytest
 from main import _get_client_ip
+from utils.secret_store import decrypt_secret
 
 
 def test_positions_read_requires_explicit_permission(client, viewer_headers):
@@ -29,13 +30,13 @@ def test_scenarios_create_requires_explicit_permission(client, viewer_headers):
         json={"name": "No Access Scenario", "description": "Should fail"},
     )
     assert resp.status_code == 403
-    assert "view_scenarios" in resp.json()["detail"]
+    assert "manage_planning" in resp.json()["detail"]
 
 
 def test_scenarios_delete_requires_explicit_permission(client, viewer_headers):
     resp = client.delete("/api/scenarios/1", headers=viewer_headers)
     assert resp.status_code == 403
-    assert "view_scenarios" in resp.json()["detail"]
+    assert "manage_planning" in resp.json()["detail"]
 
 
 def test_scenarios_apply_change_requires_explicit_permission(client, viewer_headers):
@@ -45,13 +46,23 @@ def test_scenarios_apply_change_requires_explicit_permission(client, viewer_head
         json={"field": "base_net", "change_type": "percent", "value": 10},
     )
     assert resp.status_code == 403
-    assert "view_scenarios" in resp.json()["detail"]
+    assert "manage_planning" in resp.json()["detail"]
 
 
 def test_scenarios_commit_requires_explicit_permission(client, viewer_headers):
     resp = client.post("/api/scenarios/1/commit", headers=viewer_headers)
     assert resp.status_code == 403
-    assert "view_scenarios" in resp.json()["detail"]
+    assert "manage_planning" in resp.json()["detail"]
+
+
+def test_scenarios_write_denied_for_view_scenarios_only_user(client, scenarios_viewer_headers):
+    resp = client.post(
+        "/api/scenarios/",
+        headers=scenarios_viewer_headers,
+        json={"name": "View only user should not write"},
+    )
+    assert resp.status_code == 403
+    assert "manage_planning" in resp.json()["detail"]
 
 
 def test_salary_config_read_requires_admin_permission(client, viewer_headers):
@@ -64,6 +75,32 @@ def test_salary_config_history_requires_admin_permission(client, viewer_headers)
     resp = client.get("/api/salary-config/history", headers=viewer_headers)
     assert resp.status_code == 403
     assert "Admin access required" in resp.json()["detail"]
+
+
+def test_salary_config_calculate_requires_authentication(client):
+    resp = client.post(
+        "/api/salary-config/calculate",
+        json={"amount": 100000, "type": "gross"},
+    )
+    assert resp.status_code in (401, 403)
+
+
+def test_integration_secrets_are_encrypted_at_rest(client, auth_headers, integration_settings, db):
+    from database.models import IntegrationSettings
+
+    resp = client.get("/api/integrations/settings", headers=auth_headers)
+    assert resp.status_code == 200
+
+    openai_row = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == "openai").first()
+    hh_row = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == "hh").first()
+
+    assert openai_row is not None
+    assert hh_row is not None
+
+    assert str(openai_row.api_key).startswith("enc:")
+    assert str(hh_row.client_secret).startswith("enc:")
+    assert decrypt_secret(openai_row.api_key) == "openai-key"
+    assert decrypt_secret(hh_row.client_secret) == "hh-secret"
 
 
 def test_forwarded_headers_ignored_for_untrusted_proxy():

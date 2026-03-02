@@ -33,15 +33,22 @@ def _ensure_csrf_cookie(request: Request, response: Response) -> str:
     _set_csrf_cookie(response, csrf_token)
     return csrf_token
 
+
+def _get_request_ip(request: Request) -> str:
+    """Use trusted proxy-aware IP extraction from main middleware logic."""
+    try:
+        from main import _get_client_ip
+        return _get_client_ip(request)
+    except Exception:
+        return request.client.host if request.client else "unknown"
+
 @router.post("/login", response_model=LoginResponse, response_model_exclude_none=True)
 def login(creds: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     """
     Login endpoint. Returns JWT token and user info, and sets HttpOnly cookie.
     """
     # Извлекаем IP и User-Agent для логирования
-    ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
-        request.client.host if request.client else "unknown"
-    )
+    ip = _get_request_ip(request)
     ua = request.headers.get("User-Agent", "")
 
     try:
@@ -135,9 +142,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
     Logout endpoint. Clears HttpOnly cookie and adds tokens to Redis blacklist.
     """
     from services.auth_service import _write_login_log
-    ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
-        request.client.host if request.client else "unknown"
-    )
+    ip = _get_request_ip(request)
     ua = request.headers.get("User-Agent", "")
 
     access_token = request.cookies.get("access_token") or request.headers.get("Authorization", "").replace("Bearer ", "")

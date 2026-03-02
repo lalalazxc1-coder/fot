@@ -11,6 +11,7 @@ import { NavBar } from './ui/tubelight-navbar';
 import { ExpandableTabs } from './ui/expandable-tabs';
 import { useOnClickOutside } from 'usehooks-ts';
 import { formatDateTime } from '../utils';
+import { validatePassword } from '../utils/validators';
 
 type User = {
     full_name: string;
@@ -187,8 +188,9 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         setError('');
         setSuccess('');
 
-        if (passData.new.length < 8) {
-            setError('Пароль должен содержать минимум 8 символов');
+        const passwordValidation = validatePassword(passData.new);
+        if (!passwordValidation.isValid) {
+            setError(passwordValidation.message);
             return;
         }
 

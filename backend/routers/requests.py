@@ -449,7 +449,7 @@ def get_request_analytics(req_id: int, db: Session = Depends(get_db), current_us
     is_admin = _is_admin_user(current_user)
         
     if not (can_approve or is_admin):
-        return None  
+        raise HTTPException(status_code=403, detail="Not allowed")
 
     # --- Analytics Logic ---
     analytics_data = {

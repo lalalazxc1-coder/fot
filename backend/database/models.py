@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean, DateTime, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -258,6 +258,50 @@ class Notification(Base):
     link = Column(String, nullable=True)
     
     user = relationship("User")
+
+
+class Vacancy(Base):
+    __tablename__ = "vacancies"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    department_id = Column(Integer, ForeignKey("organization_units.id"), nullable=False)
+    location = Column(String, nullable=True)
+    planned_count = Column(Integer, default=1)
+    status = Column(String, default="Draft")
+    priority = Column(String, default="Medium")
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(String, default=now_iso)
+
+    department = relationship("OrganizationUnit", foreign_keys=[department_id])
+    creator = relationship("User", foreign_keys=[creator_id])
+    candidates = relationship("Candidate", back_populates="vacancy", cascade="all, delete-orphan")
+
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+    id = Column(Integer, primary_key=True, index=True)
+    vacancy_id = Column(Integer, ForeignKey("vacancies.id"), nullable=False)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    stage = Column(String, default="New")
+    created_at = Column(String, default=now_iso)
+
+    vacancy = relationship("Vacancy", back_populates="candidates")
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+    __table_args__ = (Index("ix_comments_target_type_target_id", "target_type", "target_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    target_type = Column(String, nullable=False, index=True)
+    target_id = Column(Integer, nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(String, nullable=False)
+    is_system = Column(Boolean, default=False)
+    created_at = Column(String, default=now_iso)
+
+    author = relationship("User", foreign_keys=[author_id])
 
 class MarketData(Base):
     __tablename__ = "market_data"

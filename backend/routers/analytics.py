@@ -435,8 +435,31 @@ def get_cost_distribution(
         if date: fact_sub_base = fact_sub_base.filter(FinancialRecord.created_at <= date)
         fact_subquery = fact_sub_base.group_by(FinancialRecord.employee_id).subquery()
         
+        # FIX N5: aggregate fact once, then reuse in-memory map per unit
+        fact_rows = db.query(
+            Employee.org_unit_id,
+            func.sum(FinancialRecord.total_net).label('total_net')
+        ).join(
+            fact_subquery,
+            and_(
+                FinancialRecord.employee_id == fact_subquery.c.employee_id,
+                FinancialRecord.id == fact_subquery.c.max_id
+            )
+        ).join(
+            Employee,
+            Employee.id == FinancialRecord.employee_id
+        ).filter(
+            or_(Employee.status != 'Dismissed', Employee.status == None)
+        ).group_by(Employee.org_unit_id).all()
+
+        fact_direct_map = {
+            row.org_unit_id: float(row.total_net or 0)
+            for row in fact_rows
+            if row.org_unit_id is not None
+        }
+
         results = []
-        
+
         for unit in top_units:
             # Use pre-built map instead of recursive db.query
             unit_ids_list = get_unit_with_descendants(unit.id, children_map)
@@ -445,27 +468,10 @@ def get_cost_distribution(
                 
             if not unit_ids_list:
                 continue
-            
-            # Sum up financial records for employees in this unit or its descendants
-            total = db.query(
-                func.sum(FinancialRecord.total_net)
-            ).join(
-                fact_subquery,
-                and_(
-                    FinancialRecord.employee_id == fact_subquery.c.employee_id,
-                    FinancialRecord.id == fact_subquery.c.max_id
-                )
-            ).join(
-                Employee,
-                Employee.id == FinancialRecord.employee_id
-            ).filter(
-                and_(
-                    Employee.org_unit_id.in_(unit_ids_list),
-                    or_(Employee.status != 'Dismissed', Employee.status == None)
-                )
-            ).scalar()
-            
-            if total and total > 0:
+
+            total = sum(fact_direct_map.get(uid, 0) for uid in unit_ids_list)
+
+            if total > 0:
                 results.append({
                     'name': unit.name,
                     'value': float(total)

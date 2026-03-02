@@ -3,6 +3,7 @@ import { Users, Edit2, User as UserIcon, Loader2, Ban, CheckCircle2 } from 'luci
 import Modal from '../../components/Modal';
 import { useUsers, useRoles, useCreateUser, useUpdateUser, useToggleBlockUser, User } from '../../hooks/useAdmin';
 import { useFlatStructure } from '../../hooks/useStructure';
+import { validatePassword } from '../../utils/validators';
 
 export default function UsersPage() {
     const { data: users = [], isLoading: isUsersLoading } = useUsers();
@@ -29,15 +30,18 @@ export default function UsersPage() {
         scope_departments: [] as number[],
         is_active: true
     });
+    const [formError, setFormError] = useState('');
 
     const openCreateModal = () => {
         setEditingUser(null);
+        setFormError('');
         setFormData({ email: '', full_name: '', password: '', role_id: '', scope_branches: [], scope_departments: [], is_active: true });
         setIsModalOpen(true);
     };
 
     const openEditModal = (user: User) => {
         setEditingUser(user);
+        setFormError('');
         setFormData({
             email: user.email,
             full_name: user.full_name,
@@ -52,6 +56,20 @@ export default function UsersPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError('');
+
+        if (!editingUser && !formData.password) {
+            setFormError('Пароль обязателен');
+            return;
+        }
+
+        if (formData.password) {
+            const passwordValidation = validatePassword(formData.password);
+            if (!passwordValidation.isValid) {
+                setFormError(passwordValidation.message);
+                return;
+            }
+        }
 
         const payload = {
             email: formData.email,
@@ -66,7 +84,6 @@ export default function UsersPage() {
         if (editingUser) {
             await updateUserMutation.mutateAsync({ id: editingUser.id, data: payload });
         } else {
-            if (!formData.password) return alert("Пароль обязателен");
             await createUserMutation.mutateAsync(payload);
         }
         setIsModalOpen(false);
@@ -180,6 +197,11 @@ export default function UsersPage() {
                 title={editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}
             >
                 <form onSubmit={handleSave} className="space-y-5">
+                    {formError && (
+                        <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+                            {formError}
+                        </div>
+                    )}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">ФИО</label>
                         <input

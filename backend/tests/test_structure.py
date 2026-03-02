@@ -72,3 +72,12 @@ def test_delete_unit(client, auth_headers, org_structure):
     flat = client.get("/api/structure/flat", headers=auth_headers).json()
     dept_ids = [item["id"] for item in flat]
     assert dept_id not in dept_ids
+
+
+def test_create_branch_rejects_invalid_type(client, auth_headers):
+    resp = client.post("/api/structure/branch", headers=auth_headers, json={
+        "name": "Некорректный филиал",
+        "type": "division"
+    })
+
+    assert resp.status_code == 422

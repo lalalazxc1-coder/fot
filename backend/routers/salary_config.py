@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 
-from dependencies import get_db, require_admin
+from dependencies import get_db, require_admin, get_current_active_user
 from database.models import SalaryConfiguration, User, AuditLog, PlanningPosition, Employee, FinancialRecord
 from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
 
@@ -218,7 +218,11 @@ def get_config_history(
     return result
 
 @router.post("/calculate", response_model=SalaryBreakdown)
-def calculate_salary(input: SalaryCalculationInput, db: Session = Depends(get_db)):
+def calculate_salary(
+    input: SalaryCalculationInput,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
     config = get_or_create_config(db)
     gross = 0.0
     if input.type.lower() == 'gross':

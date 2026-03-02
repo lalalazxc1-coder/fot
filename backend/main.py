@@ -32,7 +32,7 @@ from routers import (
     auth, roles, users, structure, employees,
     admin, planning, requests, market, analytics,
     positions, workflow, scenarios, job_offers,
-    job_offer_templates, welcome_pages
+    job_offer_templates, welcome_pages, recruiting
 )
 from routers.salary_config import router as salary_config_router
 from routers import integrations
@@ -121,7 +121,7 @@ async def add_security_headers(request: Request, call_next):
         "img-src 'self' data: https:; "
         "font-src 'self' data: https:; "
         "style-src 'self' 'unsafe-inline' https:; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+        "script-src 'self' 'unsafe-inline' https:; "
         "connect-src 'self' https: ws: wss:;"
     )
     return response
@@ -226,6 +226,7 @@ all_routers = [
     job_offers.router,
     job_offer_templates.router,
     welcome_pages.router,
+    recruiting.router,
 ]
 
 for r in all_routers:

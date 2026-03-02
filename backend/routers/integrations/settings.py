@@ -7,9 +7,46 @@ from typing import Any, List, Optional, cast
 from pydantic import BaseModel
 from database.models import IntegrationSettings
 from dependencies import get_db, require_admin
+from utils.date_utils import now_iso, to_utc_datetime
+from utils.secret_store import decrypt_secret, encrypt_secret, is_secret_encrypted
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 logger = logging.getLogger("fot.integrations")
+
+
+def _sanitize_secret(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def _touch_updated_at(setting_row: Any) -> None:
+    now = now_iso()
+    setting_row.updated_at = now
+    setting_row.updated_at_dt = to_utc_datetime(now)
+
+
+def _ensure_setting_secrets_encrypted(setting_row: Any) -> bool:
+    changed = False
+
+    raw_api_key = _sanitize_secret(setting_row.api_key)
+    if raw_api_key != setting_row.api_key:
+        setting_row.api_key = raw_api_key
+        changed = True
+    if raw_api_key and not is_secret_encrypted(raw_api_key):
+        setting_row.api_key = encrypt_secret(raw_api_key)
+        changed = True
+
+    raw_client_secret = _sanitize_secret(setting_row.client_secret)
+    if raw_client_secret != setting_row.client_secret:
+        setting_row.client_secret = raw_client_secret
+        changed = True
+    if raw_client_secret and not is_secret_encrypted(raw_client_secret):
+        setting_row.client_secret = encrypt_secret(raw_client_secret)
+        changed = True
+
+    return changed
 
 
 def _hh_test_error_message(status_code: int) -> str:
@@ -97,11 +134,23 @@ def get_integration_settings(db: Session = Depends(get_db), current_user = Depen
             db.commit()
             db.refresh(new_setting)
             settings.append(new_setting)
+
+    has_migrations = False
+    for s in settings:
+        s_row = cast(Any, s)
+        if _ensure_setting_secrets_encrypted(s_row):
+            _touch_updated_at(s_row)
+            has_migrations = True
+
+    if has_migrations:
+        db.commit()
+        for s in settings:
+            db.refresh(s)
             
     for s in settings:
         s_row = cast(Any, s)
-        s_api_key = s_row.api_key
-        s_client_secret = s_row.client_secret
+        s_api_key = decrypt_secret(s_row.api_key)
+        s_client_secret = decrypt_secret(s_row.client_secret)
         response.append({
             "id": s.id,
             "service_name": s.service_name,
@@ -131,15 +180,19 @@ def update_integration_settings(
     
     # Update fields only if provided (to allow partial updates without re-sending secrets)
     if data.api_key is not None: # Allow clearing if empty string passed? Or explicit null? treating non-None as update
-        setting_row.api_key = data.api_key
+        setting_row.api_key = encrypt_secret(data.api_key)
     if data.client_id is not None:
-        setting_row.client_id = data.client_id
+        setting_row.client_id = str(data.client_id).strip() or None
     if data.client_secret is not None:
-        setting_row.client_secret = data.client_secret
+        setting_row.client_secret = encrypt_secret(data.client_secret)
+
+    _ensure_setting_secrets_encrypted(setting_row)
         
     setting_row.is_active = data.is_active
     if data.additional_params is not None:
         setting_row.additional_params = data.additional_params
+
+    _touch_updated_at(setting_row)
         
     db.commit()
     db.refresh(setting)
@@ -165,10 +218,16 @@ def test_connection(
         setting = IntegrationSettings(service_name=data.service_name)
     setting_row = cast(Any, setting)
 
+    if _ensure_setting_secrets_encrypted(setting_row):
+        _touch_updated_at(setting_row)
+        if setting.id:
+            db.commit()
+            db.refresh(setting)
+
     # Use provided keys if available, else fallback to DB
     client_id_raw = data.client_id if data.client_id is not None else setting_row.client_id
-    client_secret_raw = data.client_secret if data.client_secret is not None else setting_row.client_secret
-    api_key_raw = data.api_key if data.api_key is not None else setting_row.api_key
+    client_secret_raw = data.client_secret if data.client_secret is not None else decrypt_secret(setting_row.client_secret)
+    api_key_raw = data.api_key if data.api_key is not None else decrypt_secret(setting_row.api_key)
     client_id = str(client_id_raw).strip() if client_id_raw else None
     client_secret = str(client_secret_raw).strip() if client_secret_raw else None
     api_key = str(api_key_raw).strip() if api_key_raw else None
@@ -247,7 +306,12 @@ def ai_analyze(
         raise HTTPException(status_code=400, detail="AI Integration not configured")
 
     setting_row = cast(Any, setting)
-    api_key = str(setting_row.api_key).strip() if setting_row.api_key else ""
+    if _ensure_setting_secrets_encrypted(setting_row):
+        _touch_updated_at(setting_row)
+        db.commit()
+        db.refresh(setting)
+
+    api_key = str(decrypt_secret(setting_row.api_key) or "").strip()
     if not api_key:
         raise HTTPException(status_code=400, detail="AI Integration not configured")
 

@@ -64,11 +64,17 @@ export const validateRequired = (value: unknown, fieldName: string = 'Поле')
  * @returns Object with isValid flag and error message
  */
 export const validatePassword = (password: string): { isValid: boolean; message: string } => {
-    if (password.length < 6) {
-        return { isValid: false, message: 'Пароль должен содержать минимум 6 символов' };
+    if (password.length < 8) {
+        return { isValid: false, message: 'Пароль должен содержать минимум 8 символов' };
     }
     if (password.length > 128) {
         return { isValid: false, message: 'Пароль слишком длинный (макс. 128 символов)' };
+    }
+    if (!/[a-zA-Zа-яА-Я]/.test(password)) {
+        return { isValid: false, message: 'Пароль должен содержать хотя бы одну букву' };
+    }
+    if (!/\d/.test(password)) {
+        return { isValid: false, message: 'Пароль должен содержать хотя бы одну цифру' };
     }
     return { isValid: true, message: '' };
 };

@@ -23,14 +23,19 @@ def _has_scenarios_access(current_user: User) -> bool:
     )
 
 
+def _has_scenarios_write_access(current_user: User) -> bool:
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    return bool(perms.get("admin_access") or perms.get("manage_planning"))
+
+
 def _require_scenarios_view_permission(current_user: User) -> None:
     if not _has_scenarios_access(current_user):
         raise HTTPException(403, "Permission 'view_scenarios' required")
 
 
 def _require_scenarios_write_permission(current_user: User) -> None:
-    if not _has_scenarios_access(current_user):
-        raise HTTPException(403, "Permission 'view_scenarios' required")
+    if not _has_scenarios_write_access(current_user):
+        raise HTTPException(403, "Permission 'manage_planning' required")
 
 # --- Schemas ---
 
