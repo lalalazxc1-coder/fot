@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:17-alpine
@@ -59,7 +57,7 @@ services:
         condition: service_started
 
   frontend:
-    image: node:18-alpine
+    image: node:22-alpine
     container_name: fot_frontend_dev
     working_dir: /app
     environment:
