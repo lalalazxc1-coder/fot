@@ -28,6 +28,10 @@ export default defineConfig({
                     });
                 }
             },
+            '/uploads': {
+                target: process.env.BACKEND_URL || 'http://localhost:8000',
+                changeOrigin: true,
+            },
             '/docs': {
                 target: process.env.BACKEND_URL || 'http://localhost:8000',
                 changeOrigin: true,

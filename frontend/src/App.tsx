@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { api } from './lib/api';
 import { SnapshotProvider } from './context/SnapshotContext';
+import type { AuthUser } from './types';
 
 const EmployeeTable = lazy(() => import('./components/EmployeeTable'));
 const PlanningTable = lazy(() => import('./components/PlanningTable'));
@@ -13,8 +14,10 @@ const MarketPage = lazy(() => import('./pages/MarketPage'));
 const ScenariosPage = lazy(() => import('./pages/ScenariosPage'));
 const JobOffersPage = lazy(() => import('./pages/JobOffersPage'));
 const RecruitingPage = lazy(() => import('./pages/RecruitingPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PublicOfferPage = lazy(() => import('./pages/requests/PublicOfferPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const EmployeeViewPage = lazy(() => import('./pages/EmployeeViewPage'));
 
 // Admin sub-pages
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -30,16 +33,6 @@ const SettingsLayout = lazy(() => import('./pages/settings/SettingsLayout'));
 const PositionsPage = lazy(() => import('./pages/settings/PositionsPage'));
 const OfferTemplatesPage = lazy(() => import('./pages/settings/OfferTemplatesPage'));
 const WelcomePagesPage = lazy(() => import('./pages/settings/WelcomePagesPage'));
-
-type AuthUser = {
-    id: number;
-    full_name: string;
-    role: string;
-    permissions: Record<string, boolean>;
-    scope_branches?: number[];
-    scope_departments?: number[];
-    // NEW-1: access_token намеренно убран — хранится только в HttpOnly cookie
-};
 
 // Security Wrappers
 const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
@@ -107,6 +100,28 @@ function App() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const persistUser = (nextUser: AuthUser, preferredStorage: 'local' | 'session' | null = null) => {
+        const payload = JSON.stringify(nextUser);
+
+        if (preferredStorage === 'local') {
+            localStorage.setItem('fot_user', payload);
+            sessionStorage.removeItem('fot_user');
+            return;
+        }
+
+        if (preferredStorage === 'session') {
+            sessionStorage.setItem('fot_user', payload);
+            localStorage.removeItem('fot_user');
+            return;
+        }
+
+        if (localStorage.getItem('fot_user')) {
+            localStorage.setItem('fot_user', payload);
+        } else {
+            sessionStorage.setItem('fot_user', payload);
+        }
+    };
+
     // Check localStorage on mount & refresh user data
     useEffect(() => {
         const initAuth = async () => {
@@ -128,18 +143,12 @@ function App() {
             // Без этого вызова cookie-based auth не работает в новых вкладках.
             try {
                 const response = await api.get('/auth/me');
-                const freshUser = response.data;
+                const freshUser = response.data as AuthUser;
                 setUser(freshUser);
                 setIsAuthenticated(true);
 
-                // Синхронизируем storage — минимальные данные для UI
-                const storageData = { id: freshUser.id, full_name: freshUser.full_name, role: freshUser.role };
-                if (localStorage.getItem('fot_user')) {
-                    localStorage.setItem('fot_user', JSON.stringify(storageData));
-                } else {
-                    // Новая вкладка: сохраняем в sessionStorage чтобы не мигало
-                    sessionStorage.setItem('fot_user', JSON.stringify(storageData));
-                }
+                // Синхронизируем storage актуальными данными профиля
+                persistUser(freshUser);
             } catch (err: unknown) {
                 // 401 — cookie невалидный или отсутствует
                 const status = (err as { response?: { status?: number } })?.response?.status;
@@ -171,18 +180,12 @@ function App() {
     const handleLogin = (userData: AuthUser, rememberMe: boolean = false) => {
         setUser(userData);
         setIsAuthenticated(true);
-        // FIX #5: Store minimal info, JWT is now in HttpOnly cookie
-        const storageData = {
-            id: userData.id,
-            full_name: userData.full_name,
-            role: userData.role
-            // JWT intentionally not stored
-        };
-        if (rememberMe) {
-            localStorage.setItem('fot_user', JSON.stringify(storageData));
-        } else {
-            sessionStorage.setItem('fot_user', JSON.stringify(storageData));
-        }
+        persistUser(userData, rememberMe ? 'local' : 'session');
+    };
+
+    const handleUserUpdate = (nextUser: AuthUser) => {
+        setUser(nextUser);
+        persistUser(nextUser);
     };
 
     const handleLogout = async () => {
@@ -221,11 +224,13 @@ function App() {
 
                     {/* Protected Routes */}
                     {isAuthenticated && user ? (
-                        <Route element={<DashboardLayout user={user} onLogout={handleLogout} />}>
+                        <Route element={<DashboardLayout user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />}>
                             <Route path="/" element={<Navigate to={(user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics) ? "/analytics" : "/requests"} replace />} />
+                            <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/analytics" element={<ProtectedAnalyticsRoute user={user}><AnalyticsPage /></ProtectedAnalyticsRoute>} />
                             <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />
                             <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
+                            <Route path="/employees/:id" element={<ProtectedEmployeesRoute user={user}><EmployeeViewPage /></ProtectedEmployeesRoute>} />
                             <Route path="/requests" element={<RequestsPage />} />
                             <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
                             <Route path="/recruiting" element={<ProtectedOffersRoute user={user}><RecruitingPage /></ProtectedOffersRoute>} />

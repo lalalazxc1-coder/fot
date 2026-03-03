@@ -8,7 +8,7 @@ import {
   getSortedRowModel,
   SortingState,
 } from '@tanstack/react-table';
-import { Plus, Loader2, Download, HelpCircle } from 'lucide-react';
+import { Plus, Loader2, Download, HelpCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { PageHeader } from './shared';
 
 import { api } from '../lib/api';
@@ -236,7 +236,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <PageHeader
         title="Список сотрудников"
-        subtitle="Реестр сотрудников и начислений"
+      //subtitle="Реестр сотрудников и начислений"
       />
 
       {/* Tabs */}
@@ -317,16 +317,28 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
         ) : (
           <div className="w-full">
             <table className="w-full text-sm text-left relative">
-              <thead className="sticky top-14 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
+              <thead className="sticky top-0 z-20 bg-white text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200 shadow-sm">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className="px-4 py-3 font-bold text-slate-500 select-none align-top whitespace-nowrap"
+                        className={`px-4 py-3 font-bold text-slate-500 select-none align-top whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer hover:text-slate-700' : ''}`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <span className="text-slate-400 flex flex-col items-center">
+                              {{
+                                asc: <ArrowUp className="w-3 h-3 text-blue-600" strokeWidth={3} />,
+                                desc: <ArrowDown className="w-3 h-3 text-blue-600" strokeWidth={3} />,
+                              }[header.column.getIsSorted() as string] ?? (
+                                  <ArrowUpDown className="w-3 h-3 opacity-50" strokeWidth={2} />
+                                )}
+                            </span>
+                          )}
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -336,8 +348,7 @@ export default function EmployeeTable({ user }: { onLogout: () => void, user: Ap
                 {table.getRowModel().rows.slice(0, visibleRows).map(row => (
                   <tr
                     key={row.id}
-                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                    onClick={() => handleRowClick(row.original)}
+                    className="hover:bg-slate-50/80 transition-colors"
                   >
                     {row.getVisibleCells().map(cell => (
                       <td key={cell.id} className="px-4 py-3 align-top">

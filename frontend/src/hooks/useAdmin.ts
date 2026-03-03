@@ -7,9 +7,15 @@ import { UserCreatePayload, UserUpdatePayload, RoleCreatePayload, RoleUpdatePayl
 export type User = {
     id: number;
     email: string;
+    contact_email?: string | null;
+    phone?: string | null;
     role_name: string;
     full_name: string;
+    avatar_url?: string | null;
+    job_title?: string | null;
     role_id: number;
+    employee_id?: number | null;
+    employee_name?: string | null;
     scope_branches?: number[];
     scope_departments?: number[];
     scope_unit_name?: string;

@@ -62,6 +62,9 @@ coverage.xml
 *.db-wal
 *.db-shm
 
+# Uploaded media
+backend/uploads/
+
 # ===========================
 # Node.js / Frontend
 # ===========================

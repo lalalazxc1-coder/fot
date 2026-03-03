@@ -14,6 +14,7 @@ export const createColumns = (
         {
             header: '#',
             accessorFn: (_, index) => index + 1,
+            enableSorting: false,
             cell: info => <span className="text-slate-400 font-mono text-xs">{info.getValue() as number}</span>,
             size: 50,
         },
@@ -89,11 +90,14 @@ export const createColumns = (
         {
             header: 'Кол-во',
             accessorKey: 'count',
+            sortDescFirst: true,
             cell: info => <div className="flex justify-center"><span className="bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200/50 text-xs font-bold px-2.5 py-1 rounded-lg min-w-[32px] text-center">{info.getValue() as number}</span></div>,
         },
         {
             header: 'Оклад',
             id: 'base',
+            accessorFn: row => row.base_net,
+            sortDescFirst: true,
             cell: ({ row }) => <FinancialCell value={{
                 net: row.original.base_net,
                 gross: row.original.base_gross
@@ -102,6 +106,8 @@ export const createColumns = (
         {
             header: 'KPI',
             id: 'kpi',
+            accessorFn: row => row.kpi_net,
+            sortDescFirst: true,
             cell: ({ row }) => <FinancialCell value={{
                 net: row.original.kpi_net,
                 gross: row.original.kpi_gross
@@ -110,6 +116,8 @@ export const createColumns = (
         {
             header: 'Доплаты',
             id: 'bonus',
+            accessorFn: row => row.bonus_net,
+            sortDescFirst: true,
             cell: ({ row }) => {
                 const r = row.original;
                 const hasPartialBonus = r.bonus_count !== null && r.bonus_count !== undefined && r.bonus_count < r.count && (r.bonus_net > 0 || r.bonus_gross > 0);
@@ -132,6 +140,8 @@ export const createColumns = (
         {
             header: 'Итого на ед.',
             id: 'total_per_unit',
+            accessorFn: row => row.base_net + row.kpi_net + row.bonus_net,
+            sortDescFirst: true,
             cell: ({ row }) => {
                 const r = row.original;
                 const net = r.base_net + r.kpi_net + r.bonus_net;
@@ -155,6 +165,11 @@ export const createColumns = (
         {
             header: 'Общий итог',
             id: 'grand_total',
+            accessorFn: row => {
+                const bonusCount = row.bonus_count !== null && row.bonus_count !== undefined ? row.bonus_count : row.count;
+                return (row.base_net + row.kpi_net) * row.count + (row.bonus_net * bonusCount);
+            },
+            sortDescFirst: true,
             size: 140,
             cell: ({ row }) => {
                 const r = row.original;
@@ -171,6 +186,7 @@ export const createColumns = (
         {
             id: 'actions',
             header: '',
+            enableSorting: false,
             size: 80,
             cell: ({ row }) => {
                 if (!canManage) return null;

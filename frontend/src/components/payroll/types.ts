@@ -1,3 +1,5 @@
+import type { AuthUser } from '../../types';
+
 export type FinancialValue = { net: number; gross: number };
 
 export interface EmployeeRecord {
@@ -50,7 +52,4 @@ export interface PlanRow {
 
 export type UserPermissions = Record<string, boolean>;
 
-export interface AppUser {
-    role: string;
-    permissions: UserPermissions;
-}
+export type AppUser = AuthUser;

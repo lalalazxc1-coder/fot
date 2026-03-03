@@ -1,5 +1,6 @@
 import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
 import { EmployeeRecord, FinancialValue, AppUser } from './types';
 import { FinancialCell } from './FinancialCell';
 import { EmployeeActionMenu } from './EmployeeActionMenu';
@@ -12,6 +13,14 @@ interface UsePayrollColumnsProps {
     activeTab: 'active' | 'dismissed';
 }
 
+const sortFinancial = (rowA: any, rowB: any, columnId: string) => {
+    const a = rowA.getValue(columnId) as FinancialValue;
+    const b = rowB.getValue(columnId) as FinancialValue;
+    const netA = a?.net || 0;
+    const netB = b?.net || 0;
+    return netA - netB;
+};
+
 export const usePayrollColumns = ({
     onHistory,
     onEdit,
@@ -21,9 +30,20 @@ export const usePayrollColumns = ({
 }: UsePayrollColumnsProps): ColumnDef<EmployeeRecord>[] => {
     return React.useMemo(() => [
         {
+            header: '#',
+            accessorFn: (_, index) => index + 1,
+            enableSorting: false,
+            cell: info => <span className="text-slate-400 font-mono text-xs">{info.getValue() as number}</span>,
+            size: 50,
+        },
+        {
             accessorKey: 'full_name',
             header: 'ФИО Сотрудника',
-            cell: i => <div className="font-semibold text-slate-800 break-words" title={i.getValue() as string}>{i.getValue() as string}</div>
+            cell: ({ row, getValue }) => (
+                <Link to={`/employees/${row.original.id}`} className="font-semibold text-blue-600 hover:text-blue-800 hover:underline break-words" title={getValue() as string}>
+                    {getValue() as string}
+                </Link>
+            )
         },
         {
             accessorKey: 'hire_date',
@@ -52,21 +72,29 @@ export const usePayrollColumns = ({
         {
             accessorKey: 'base',
             header: 'Оклад',
+            sortDescFirst: true,
+            sortingFn: sortFinancial,
             cell: ({ getValue }) => <FinancialCell value={getValue() as FinancialValue} />
         },
         {
             accessorKey: 'kpi',
             header: 'KPI',
+            sortDescFirst: true,
+            sortingFn: sortFinancial,
             cell: i => <FinancialCell value={i.getValue() as FinancialValue} />
         },
         {
             accessorKey: 'bonus',
             header: 'Доплаты',
+            sortDescFirst: true,
+            sortingFn: sortFinancial,
             cell: i => <FinancialCell value={i.getValue() as FinancialValue} />
         },
         {
             accessorKey: 'total',
             header: 'Итого',
+            sortDescFirst: true,
+            sortingFn: sortFinancial,
             cell: ({ row }) => (
                 <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 text-white px-3 py-2 rounded-xl shadow-md flex flex-col justify-center transform transition-transform hover:scale-[1.02]">
                     <FinancialCell value={row.original.total} isTotal={true} />
@@ -76,6 +104,7 @@ export const usePayrollColumns = ({
         {
             id: 'actions',
             header: '',
+            enableSorting: false,
             size: 80,
             cell: ({ row }) => {
                 const canManage = user.role === 'Administrator' || user.permissions.add_employees || user.permissions.admin_access;

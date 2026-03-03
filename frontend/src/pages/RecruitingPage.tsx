@@ -3,7 +3,7 @@ import { Plus, LayoutDashboard } from 'lucide-react';
 import { VacancyList } from '../components/recruiting/VacancyList';
 import { CandidateKanban } from '../components/recruiting/CandidateKanban';
 import { CommentsSection } from '../components/recruiting/CommentsSection';
-import { useVacancies, useCandidates, useVacancy, useCreateVacancy, useUpdateVacancyStatus, useCreateCandidate } from '../hooks/useRecruiting';
+import { useVacancies, useCandidates, useVacancy, useUpdateVacancyStatus, useCreateCandidate } from '../hooks/useRecruiting';
 import Modal from '../components/Modal';
 import { Button, Input, Select } from '../components/ui-mocks';
 
@@ -16,33 +16,13 @@ export default function RecruitingPage() {
     const { data: selectedVacancy } = useVacancy(selectedVacancyId);
 
     // Modals state
-    const [isVacancyModalOpen, setVacancyModalOpen] = useState(false);
     const [isCandidateModalOpen, setCandidateModalOpen] = useState(false);
 
     // Form states
-    const [newVacancy, setNewVacancy] = useState({ title: '', department_id: '', location: '', planned_count: 1, priority: 'Medium' });
     const [newCandidate, setNewCandidate] = useState({ first_name: '', last_name: '', stage: 'New' });
 
-    const createVacancy = useCreateVacancy();
     const updateVacancyStatus = useUpdateVacancyStatus();
     const createCandidate = useCreateCandidate();
-
-    const handleCreateVacancy = (e: React.FormEvent) => {
-        e.preventDefault();
-        createVacancy.mutate({
-            title: newVacancy.title,
-            department_id: Number(newVacancy.department_id),
-            location: newVacancy.location,
-            planned_count: Number(newVacancy.planned_count),
-            priority: newVacancy.priority,
-            status: 'Draft'
-        }, {
-            onSuccess: () => {
-                setVacancyModalOpen(false);
-                setNewVacancy({ title: '', department_id: '', location: '', planned_count: 1, priority: 'Medium' });
-            }
-        });
-    };
 
     const handleCreateCandidate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,7 +62,6 @@ export default function RecruitingPage() {
                             setSelectedVacancyId(id);
                             setSelectedCandidateId(null);
                         }}
-                        onNewVacancy={() => setVacancyModalOpen(true)}
                     />
                 )}
             </div>
@@ -94,14 +73,9 @@ export default function RecruitingPage() {
                         <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-6 shadow-sm border border-blue-100">
                             <LayoutDashboard className="w-10 h-10" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Выберите вакансию</h2>
                         <p className="text-slate-500 max-w-sm mb-8 text-sm leading-relaxed">
-                            Выберите вакансию из списка слева для просмотра воронки кандидатов, статистики и комментариев, или создайте новую.
+                            Выберите заявку из списка слева для просмотра воронки кандидатов, статистики и комментариев от руководителя.
                         </p>
-                        <Button onClick={() => setVacancyModalOpen(true)} className="gap-2 shadow-lg shadow-blue-600/20 active:scale-95 transition-all text-sm px-6 h-11 bg-blue-600 rounded-xl hover:bg-blue-700 text-white">
-                            <Plus className="w-5 h-5" />
-                            Создать вакансию
-                        </Button>
                     </div>
                 ) : (
                     <>
@@ -139,7 +113,7 @@ export default function RecruitingPage() {
                                 <CandidateKanban
                                     candidates={candidates}
                                     selectedCandidateId={selectedCandidateId}
-                                    onSelectCandidate={(id) => setSelectedCandidateId(id)}
+                                    onSelectCandidate={(id: number) => setSelectedCandidateId(id)}
                                 />
                             </div>
                         </div>
@@ -154,48 +128,6 @@ export default function RecruitingPage() {
                     </>
                 )}
             </div>
-
-            {/* Modals */}
-            <Modal isOpen={isVacancyModalOpen} onClose={() => setVacancyModalOpen(false)} title="Новая вакансия">
-                <form onSubmit={handleCreateVacancy} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Название должности</label>
-                        <Input required value={newVacancy.title} onChange={e => setNewVacancy({ ...newVacancy, title: e.target.value })} placeholder="Frontend Developer" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">ID Отдела</label>
-                            <Input required type="number" min="1" value={newVacancy.department_id} onChange={e => setNewVacancy({ ...newVacancy, department_id: e.target.value })} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Количество мест</label>
-                            <Input required type="number" min="1" value={newVacancy.planned_count} onChange={e => setNewVacancy({ ...newVacancy, planned_count: parseInt(e.target.value) })} />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Локация</label>
-                            <Input value={newVacancy.location} onChange={e => setNewVacancy({ ...newVacancy, location: e.target.value })} placeholder="Удаленно" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Приоритет</label>
-                            <Select value={newVacancy.priority} onChange={e => setNewVacancy({ ...newVacancy, priority: e.target.value })}>
-                                <option value="Low">Низкий (Low)</option>
-                                <option value="Medium">Средний (Medium)</option>
-                                <option value="High">Высокий (High)</option>
-                                <option value="Critical">Критический (Critical)</option>
-                            </Select>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                        <Button type="button" onClick={() => setVacancyModalOpen(false)} className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 focus:ring-0">Отмена</Button>
-                        <Button type="submit" disabled={createVacancy.isPending} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
-                            {createVacancy.isPending ? 'Создание...' : 'Создать'}
-                        </Button>
-                    </div>
-                </form>
-            </Modal>
 
             <Modal isOpen={isCandidateModalOpen} onClose={() => setCandidateModalOpen(false)} title="Новый кандидат">
                 <form onSubmit={handleCreateCandidate} className="space-y-4">
@@ -219,7 +151,7 @@ export default function RecruitingPage() {
                     </div>
 
                     <div className="flex justify-end gap-3 mt-6">
-                        <Button type="button" onClick={() => setCandidateModalOpen(false)} className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 focus:ring-0">Отмена</Button>
+                        <Button type="button" onClick={() => setCandidateModalOpen(false)} className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-transparent focus:ring-0 transition-colors">Отмена</Button>
                         <Button type="submit" disabled={createCandidate.isPending} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]">
                             {createCandidate.isPending ? 'Добавление...' : 'Добавить'}
                         </Button>

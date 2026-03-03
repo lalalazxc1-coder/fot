@@ -274,7 +274,7 @@ export default function JobOffersPage() {
         <div className="space-y-6">
             <PageHeader
                 title="Офферы компании"
-                subtitle="Создание цифровых и официальных предложений о работе"
+            //subtitle="Создание цифровых и официальных предложений о работе"
             />
 
             {offers.length === 0 ? (

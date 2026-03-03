@@ -5,7 +5,7 @@ Implements server-side aggregation, caching, and pagination
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import json
 import threading
 import logging
@@ -14,7 +14,6 @@ from dependencies import get_db, get_current_active_user, require_admin
 from database.models import Employee, PlanningPosition, OrganizationUnit, User, FinancialRecord, Position, AnalyticsConfig
 from sqlalchemy import func, and_, or_, desc
 from sqlalchemy.orm import joinedload
-from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from database.models import MarketData
 from services.org_unit_service import build_children_map, get_unit_with_descendants
@@ -43,6 +42,23 @@ from database.redis_client import redis_client
 _local_cache: dict = {}
 _local_cache_ttl: dict = {}
 _local_cache_lock = threading.Lock()
+
+
+def _parse_iso_datetime(value):
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _to_utc_aware(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def get_cached_or_compute(key: str, compute_fn, ttl: int = CACHE_DURATION):
@@ -734,7 +750,7 @@ def get_retention_risk(
 
         risk_items = []
         risk_dist = {"High": 0, "Medium": 0, "Low": 0}
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         
         for emp in employees:
             fr = fin_map.get(emp.id)
@@ -742,11 +758,11 @@ def get_retention_risk(
             
             # Stagnation
             # Prefer last_raise_date as source of truth; fallback to created_at for legacy records.
-            created_dt = now - timedelta(days=365*2)
-            source_date = fr.last_raise_date or fr.created_at
-            if source_date:
-                try: created_dt = datetime.fromisoformat(source_date)
-                except (ValueError, TypeError): pass
+            created_dt = now - timedelta(days=365 * 2)
+            source_date = fr.last_raise_date_dt or fr.created_at_dt or fr.last_raise_date or fr.created_at
+            parsed_source_date = _parse_iso_datetime(source_date)
+            if parsed_source_date:
+                created_dt = _to_utc_aware(parsed_source_date)
             
             delta = relativedelta(now, created_dt)
             months_stagnant = delta.months + (delta.years * 12)
@@ -780,7 +796,7 @@ def get_retention_risk(
                     "full_name": emp.full_name,
                     "position": emp.position.title if emp.position else "-",
                     "branch": emp.org_unit.name if emp.org_unit else "-",
-                    "last_update": source_date or created_dt.isoformat(),
+                    "last_update": created_dt.isoformat(),
                     "months_stagnant": months_stagnant,
                     "current_salary": float(current_salary),
                     "market_median": float(median),

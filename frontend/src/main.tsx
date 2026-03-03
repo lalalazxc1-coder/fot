@@ -60,7 +60,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <QueryClientProvider client={queryClient}>
                 <BrowserRouter>
                     <App />
-                    <Toaster position="top-right" richColors offset="65px" />
+                    <Toaster
+                        position="top-right"
+                        richColors
+                        offset="6px"
+                        style={{ right: '250px' }}
+                    />
                 </BrowserRouter>
             </QueryClientProvider>
         </ErrorBoundary>

@@ -109,7 +109,11 @@ export type UserCreatePayload = {
     email: string;
     password?: string;
     full_name: string;
+    job_title?: string | null;
+    contact_email?: string | null;
+    phone?: string | null;
     role_id: number;
+    employee_id?: number | null;
     scope_branches?: number[];
     scope_departments?: number[];
     is_active?: boolean;
@@ -151,10 +155,18 @@ export type StructureUpdatePayload = {
 export type AuthUser = {
     id: number;
     full_name: string;
-    email?: string;
+    email: string;
+    contact_email?: string | null;
+    phone?: string | null;
+    employee_id?: number | null;
     role: string;
-    permissions?: Record<string, boolean>;
+    permissions: Record<string, boolean>;
+    scope_unit_name?: string;
     scope_branches?: number[];
     scope_departments?: number[];
     is_active?: boolean;
+    avatar_url?: string | null;
+    job_title?: string | null;
 };
+
+export type AppUser = AuthUser;

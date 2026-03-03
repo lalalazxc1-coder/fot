@@ -68,7 +68,7 @@ class AuthService:
             raise HTTPException(status_code=400, detail="Неверный логин или пароль")
 
         role_name = user.role_rel.name if user.role_rel else "No Role"
-        perms = user.role_rel.permissions if user.role_rel else {}
+        perms = (user.role_rel.permissions or {}) if user.role_rel else {}
 
         # 3. Записываем успешный вход
         _write_login_log(db, "login_success", user_id=user.id, user_email=username,
@@ -82,10 +82,16 @@ class AuthService:
             "status": "ok",
             "user_id": user.id,
             "full_name": user.full_name,
+            "email": user.email,
+            "contact_email": user.contact_email,
+            "phone": user.phone,
             "role": role_name,
             "permissions": perms,
             "scope_branches": user.scope_branches or [],
             "scope_departments": user.scope_departments or [],
+            "avatar_url": user.avatar_url,
+            "job_title": user.job_title,
+            "employee_id": user.employee_id,
             "access_token": access_token,
             "refresh_token": refresh_token,
         }

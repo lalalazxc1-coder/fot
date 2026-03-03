@@ -1,14 +1,35 @@
 import React, { useState } from 'react';
-import { Users, Edit2, User as UserIcon, Loader2, Ban, CheckCircle2 } from 'lucide-react';
+import { Users, Edit2, Loader2, Ban, CheckCircle2, UploadCloud, Trash2 } from 'lucide-react';
 import Modal from '../../components/Modal';
 import { useUsers, useRoles, useCreateUser, useUpdateUser, useToggleBlockUser, User } from '../../hooks/useAdmin';
 import { useFlatStructure } from '../../hooks/useStructure';
-import { validatePassword } from '../../utils/validators';
+import { useEmployees } from '../../hooks/useEmployees';
+import { formatPhone, isValidEmail, isValidPhone, normalizePhone, validatePassword } from '../../utils/validators';
+import { api } from '../../lib/api';
+import { resolveAvatarUrl } from '../../utils/avatar';
+import { getErrorMessage } from '../../utils/api-helpers';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDebounceValue } from 'usehooks-ts';
 
 export default function UsersPage() {
+    const queryClient = useQueryClient();
     const { data: users = [], isLoading: isUsersLoading } = useUsers();
     const { data: roles = [], isLoading: isRolesLoading } = useRoles();
     const { data: structure = [], isLoading: isStructureLoading } = useFlatStructure();
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [debouncedEmployeeSearch] = useDebounceValue(employeeSearch, 300);
+
+    // Fetch only when modal is open and search string is > 1 char
+    const { data: employees = [], isLoading: isEmployeesLoading } = useEmployees(
+        debouncedEmployeeSearch,
+        { enabled: isModalOpen && debouncedEmployeeSearch.trim().length >= 2 }
+    );
+
+    // Only display search results if user actually typed something
+    const displayEmployees = debouncedEmployeeSearch.trim().length >= 2 ? employees : [];
 
     const createUserMutation = useCreateUser();
     const updateUserMutation = useUpdateUser();
@@ -17,15 +38,21 @@ export default function UsersPage() {
     const isSubmitting = createUserMutation.isPending || updateUserMutation.isPending || toggleBlockMutation.isPending;
 
     // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+    const [isAvatarDeleting, setIsAvatarDeleting] = useState(false);
+    const [avatarVersion, setAvatarVersion] = useState(0);
 
     // Form State
     const [formData, setFormData] = useState({
         email: '',
+        contact_email: '',
+        phone: '',
         full_name: '',
+        job_title: '',
         password: '',
         role_id: '',
+        employee_id: '' as string | number,
         scope_branches: [] as number[],
         scope_departments: [] as number[],
         is_active: true
@@ -35,23 +62,82 @@ export default function UsersPage() {
     const openCreateModal = () => {
         setEditingUser(null);
         setFormError('');
-        setFormData({ email: '', full_name: '', password: '', role_id: '', scope_branches: [], scope_departments: [], is_active: true });
+        setAvatarVersion(0);
+        setFormData({ email: '', contact_email: '', phone: '', full_name: '', job_title: '', password: '', role_id: '', employee_id: '', scope_branches: [], scope_departments: [], is_active: true });
+        setEmployeeSearch('');
         setIsModalOpen(true);
     };
 
     const openEditModal = (user: User) => {
+        setEmployeeSearch(user.employee_name || '');
         setEditingUser(user);
         setFormError('');
+        setAvatarVersion(0);
         setFormData({
             email: user.email,
+            contact_email: user.contact_email || '',
+            phone: user.phone || '',
             full_name: user.full_name,
+            job_title: user.job_title || '',
             password: '',
             role_id: user.role_id.toString(),
+            employee_id: user.employee_id || '',
             scope_branches: user.scope_branches || [],
             scope_departments: user.scope_departments || [],
             is_active: user.is_active
         });
         setIsModalOpen(true);
+    };
+
+    const editableAvatarSrc = editingUser?.avatar_url
+        ? `${resolveAvatarUrl(editingUser.avatar_url)}${resolveAvatarUrl(editingUser.avatar_url).includes('?') ? '&' : '?'}v=${avatarVersion}`
+        : '';
+
+    const initials = (name: string): string =>
+        name
+            .split(' ')
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase();
+
+    const handleAdminAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!editingUser) return;
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        setIsAvatarUploading(true);
+        try {
+            const res = await api.post(`/users/${editingUser.id}/avatar`, formData);
+            setEditingUser({ ...editingUser, avatar_url: res.data.avatar_url });
+            setAvatarVersion((prev) => prev + 1);
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            toast.success('Фото профиля обновлено');
+        } catch (error) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setIsAvatarUploading(false);
+            event.target.value = '';
+        }
+    };
+
+    const handleAdminAvatarDelete = async () => {
+        if (!editingUser) return;
+        setIsAvatarDeleting(true);
+        try {
+            await api.delete(`/users/${editingUser.id}/avatar`);
+            setEditingUser({ ...editingUser, avatar_url: null });
+            setAvatarVersion((prev) => prev + 1);
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            toast.success('Фото профиля удалено');
+        } catch (error) {
+            toast.error(getErrorMessage(error));
+        } finally {
+            setIsAvatarDeleting(false);
+        }
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -71,10 +157,27 @@ export default function UsersPage() {
             }
         }
 
+        const contactEmail = formData.contact_email.trim();
+        const normalizedPhone = normalizePhone(formData.phone);
+
+        if (contactEmail && !isValidEmail(contactEmail)) {
+            setFormError('Некорректный формат email');
+            return;
+        }
+
+        if (normalizedPhone && !isValidPhone(normalizedPhone)) {
+            setFormError('Некорректный формат телефона');
+            return;
+        }
+
         const payload = {
             email: formData.email,
+            contact_email: contactEmail || undefined,
+            phone: normalizedPhone || undefined,
             full_name: formData.full_name,
+            job_title: formData.job_title || undefined,
             role_id: parseInt(formData.role_id),
+            employee_id: formData.employee_id ? Number(formData.employee_id) : null,
             scope_branches: formData.scope_branches,
             scope_departments: formData.scope_departments,
             is_active: formData.is_active,
@@ -125,7 +228,7 @@ export default function UsersPage() {
                     <p className="text-slate-500 text-sm mt-1 ml-14">Управление учетными записями</p>
                 </div>
                 <button
-                    disabled={isUsersLoading || isRolesLoading || isStructureLoading}
+                    disabled={isUsersLoading || isRolesLoading || isStructureLoading || isEmployeesLoading}
                     onClick={openCreateModal}
                     className="bg-slate-900 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50 w-full md:w-auto text-center"
                 >
@@ -154,10 +257,23 @@ export default function UsersPage() {
                                 <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shadow-slate-900/10">
-                                                <UserIcon className="w-5 h-5" />
+                                            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md shadow-slate-900/10 overflow-hidden">
+                                                {u.avatar_url ? (
+                                                    <img src={resolveAvatarUrl(u.avatar_url)} alt={u.full_name} className="w-10 h-10 object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-bold">{initials(u.full_name)}</span>
+                                                )}
                                             </div>
-                                            <span className="font-bold text-slate-900">{u.full_name}</span>
+                                            <div>
+                                                <div className="font-bold text-slate-900">{u.full_name}</div>
+                                                {(u.contact_email || u.phone || u.job_title || u.employee_name) && (
+                                                    <div className="text-xs text-slate-500 mt-0.5">
+                                                        {u.job_title || 'Без должности'}
+                                                        {u.phone ? ` · ${u.phone}` : ''}
+                                                        {u.employee_name ? ` · 🔗 ${u.employee_name}` : ''}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600 hidden sm:table-cell font-medium">{u.email}</td>
@@ -202,6 +318,46 @@ export default function UsersPage() {
                             {formError}
                         </div>
                     )}
+                    {editingUser && (
+                        <div className="rounded-xl border border-slate-200 p-4 bg-slate-50">
+                            <div className="flex items-center gap-4">
+                                {editableAvatarSrc ? (
+                                    <img
+                                        src={editableAvatarSrc}
+                                        alt={editingUser.full_name}
+                                        className="w-14 h-14 rounded-xl object-cover border border-slate-200"
+                                    />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+                                        {initials(editingUser.full_name)}
+                                    </div>
+                                )}
+                                <div className="flex gap-2">
+                                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm cursor-pointer hover:bg-slate-50">
+                                        <UploadCloud className="w-4 h-4" />
+                                        {isAvatarUploading ? 'Загрузка...' : 'Заменить фото'}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            disabled={isAvatarUploading}
+                                            onChange={handleAdminAvatarUpload}
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleAdminAvatarDelete}
+                                        disabled={!editingUser.avatar_url || isAvatarDeleting}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm disabled:opacity-60"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        {isAvatarDeleting ? 'Удаление...' : 'Удалить фото'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">ФИО</label>
                         <input
@@ -220,6 +376,33 @@ export default function UsersPage() {
                             placeholder="user@example.com"
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
+                        <input
+                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:outline-none transition-all placeholder:text-slate-300"
+                            placeholder="user@company.com"
+                            value={formData.contact_email}
+                            onChange={e => setFormData({ ...formData, contact_email: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Телефон</label>
+                        <input
+                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:outline-none transition-all placeholder:text-slate-300"
+                            placeholder="+7 700 000 00 00"
+                            value={formData.phone}
+                            onChange={e => setFormData({ ...formData, phone: formatPhone(e.target.value) })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Системная должность</label>
+                        <input
+                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:outline-none transition-all placeholder:text-slate-300"
+                            placeholder="HR Business Partner"
+                            value={formData.job_title}
+                            onChange={e => setFormData({ ...formData, job_title: e.target.value })}
                         />
                     </div>
                     <div>
@@ -247,6 +430,51 @@ export default function UsersPage() {
                                 <option value="">Выберите роль...</option>
                                 {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Привязка к сотруднику (Опционально)</label>
+                        <div className="relative border border-slate-200 rounded-xl bg-slate-50 p-3">
+                            <input
+                                type="text"
+                                placeholder="Поиск по ФИО или должности..."
+                                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:outline-none mb-3 bg-white"
+                                value={employeeSearch}
+                                onChange={e => setEmployeeSearch(e.target.value)}
+                            />
+                            {isEmployeesLoading ? (
+                                <div className="text-xs text-slate-400">Поиск...</div>
+                            ) : (
+                                <select
+                                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:outline-none bg-white appearance-none"
+                                    value={formData.employee_id || ''}
+                                    onChange={e => setFormData({ ...formData, employee_id: e.target.value })}
+                                >
+                                    <option value="">Не привязывать</option>
+
+                                    {displayEmployees.map(e => (
+                                        <option key={e.id} value={e.id}>{e.full_name} ({e.position || 'Без должности'})</option>
+                                    ))}
+
+                                    {/* Show the currently selected employee in form data if it's not in the search results */}
+                                    {formData.employee_id && !displayEmployees.some(e => e.id === Number(formData.employee_id)) && (
+                                        <option value={formData.employee_id}>
+                                            {editingUser?.employee_id === Number(formData.employee_id)
+                                                ? `${editingUser.employee_name} (Текущий)`
+                                                : `Выбранный сотрудник (ID: ${formData.employee_id})`}
+                                        </option>
+                                    )}
+
+                                    {debouncedEmployeeSearch.trim().length > 0 && debouncedEmployeeSearch.trim().length < 2 && (
+                                        <option disabled value="prompt">Введите минимум 2 символа для поиска...</option>
+                                    )}
+
+                                    {debouncedEmployeeSearch.trim().length >= 2 && displayEmployees.length === 0 && !isEmployeesLoading && (
+                                        <option disabled value="not_found">Сотрудники не найдены</option>
+                                    )}
+                                </select>
+                            )}
                         </div>
                     </div>
 

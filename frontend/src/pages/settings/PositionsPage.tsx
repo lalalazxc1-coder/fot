@@ -57,7 +57,7 @@ export default function PositionsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="relative max-w-sm w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -72,7 +72,7 @@ export default function PositionsPage() {
                 {canEdit && (
                     <button
                         onClick={() => { setForm({ title: '', grade: 1 }); setIsAddOpen(true); }}
-                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-lg shadow-slate-900/10 whitespace-nowrap"
+                        className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 shrink-0 w-full md:w-auto"
                     >
                         <Plus className="w-4 h-4" /> Добавить
                     </button>

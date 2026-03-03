@@ -102,6 +102,9 @@ class EmployeeService:
             total_n = base_n + kpi_n + bonus_n
             total_g = base_g + kpi_g + bonus_g
 
+            # Get linked user
+            linked_user = db.query(User).filter(User.employee_id == emp.id).first()
+
             results.append({
                 "id": emp.id,
                 "org_unit_id": emp.org_unit_id,
@@ -119,6 +122,10 @@ class EmployeeService:
                 "hire_date": emp.hire_date,
                 "gender": emp.gender,
                 "dob": emp.dob,
+                "linked_user_email": linked_user.email if linked_user else None,
+                "linked_user_contact_email": linked_user.contact_email if linked_user else None,
+                "linked_user_phone": linked_user.phone if linked_user else None,
+                "linked_user_avatar": linked_user.avatar_url if linked_user else None,
                 "last_raise_date": (
                     (fin.last_raise_date or fin.created_at).split('T')[0]
                     if fin and (fin.last_raise_date or fin.created_at)

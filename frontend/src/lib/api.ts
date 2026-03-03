@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
+import type { AxiosHeaders, AxiosRequestHeaders } from 'axios';
 
 const getBaseUrl = () => {
   const url = import.meta.env.VITE_API_URL || '';
@@ -44,6 +45,17 @@ const ensureCsrfToken = async (): Promise<string | null> => {
 };
 
 api.interceptors.request.use(async (config) => {
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (config.headers && typeof (config.headers as AxiosHeaders).set === 'function') {
+      (config.headers as AxiosHeaders).set('Content-Type', undefined);
+    } else {
+      const headers = (config.headers || {}) as AxiosRequestHeaders;
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+      config.headers = headers;
+    }
+  }
+
   const method = (config.method || 'get').toUpperCase();
   const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
   if (!isMutating) return config;

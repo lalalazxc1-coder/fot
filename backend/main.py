@@ -2,6 +2,7 @@ import sys
 import os
 import logging
 from ipaddress import ip_address, ip_network
+from pathlib import Path
 
 # 1. Add current directory to path so python sees 'routers', 'database', etc.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -18,6 +19,7 @@ logger = logging.getLogger("fot")
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 # 2. Import Database & Models
@@ -49,6 +51,10 @@ app = FastAPI(
     docs_url="/docs" if os.environ.get("ENVIRONMENT") != "production" else None,
     redoc_url=None,
 )
+
+uploads_dir = Path(os.environ.get("UPLOADS_DIR", Path(__file__).resolve().parent / "uploads"))
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # --- Global Exception Handler ---
 @app.exception_handler(Exception)

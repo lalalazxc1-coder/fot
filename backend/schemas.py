@@ -13,10 +13,15 @@ class LoginResponse(BaseModel):
     status: str
     user_id: int
     full_name: str
+    email: str
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
     role: str
     permissions: Dict[str, bool]
     scope_branches: List[int] = []
     scope_departments: List[int] = []
+    avatar_url: Optional[str] = None
+    job_title: Optional[str] = None
     access_token: Optional[str] = None
 
 class RoleCreate(BaseModel):
@@ -28,19 +33,124 @@ class UserCreate(BaseModel):
     full_name: str
     password: str
     role_id: int
+    job_title: Optional[str] = None
+    contact_email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=32)
     # Optional scopes
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
+    employee_id: Optional[int] = None
     is_active: bool = True
+
+    @field_validator("contact_email")
+    @classmethod
+    def validate_contact_email(cls, v: Optional[str]):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return None
+        email_regex = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        if not re.match(email_regex, value):
+            raise ValueError("Некорректный формат email")
+        return value.lower()
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]):
+        if v is None:
+            return v
+        cleaned = re.sub(r"[^\d+]", "", v.strip())
+        if not cleaned:
+            return None
+        phone_regex = r"^(\+7|7|8)\d{10}$"
+        if not re.match(phone_regex, cleaned):
+            raise ValueError("Некорректный формат телефона")
+        if cleaned.startswith("8"):
+            cleaned = "+7" + cleaned[1:]
+        elif cleaned.startswith("7"):
+            cleaned = "+" + cleaned
+        return cleaned
 
 class UserUpdate(BaseModel):
     full_name: str
     email: str
     role_id: int
+    job_title: Optional[str] = None
+    contact_email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=32)
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
+    employee_id: Optional[int] = None
     password: Optional[str] = None
     is_active: bool = True
+
+    @field_validator("contact_email")
+    @classmethod
+    def validate_contact_email(cls, v: Optional[str]):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return None
+        email_regex = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        if not re.match(email_regex, value):
+            raise ValueError("Некорректный формат email")
+        return value.lower()
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]):
+        if v is None:
+            return v
+        cleaned = re.sub(r"[^\d+]", "", v.strip())
+        if not cleaned:
+            return None
+        phone_regex = r"^(\+7|7|8)\d{10}$"
+        if not re.match(phone_regex, cleaned):
+            raise ValueError("Некорректный формат телефона")
+        if cleaned.startswith("8"):
+            cleaned = "+7" + cleaned[1:]
+        elif cleaned.startswith("7"):
+            cleaned = "+" + cleaned
+        return cleaned
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: str = Field(..., min_length=1, max_length=255)
+    job_title: Optional[str] = Field(None, max_length=255)
+    contact_email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=32)
+
+    @field_validator("contact_email")
+    @classmethod
+    def validate_contact_email(cls, v: Optional[str]):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return None
+        email_regex = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        if not re.match(email_regex, value):
+            raise ValueError("Некорректный формат email")
+        return value.lower()
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: Optional[str]):
+        if v is None:
+            return v
+        cleaned = re.sub(r"[^\d+]", "", v.strip())
+        if not cleaned:
+            return None
+        phone_regex = r"^(\+7|7|8)\d{10}$"
+        if not re.match(phone_regex, cleaned):
+            raise ValueError("Некорректный формат телефона")
+        if cleaned.startswith("8"):
+            cleaned = "+7" + cleaned[1:]
+        elif cleaned.startswith("7"):
+            cleaned = "+" + cleaned
+        return cleaned
 
 # Structure
 # Structure

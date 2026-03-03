@@ -104,15 +104,18 @@ export default function RolesPage() {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-300">
-            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center mb-6">
+        <div className="space-y-6 pb-20 animate-in fade-in duration-300">
+            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center w-full bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
                 <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800"><Shield className="w-6 h-6 text-slate-900" /> Роли и Доступы</h2>
-                    <p className="text-slate-500 text-sm mt-1">Настройка уровней доступа сотрудников</p>
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-slate-400" />
+                        Роли и Доступы
+                    </h2>
+                    <p className="text-slate-500 font-medium text-[13px] mt-0.5">Настройка уровней доступа сотрудников</p>
                 </div>
                 <button
                     onClick={openCreateModal}
-                    className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/10 w-full md:w-auto text-center flex justify-center items-center"
+                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 shrink-0 w-full md:w-auto"
                 >
                     + Создать роль
                 </button>
@@ -127,20 +130,20 @@ export default function RolesPage() {
                 )}
                 {!isLoading && roles.length === 0 && <p className="text-sm text-slate-400 col-span-2 text-center py-10">Ролей пока нет. Создайте первую.</p>}
                 {!isLoading && roles.map(role => (
-                    <div key={role.id} className="border border-slate-200 p-4 rounded-xl hover:shadow-md transition-shadow group relative bg-white">
-                        <div className="flex justify-between items-start mb-3">
-                            <span className="font-bold text-slate-800 text-lg group-hover:text-slate-900 transition-colors">{role.name}</span>
-                            <div className="flex gap-2">
-                                <button onClick={() => openEditModal(role)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"><Edit2 className="w-4 h-4" /></button>
-                                <button onClick={() => handleDelete(role.id)} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <div key={role.id} className="bg-white border border-slate-200 p-5 rounded-2xl hover:shadow-xl hover:shadow-slate-200/40 transition-all flex flex-col group relative">
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="font-bold text-slate-900 text-lg">{role.name}</span>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openEditModal(role)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-900 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={() => handleDelete(role.id)} className="p-2 hover:bg-red-50 rounded-xl text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-4">
+                        <div className="flex flex-wrap gap-2 mt-auto">
                             {Object.entries(role.permissions).filter(([_, v]) => v).map(([key]) => {
                                 const label = PERMISSIONS_LIST.find(p => p.key === key)?.label || key;
-                                return <span key={key} className="text-[11px] bg-slate-50 text-slate-700 px-2 py-1 rounded-md border border-slate-200 font-medium">{label}</span>
+                                return <span key={key} className="text-[10px] bg-slate-50 text-slate-500 px-2 py-1 rounded-lg font-bold">{label}</span>
                             })}
-                            {Object.keys(role.permissions).length === 0 && <span className="text-[11px] text-slate-400 bg-slate-50 px-2 py-1 rounded">Нет прав</span>}
+                            {Object.keys(role.permissions).length === 0 && <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg font-bold">Нет прав</span>}
                         </div>
                     </div>
                 ))}

@@ -88,8 +88,10 @@ def list_vacancies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_recruiting_permission(current_user)
-    return db.query(Vacancy).order_by(Vacancy.id.desc()).all()
+    query = db.query(Vacancy)
+    if not _has_recruiting_permission(current_user):
+        query = query.filter(Vacancy.creator_id == current_user.id)
+    return query.order_by(Vacancy.id.desc()).all()
 
 
 @router.post("/vacancies", response_model=VacancyResponse)
@@ -98,7 +100,6 @@ def create_vacancy(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_recruiting_permission(current_user)
     _ensure_department_exists(db, data.department_id)
 
     vacancy = Vacancy(
@@ -122,8 +123,10 @@ def get_vacancy(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_recruiting_permission(current_user)
-    return _ensure_vacancy_exists(db, vacancy_id)
+    vacancy = _ensure_vacancy_exists(db, vacancy_id)
+    if not _has_recruiting_permission(current_user) and vacancy.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return vacancy
 
 
 @router.put("/vacancies/{vacancy_id}", response_model=VacancyResponse)
@@ -319,8 +322,16 @@ def list_comments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_recruiting_permission(current_user)
     _validate_comment_target(db, target_type, target_id)
+    
+    if target_type == "vacancy" and not _has_recruiting_permission(current_user):
+        vacancy = _ensure_vacancy_exists(db, target_id)
+        if vacancy.creator_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    elif target_type == "candidate" and not _has_recruiting_permission(current_user):
+        # Normal users usually shouldn't see candidate comments, but if they must,
+        # we can verify if they created the corresponding vacancy.
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     comments = (
         db.query(Comment)
@@ -351,8 +362,14 @@ def create_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _require_recruiting_permission(current_user)
     _validate_comment_target(db, data.target_type, data.target_id)
+    
+    if data.target_type == "vacancy" and not _has_recruiting_permission(current_user):
+        vacancy = _ensure_vacancy_exists(db, data.target_id)
+        if vacancy.creator_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    elif data.target_type == "candidate" and not _has_recruiting_permission(current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
 
     comment = Comment(
         target_type=data.target_type,

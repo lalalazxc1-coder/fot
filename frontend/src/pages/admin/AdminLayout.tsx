@@ -6,7 +6,7 @@ export default function AdminLayout() {
         <div className="space-y-6">
             <PageHeader
                 title="Административная панель"
-                subtitle="Настройки системы и доступов"
+            //subtitle="Настройки системы и доступов"
             />
 
             <div className="mt-6">

@@ -21,7 +21,12 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String)
+    avatar_url = Column(String, nullable=True)
+    job_title = Column(String, nullable=True)
+    contact_email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True) 
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True) 
     
     # NEW: Data Scope (Multi-select)
     # scope_unit_id is deprecated
@@ -31,7 +36,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     
     role_rel = relationship("Role", back_populates="users")
-    # scope_unit = relationship("OrganizationUnit") # Removed single relationship
+    employee = relationship("Employee")
 
 class OrganizationUnit(Base):
     __tablename__ = "organization_units"

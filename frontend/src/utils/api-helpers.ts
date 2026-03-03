@@ -11,13 +11,58 @@ export type ApiErrorResponse = {
     details?: Record<string, unknown>;
 };
 
+const extractDetailMessage = (detail: unknown): string => {
+    if (typeof detail === 'string') {
+        return detail;
+    }
+
+    if (Array.isArray(detail)) {
+        const messages = detail
+            .map((item) => {
+                if (typeof item === 'string') {
+                    return item;
+                }
+
+                if (item && typeof item === 'object') {
+                    const record = item as Record<string, unknown>;
+                    const msg = typeof record.msg === 'string' ? record.msg : null;
+                    const loc = Array.isArray(record.loc)
+                        ? record.loc.map((part) => String(part)).join('.')
+                        : null;
+
+                    if (msg && loc) return `${loc}: ${msg}`;
+                    if (msg) return msg;
+                }
+
+                return '';
+            })
+            .filter(Boolean);
+
+        return messages.join('; ') || 'Ошибка валидации данных';
+    }
+
+    if (detail && typeof detail === 'object') {
+        const record = detail as Record<string, unknown>;
+        if (typeof record.msg === 'string') {
+            return record.msg;
+        }
+        try {
+            return JSON.stringify(detail);
+        } catch {
+            return 'Неизвестная ошибка';
+        }
+    }
+
+    return 'Неизвестная ошибка';
+};
+
 /**
  * Handle API errors consistently across the app
  * @param error - Error object from API call
  * @returns Formatted error object
  */
-export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | unknown): ApiErrorResponse => {
-    const axiosErr = error as AxiosError<{ detail?: string }>;
+export const handleApiError = (error: AxiosError<{ detail?: unknown }> | Error | unknown): ApiErrorResponse => {
+    const axiosErr = error as AxiosError<{ detail?: unknown }>;
 
     // Network error
     if (!axiosErr.response) {
@@ -34,7 +79,7 @@ export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | 
     switch (status) {
         case 400:
             return {
-                message: data?.detail || 'Неверный запрос',
+                message: extractDetailMessage(data?.detail) || 'Неверный запрос',
                 status: 400,
                 details: data as Record<string, unknown>,
             };
@@ -45,23 +90,23 @@ export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | 
             };
         case 403:
             return {
-                message: data?.detail || 'Доступ запрещен',
+                message: extractDetailMessage(data?.detail) || 'Доступ запрещен',
                 status: 403,
             };
         case 404:
             return {
-                message: data?.detail || 'Ресурс не найден',
+                message: extractDetailMessage(data?.detail) || 'Ресурс не найден',
                 status: 404,
             };
         case 409:
             return {
-                message: data?.detail || 'Конфликт данных',
+                message: extractDetailMessage(data?.detail) || 'Конфликт данных',
                 status: 409,
                 details: data as Record<string, unknown>,
             };
         case 422:
             return {
-                message: data?.detail || 'Ошибка валидации данных',
+                message: extractDetailMessage(data?.detail) || 'Ошибка валидации данных',
                 status: 422,
                 details: data as Record<string, unknown>,
             };
@@ -72,7 +117,7 @@ export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | 
             };
         default:
             return {
-                message: data?.detail || `Ошибка сервера (${status})`,
+                message: extractDetailMessage(data?.detail) || `Ошибка сервера (${status})`,
                 status,
                 details: data as Record<string, unknown>,
             };
@@ -84,13 +129,18 @@ export const handleApiError = (error: AxiosError<{ detail?: string }> | Error | 
  * @param error - Error object or ApiErrorResponse
  * @returns User-friendly error message
  */
-export const getErrorMessage = (error: AxiosError<{ detail?: string }> | Error | ApiErrorResponse | string | unknown): string => {
+export const getErrorMessage = (error: AxiosError<{ detail?: unknown }> | Error | ApiErrorResponse | string | unknown): string => {
     if (typeof error === 'string') {
         return error;
     }
 
-    if (error && typeof error === 'object' && 'message' in error) {
-        return (error as Error).message;
+    const axiosErr = error as AxiosError<{ detail?: unknown }>;
+    if (axiosErr?.response) {
+        return handleApiError(axiosErr).message;
+    }
+
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+        return (error as { message: string }).message;
     }
 
     const apiError = handleApiError(error);

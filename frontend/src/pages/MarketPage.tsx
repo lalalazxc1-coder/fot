@@ -489,7 +489,7 @@ export default function MarketPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             <PageHeader
                 title="Анализ рынка"
-                subtitle="Сравнение зарплатных предложений с рыночными показателями"
+                //subtitle="Сравнение зарплатных предложений с рыночными показателями"
                 extra={
                     <button
                         onClick={() => setIsHelpOpen(true)}

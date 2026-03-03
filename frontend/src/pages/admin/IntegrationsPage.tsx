@@ -75,11 +75,15 @@ export default function IntegrationsPage() {
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
-        <div className="space-y-6 max-w-4xl">
-            <h2 className="text-xl font-bold text-slate-900">Внешние интеграции</h2>
-            <p className="text-slate-500">Настройте подключение к внешним сервисам для поиска кандидатов и аналитики.</p>
+        <div className="space-y-6 pb-20 animate-in fade-in duration-300">
+            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center w-full bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm max-w-4xl">
+                <div>
+                    <h2 className="text-lg font-bold text-slate-800">Внешние интеграции</h2>
+                    <p className="text-slate-500 font-medium text-[13px] mt-0.5">Настройте подключение к внешним сервисам для поиска кандидатов и аналитики</p>
+                </div>
+            </div>
 
-            <div className="grid gap-6">
+            <div className="grid gap-6 max-w-4xl">
                 {settings.map((service) => (
                     <IntegrationCard
                         key={`${service.id}-${service.updated_at}`}

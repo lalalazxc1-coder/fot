@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteAllNotifications } from '../hooks/useAdmin';
-import { Trash2, CheckCircle, Bell, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout, Send, Briefcase, ChevronDown, Building } from 'lucide-react';
+import { Trash2, CheckCircle, Bell, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout, Send, Briefcase, ChevronDown, Building, User as UserIcon } from 'lucide-react';
 import { useSnapshot } from '../context/SnapshotContext';
 import Modal from './Modal';
 import { Button, Input } from './ui-mocks';
@@ -9,92 +9,14 @@ import { api } from '../lib/api';
 import { Notification } from '../hooks/useAdmin';
 import { useOnClickOutside } from 'usehooks-ts';
 import { formatDateTime } from '../utils';
-import { validatePassword } from '../utils/validators';
+import type { AuthUser } from '../types';
+import { resolveAvatarUrl } from '../utils/avatar';
+import { getErrorMessage } from '../utils/api-helpers';
 
-type User = {
-    full_name: string;
-    role: string;
-    permissions: Record<string, boolean>;
-};
-
-type PasswordInputProps = {
-    value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    label: string;
-    error?: boolean;
-    minLength?: number;
-};
-
-const PasswordInput = ({ value, onChange, label, error, minLength }: PasswordInputProps) => {
-    const [show, setShow] = useState(false);
-    return (
-        <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">{label}</label>
-            <div className="relative">
-                <Input
-                    type={show ? "text" : "password"}
-                    required
-                    value={value}
-                    onChange={onChange}
-                    className={`pr-10 ${error ? 'border-red-300 ring-red-200' : ''}`}
-                />
-                <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                    {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-            </div>
-            {minLength && <p className="text-[10px] text-slate-400 mt-1 pl-1">Минимум {minLength} символов</p>}
-        </div>
-    );
-};
-
-// --- User Dropdown Content ---
-function UserDropdownContent({ user, onChangePassword, onLogout }: {
-    user: User;
-    onChangePassword: () => void;
-    onLogout: () => void;
-}) {
-    const initials = user.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
-    return (
-        <div className="w-[85vw] md:w-64 max-w-sm bg-white rounded-xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-indigo-800 to-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-bold shadow-md shadow-indigo-900/10">
-                    {initials}
-                </div>
-                <div className="min-w-0">
-                    <div className="font-semibold text-sm text-slate-800 truncate">{user.full_name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5 truncate">{user.role}</div>
-                </div>
-            </div>
-
-            <div className="py-1 border-b border-slate-100">
-                <div className="px-3 pt-2 pb-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Аккаунт</span>
-                </div>
-                <button
-                    onClick={onChangePassword}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                >
-                    <Key className="w-4 h-4 text-slate-400" />
-                    Сменить пароль
-                </button>
-            </div>
-
-            <div className="py-1">
-                <button
-                    onClick={onLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Выйти из системы
-                </button>
-            </div>
-        </div>
-    );
-}
+type User = AuthUser;
 
 // --- Main Layout ---
-export default function DashboardLayout({ user, onLogout }: { user: User; onLogout: () => void }) {
+export default function DashboardLayout({ user, onLogout, onUserUpdate }: { user: User; onLogout: () => void; onUserUpdate: (nextUser: User) => void }) {
     const { snapshotDate } = useSnapshot();
     const navigate = useNavigate();
     const location = useLocation();
@@ -115,22 +37,12 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         user.permissions?.view_positions ||
         user.permissions?.edit_positions;
 
-    const [isPassOpen, setIsPassOpen] = useState(false);
-    const [passData, setPassData] = useState({ old: '', new: '', confirm: '' });
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Accordion state
     const [isSettingsExpanded, setIsSettingsExpanded] = useState(location.pathname.startsWith('/settings'));
     const [isAdminExpanded, setIsAdminExpanded] = useState(location.pathname.startsWith('/admin'));
 
-    const openModal = () => {
-        setIsPassOpen(true);
-        setError('');
-        setSuccess('');
-        setPassData({ old: '', new: '', confirm: '' });
-    };
 
     const { data: notifications = [] } = useNotifications();
     const markRead = useMarkNotificationRead();
@@ -139,6 +51,14 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
     const [activeTabIndex, setActiveTabIndex] = useState<number | null>(null);
     const tabsContainerRef = useRef(null);
     const [isScrolled, setIsScrolled] = useState(false);
+    const avatarSrc = resolveAvatarUrl(user.avatar_url);
+    const displayRole = user.job_title || user.role;
+    const initials = user.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const [headerAvatarError, setHeaderAvatarError] = useState(false);
+
+    useEffect(() => {
+        setHeaderAvatarError(false);
+    }, [avatarSrc]);
 
     useOnClickOutside(tabsContainerRef, () => {
         setActiveTabIndex(null);
@@ -156,62 +76,72 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
         setActiveTabIndex(null);
     };
 
-    const handleChangePassword = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setSuccess('');
 
-        const passwordValidation = validatePassword(passData.new);
-        if (!passwordValidation.isValid) {
-            setError(passwordValidation.message);
-            return;
-        }
 
-        if (passData.new !== passData.confirm) {
-            setError('Новые пароли не совпадают');
-            return;
-        }
-
-        try {
-            await api.post('/auth/change-password', {
-                old_password: passData.old,
-                new_password: passData.new
-            });
-            setSuccess('Пароль успешно изменен');
-            setTimeout(() => setIsPassOpen(false), 1500);
-        } catch (e: unknown) {
-            console.error(e);
-            const err = e as { response?: { data?: { detail?: string } }; message?: string };
-            setError(err.response?.data?.detail || err.message || 'Ошибка смены пароля');
-        }
-    };
-
-    const tubeNavItems = React.useMemo(() => {
+    const navGroups = React.useMemo(() => {
         const canViewAnalytics = hasAdminAccess || user.permissions?.view_analytics;
         const canViewPayroll = hasAdminAccess || user.permissions?.view_payroll;
         const canViewEmployees = hasAdminAccess || user.permissions?.view_employees;
         const canViewScenarios = hasAdminAccess || user.permissions?.view_scenarios;
         const canViewOffers = hasAdminAccess || user.permissions?.manage_planning || user.permissions?.manage_offers;
 
-        return [
-            ...(canViewAnalytics ? [{ name: 'Аналитика', url: '/analytics', icon: PieChart }] : []),
-            ...(canViewPayroll ? [{ name: 'ФОТ', url: '/payroll', icon: FileText }] : []),
-            ...(canViewEmployees ? [{ name: 'Сотрудники', url: '/employees', icon: Users }] : []),
-            { name: 'Заявки', url: '/requests', icon: FileText },
+        const groups = [];
+
+        // Без категории (Аналитика)
+        if (canViewAnalytics) {
+            groups.push({
+                title: '',
+                items: [
+                    { name: 'Аналитика', url: '/analytics', icon: PieChart }
+                ]
+            });
+        }
+
+        // Руководитель
+        groups.push({
+            title: 'РУКОВОДИТЕЛЬ',
+            items: [
+                { name: 'Пересмотры', url: '/requests', icon: FileText },
+                { name: 'Найм', url: '/job-requests', icon: FileText },
+            ]
+        });
+
+        // HR / HRD
+        const hrItems = [
+            ...(canViewPayroll ? [{ name: 'Бюджет', url: '/payroll', icon: FileText }] : []),
+            ...(canViewEmployees ? [{ name: 'Штат', url: '/employees', icon: Users }] : []),
+            ...(canViewScenarios ? [{ name: 'Конструктор', url: '/scenarios', icon: Layout }] : []),
+        ];
+        if (hrItems.length > 0) {
+            groups.push({
+                title: 'УПРАВЛЕНИЕ',
+                items: hrItems
+            });
+        }
+
+        // Рекрутер
+        const recruiterItems = [
             ...(canViewOffers ? [
-                { name: 'Офферы', url: '/offers', icon: Send },
-                { name: 'Рекрутинг', url: '/recruiting', icon: Briefcase }
+                { name: 'Воронка', url: '/recruiting', icon: Briefcase },
+                { name: 'Офферы', url: '/offers', icon: Send }
             ] : []),
             ...(canViewMarket ? [{ name: 'Рынок', url: '/market', icon: ShoppingBag }] : []),
-            ...(canViewScenarios ? [{ name: 'Песочница', url: '/scenarios', icon: Layout }] : []),
         ];
+        if (recruiterItems.length > 0) {
+            groups.push({
+                title: 'РЕКРУТИНГ',
+                items: recruiterItems
+            });
+        }
+
+        return groups;
     }, [hasAdminAccess, canViewMarket, user.permissions]);
 
     const settingsSubPages = [
         { name: 'Структура компании', url: '/settings/structure', permissionKey: 'view_structure', icon: Building },
         { name: 'Справочник должностей', url: '/settings/positions', permissionKey: 'view_positions', icon: Briefcase },
         { name: 'Шаблоны офферов', url: '/settings/offer-templates', permissionKey: 'admin_access', icon: Send },
-        { name: 'Велком паге', url: '/settings/welcome-pages', permissionKey: 'admin_access', icon: Layout },
+        { name: 'Welcome Pages', url: '/settings/welcome-pages', permissionKey: 'admin_access', icon: Layout },
     ].filter(p => hasPermission(p.permissionKey));
 
     const adminSubPages = [
@@ -258,29 +188,40 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                     </div>
 
                     <div className="flex-1 overflow-y-auto py-5 px-3 space-y-1 custom-scrollbar">
-                        {tubeNavItems.map(item => {
-                            const Icon = item.icon;
-                            let isActive = false;
+                        {navGroups.map((group, groupIndex) => (
+                            <div key={group.title || `group-${groupIndex}`} className={groupIndex > 0 ? "mt-4 pt-4 border-t border-slate-200/60" : ""}>
+                                {group.title && (
+                                    <div className="px-3 mb-2">
+                                        <h3 className="text-xs font-bold text-slate-400 tracking-wider font-sans">{group.title}</h3>
+                                    </div>
+                                )}
+                                <div className="space-y-1">
+                                    {group.items.map(item => {
+                                        const Icon = item.icon;
+                                        let isActive = false;
 
-                            // Handling active states correctly avoiding overlap
-                            if (item.url === '/offers' || item.url === '/requests') {
-                                isActive = location.pathname.startsWith(item.url);
-                            } else {
-                                isActive = location.pathname.startsWith(item.url);
-                            }
+                                        // Handling active states correctly avoiding overlap
+                                        if (item.url === '/offers' || item.url === '/requests' || item.url === '/job-requests') {
+                                            isActive = location.pathname.startsWith(item.url);
+                                        } else {
+                                            isActive = location.pathname.startsWith(item.url);
+                                        }
 
-                            return (
-                                <Link
-                                    key={item.name}
-                                    to={item.url}
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive ? 'bg-slate-900 border-slate-800 shadow-md shadow-slate-900/10' : 'hover:bg-slate-100'}`}
-                                >
-                                    <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'}`} />
-                                    <span className={`font-medium text-[13.5px] tracking-wide transition-colors ${isActive ? 'font-semibold text-white' : 'text-slate-600 group-hover:text-slate-900'}`}>{item.name}</span>
-                                </Link>
-                            );
-                        })}
+                                        return (
+                                            <Link
+                                                key={item.name + item.url}
+                                                to={item.url}
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive ? 'bg-slate-900 border-slate-800 shadow-md shadow-slate-900/10' : 'hover:bg-slate-100'}`}
+                                            >
+                                                <Icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700'}`} />
+                                                <span className={`font-medium text-[13.5px] tracking-wide transition-colors ${isActive ? 'font-semibold text-white' : 'text-slate-600 group-hover:text-slate-900'}`}>{item.name}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
 
                         {hasSettingsAccess && settingsSubPages.length > 0 && (
                             <div className="mt-4 pt-4 border-t border-slate-100/80">
@@ -432,36 +373,36 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
                                 )}
                             </div>
 
-                            <div className="relative">
-                                <button
-                                    onClick={() => setActiveTabIndex(activeTabIndex === 1 ? null : 1)}
-                                    className={`flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-3 rounded-xl transition-all border ${activeTabIndex === 1 ? 'bg-slate-50 border-slate-200 shadow-sm' : 'border-transparent hover:bg-slate-50 hover:border-slate-200/50'}`}
+                            <div className="flex items-center gap-1 sm:gap-2">
+                                <Link
+                                    to="/profile"
+                                    className="flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-3 rounded-xl transition-all border border-transparent hover:bg-slate-50 hover:border-slate-200/50"
+                                    title="Мой профиль"
                                 >
-                                    <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm">
-                                        {user.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                    {avatarSrc && !headerAvatarError ? (
+                                        <img
+                                            src={avatarSrc}
+                                            alt={user.full_name}
+                                            onError={() => setHeaderAvatarError(true)}
+                                            className="w-8 h-8 shrink-0 rounded-lg object-cover shadow-md shadow-slate-900/20 ring-2 ring-white"
+                                        />
+                                    ) : null}
+                                    <div className={`w-8 h-8 shrink-0 bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-lg flex items-center justify-center text-[11px] font-bold shadow-md shadow-slate-900/20 ring-2 ring-white ${avatarSrc && !headerAvatarError ? 'hidden' : ''}`}>
+                                        {initials}
                                     </div>
                                     <div className="hidden sm:block text-left min-w-0 pr-1">
                                         <div className="font-semibold text-[13px] text-slate-800 truncate leading-tight">{user.full_name}</div>
-                                        <div className="text-[11px] text-slate-500 truncate leading-tight">{user.role}</div>
+                                        <div className="text-[11px] text-slate-500 truncate leading-tight">{displayRole}</div>
                                     </div>
-                                    <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
-                                </button>
+                                </Link>
 
-                                {activeTabIndex === 1 && (
-                                    <div className="absolute right-0 top-[calc(100%+8px)] z-[60] origin-top-right" style={{ animation: 'dropdownIn 0.15s ease-out' }}>
-                                        <UserDropdownContent
-                                            user={user}
-                                            onChangePassword={() => {
-                                                openModal();
-                                                setActiveTabIndex(null);
-                                            }}
-                                            onLogout={() => {
-                                                onLogout();
-                                                setActiveTabIndex(null);
-                                            }}
-                                        />
-                                    </div>
-                                )}
+                                <button
+                                    onClick={onLogout}
+                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                    title="Выйти из системы"
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                </button>
                             </div>
 
                         </div>
@@ -470,49 +411,12 @@ export default function DashboardLayout({ user, onLogout }: { user: User; onLogo
 
                 <main onScroll={handleScroll} className="flex-1 overflow-y-auto w-full bg-slate-50 transition-colors">
                     <div className="w-full px-4 md:px-5 py-4 md:py-5 max-w-none mr-auto">
-                        <Outlet context={{ user }} />
+                        <Outlet context={{ user, onUserUpdate }} />
                     </div>
                 </main>
             </div>
 
-            <Modal isOpen={isPassOpen} onClose={() => setIsPassOpen(false)} title="Смена пароля">
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                    {error && (
-                        <div className="p-3 bg-red-50 text-red-600 text-[13px] rounded-lg border border-red-100">
-                            {error}
-                        </div>
-                    )}
-                    {success && (
-                        <div className="p-3 bg-emerald-50 text-emerald-600 text-[13px] rounded-lg border border-emerald-100">
-                            {success}
-                        </div>
-                    )}
 
-                    <PasswordInput
-                        label="Старый пароль"
-                        value={passData.old}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, old: e.target.value })}
-                        error={error === 'Неверный старый пароль'}
-                    />
-
-                    <PasswordInput
-                        label="Новый пароль"
-                        value={passData.new}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, new: e.target.value })}
-                        minLength={8}
-                    />
-
-                    <PasswordInput
-                        label="Повторите новый пароль"
-                        value={passData.confirm}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassData({ ...passData, confirm: e.target.value })}
-                    />
-
-                    <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white transition-all shadow-lg shadow-slate-900/20 active:scale-[0.98]">
-                        Сменить пароль
-                    </Button>
-                </form>
-            </Modal>
         </div>
     );
 }

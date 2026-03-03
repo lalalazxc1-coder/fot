@@ -221,7 +221,7 @@ export default function ScenariosPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             <PageHeader
                 title="Сценарное моделирование"
-                subtitle="Создание копий бюджета и симуляция изменений без влияния на живой список"
+                //subtitle="Создание копий бюджета и симуляция изменений без влияния на живой список"
                 extra={
                     <div className="flex items-center gap-4">
                         <button

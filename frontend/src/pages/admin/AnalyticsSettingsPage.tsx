@@ -36,7 +36,7 @@ export default function AnalyticsSettingsPage() {
                 acc[key] = config[key].value;
                 return acc;
             }, {} as Record<string, string>);
-            
+
             await api.post('/analytics/config', payload);
             toast.success("Настройки аналитики обновлены");
         } catch (e) {
@@ -53,17 +53,26 @@ export default function AnalyticsSettingsPage() {
     );
 
     return (
-        <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="p-3 bg-slate-900 rounded-2xl text-white">
-                        <Settings className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Конфигурация аналитики</h2>
-                        <p className="text-slate-500">Управление глобальными параметрами расчета рисков</p>
-                    </div>
+        <div className="space-y-6 pb-20 animate-in fade-in duration-300">
+            <div className="flex flex-col md:flex-row gap-4 justify-between md:items-center w-full bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm max-w-4xl">
+                <div>
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <Settings className="w-4 h-4 text-slate-400" />
+                        Конфигурация аналитики
+                    </h2>
+                    <p className="text-slate-500 font-medium text-[13px] mt-0.5">Управление глобальными параметрами расчета рисков</p>
                 </div>
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 shrink-0 w-full md:w-auto disabled:opacity-50"
+                >
+                    {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Сохранить
+                </button>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 max-w-4xl">
 
                 <div className="space-y-10">
                     {/* Retention Risk Section */}
@@ -122,16 +131,7 @@ export default function AnalyticsSettingsPage() {
                         </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-100 flex justify-end">
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex items-center gap-3 px-8 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all font-bold shadow-lg shadow-slate-900/20 disabled:opacity-50"
-                        >
-                            {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                            Сохранить настройки
-                        </button>
-                    </div>
+                    {/* Save button moved to header */}
                 </div>
             </div>
         </div>

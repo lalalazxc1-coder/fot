@@ -30,10 +30,15 @@ describe('LoginPage', () => {
       data: {
         user_id: 1,
         full_name: 'Admin User',
+        email: 'admin@test.com',
+        contact_email: 'admin@company.com',
+        phone: '+77000000000',
         role: 'Administrator',
         permissions: { admin_access: true },
         scope_branches: [],
         scope_departments: [],
+        avatar_url: null,
+        job_title: null,
       },
     });
 

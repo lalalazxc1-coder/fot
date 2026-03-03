@@ -2,9 +2,11 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import {
     useReactTable,
     getCoreRowModel,
+    getSortedRowModel,
+    SortingState,
     flexRender,
 } from '@tanstack/react-table';
-import { Plus, Loader2, Settings, Download, HelpCircle, Calculator, RefreshCw } from 'lucide-react';
+import { Plus, Loader2, Settings, Download, HelpCircle, Calculator, RefreshCw, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { PageHeader } from './shared';
 
 import SalarySettingsModal from './SalarySettingsModal';
@@ -41,6 +43,7 @@ export default function PlanningTable({ user }: { user: AppUser }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [branchFilter, setBranchFilter] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState('');
+    const [sorting, setSorting] = useState<SortingState>([]);
 
     // Infinite Scroll State (unchanged logic for now)
     const [visibleRows, setVisibleRows] = useState(50);
@@ -157,7 +160,10 @@ export default function PlanningTable({ user }: { user: AppUser }) {
     const table = useReactTable({
         data: filteredData,
         columns,
+        state: { sorting },
+        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
     });
 
     if (isDataLoading || isStructureLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-slate-400" /></div>;
@@ -166,7 +172,7 @@ export default function PlanningTable({ user }: { user: AppUser }) {
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <PageHeader
                 title="Фонд оплаты труда"
-                subtitle="Управление штатными позициями и бюджетом"
+            //subtitle="Управление штатными позициями и бюджетом"
             />
 
             {/* Filters & Actions */}
@@ -245,12 +251,24 @@ export default function PlanningTable({ user }: { user: AppUser }) {
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col relative">
                 <div className="w-full">
                     <table className="w-full text-sm text-left relative">
-                        <thead className="sticky top-14 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
+                        <thead className="sticky top-0 z-20 bg-white text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200 shadow-sm">
                             {table.getHeaderGroups().map(headerGroup => (
                                 <tr key={headerGroup.id}>
                                     {headerGroup.headers.map(header => (
-                                        <th key={header.id} className="px-4 py-3 font-bold text-slate-500 select-none whitespace-nowrap" onClick={header.column.getToggleSortingHandler()}>
-                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                        <th key={header.id} className={`px-4 py-3 font-bold text-slate-500 select-none whitespace-nowrap ${header.column.getCanSort() ? 'cursor-pointer hover:text-slate-700' : ''}`} onClick={header.column.getToggleSortingHandler()}>
+                                            <div className="flex items-center gap-1">
+                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                                {header.column.getCanSort() && (
+                                                    <span className="text-slate-400 flex flex-col items-center">
+                                                        {{
+                                                            asc: <ArrowUp className="w-3 h-3 text-blue-600" strokeWidth={3} />,
+                                                            desc: <ArrowDown className="w-3 h-3 text-blue-600" strokeWidth={3} />,
+                                                        }[header.column.getIsSorted() as string] ?? (
+                                                                <ArrowUpDown className="w-3 h-3 opacity-50" strokeWidth={2} />
+                                                            )}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </th>
                                     ))}
                                 </tr>

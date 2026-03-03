@@ -208,7 +208,7 @@ export default function StructurePage() {
 
     if (viewMode === 'graph') {
         return (
-            <div className="h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
+            <div className="h-[calc(100vh-8rem)] min-h-[600px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
                 <div className="absolute top-4 left-4 z-50 bg-white/90 backdrop-blur p-1 rounded-lg border border-slate-200 shadow-sm flex gap-1">
                     <button
                         onClick={() => setViewMode('list')}
@@ -237,7 +237,7 @@ export default function StructurePage() {
     );
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-300 h-full flex flex-col">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 animate-in fade-in duration-300">
             <div className="mb-6 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="bg-slate-100 p-1 rounded-lg flex gap-1 border border-slate-200">
@@ -277,7 +277,7 @@ export default function StructurePage() {
                 </div>
             </div >
 
-            <div className="flex-1 border border-slate-200 rounded-xl p-4 overflow-y-auto">
+            <div className="border border-slate-200 rounded-xl p-4">
                 {treeData.length === 0 ? (
                     <div className="text-center py-20 text-slate-400">
                         Структура пуста. Создайте первый филиал.

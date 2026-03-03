@@ -7,7 +7,7 @@ interface VacancyListProps {
     vacancies: Vacancy[];
     selectedId: number | null;
     onSelect: (id: number | null) => void;
-    onNewVacancy: () => void;
+    onNewVacancy?: () => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -34,14 +34,16 @@ export const VacancyList: React.FC<VacancyListProps> = ({ vacancies, selectedId,
                         <Briefcase className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800">Вакансии</h2>
-                        <p className="text-xs text-slate-500 font-medium">Активные и архивные ({vacancies.length})</p>
+                        <h2 className="text-lg font-bold text-slate-800">Заявки в работе</h2>
+                        <p className="text-xs text-slate-500 font-medium">Активные и закрытые ({vacancies.length})</p>
                     </div>
                 </div>
-                <Button onClick={onNewVacancy} className="h-9 px-3 gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">
-                    <Plus className="w-4 h-4" />
-                    <span>Создать</span>
-                </Button>
+                {onNewVacancy && (
+                    <Button onClick={onNewVacancy} className="h-9 px-3 gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">
+                        <Plus className="w-4 h-4" />
+                        <span>Создать</span>
+                    </Button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-2">

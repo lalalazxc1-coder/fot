@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
+from typing import cast
 from database.database import get_db
 from database.models import User
 from schemas import LoginRequest, LoginResponse
@@ -68,6 +69,8 @@ def login(creds: LoginRequest, request: Request, response: Response, db: Session
         )
         _set_csrf_cookie(response, generate_csrf_token())
         safe_auth_data = {k: v for k, v in auth_data.items() if k not in ('access_token', 'refresh_token')}
+        safe_auth_data.setdefault("contact_email", None)
+        safe_auth_data.setdefault("phone", None)
         return safe_auth_data
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -92,7 +95,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
             
-        user_id_str: str = payload.get("sub")
+        user_id_str = cast(str | None, payload.get("sub"))
         if not user_id_str:
             raise HTTPException(status_code=401, detail="Invalid token payload")
         user_id = int(user_id_str)
@@ -171,16 +174,21 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
 def get_me(request: Request, response: Response, current_user: User = Depends(get_current_active_user)):
     _ensure_csrf_cookie(request, response)
     role_name = current_user.role_rel.name if current_user.role_rel else "No Role"
-    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    perms = (current_user.role_rel.permissions or {}) if current_user.role_rel else {}
     
     return {
         "id": current_user.id,
         "full_name": current_user.full_name,
         "email": current_user.email,
+        "contact_email": current_user.contact_email,
+        "phone": current_user.phone,
         "role": role_name,
         "permissions": perms,
         "scope_branches": current_user.scope_branches or [],
-        "scope_departments": current_user.scope_departments or []
+        "scope_departments": current_user.scope_departments or [],
+        "avatar_url": current_user.avatar_url,
+        "job_title": current_user.job_title,
+        "employee_id": current_user.employee_id,
     }
 
 

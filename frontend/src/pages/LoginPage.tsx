@@ -2,17 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, ArrowRight, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 import { api } from '../lib/api';
-import { AxiosError } from 'axios';
-
-type AuthUser = {
-    id: number;
-    full_name: string;
-    role: string;
-    permissions: Record<string, boolean>;
-    scope_branches?: number[];
-    scope_departments?: number[];
-    // NEW-1: access_token намеренно убран — хранится в HttpOnly cookie, недоступен из JS
-};
+import type { AuthUser } from '../types';
+import { getErrorMessage } from '../utils/api-helpers';
 
 export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, rememberMe: boolean) => void }) {
     const [username, setUsername] = useState('');
@@ -66,11 +57,15 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
             const userData = {
                 id: data.user_id,
                 full_name: data.full_name,
+                email: data.email,
+                contact_email: data.contact_email,
+                phone: data.phone,
                 role: data.role,
                 permissions: data.permissions || {},
                 scope_branches: data.scope_branches,
                 scope_departments: data.scope_departments,
-                // NEW-1: access_token не сохраняем — он в HttpOnly cookie
+                avatar_url: data.avatar_url,
+                job_title: data.job_title,
             };
 
             setLoggedInUser(data.full_name);
@@ -87,9 +82,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
             }, 1500);
 
         } catch (e: unknown) {
-            const axiosErr = e as AxiosError<{ detail?: string }>;
-            const errMsg = axiosErr.response?.data?.detail || axiosErr.message || 'Ошибка авторизации';
-            setError(errMsg);
+            setError(getErrorMessage(e));
             setIsLoading(false);
         }
     };
@@ -269,4 +262,3 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
         </div>
     );
 }
-
