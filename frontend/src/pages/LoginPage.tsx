@@ -66,6 +66,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: AuthUser, remem
                 scope_departments: data.scope_departments,
                 avatar_url: data.avatar_url,
                 job_title: data.job_title,
+                employee_id: data.employee_id,
             };
 
             setLoggedInUser(data.full_name);

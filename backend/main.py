@@ -119,6 +119,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "base-uri 'self'; "
@@ -130,6 +131,11 @@ async def add_security_headers(request: Request, call_next):
         "script-src 'self' 'unsafe-inline' https:; "
         "connect-src 'self' https: ws: wss:;"
     )
+    # HSTS: only set in production (HTTP dev would break)
+    if os.environ.get("ENVIRONMENT") == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
     return response
 
 # --- Rate Limiting Middleware (NEW-3 FIX: Redis-based, работает в multi-worker) ---

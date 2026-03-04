@@ -15,7 +15,7 @@ import {
 import { useEmployees } from '../hooks/useEmployees';
 import { usePositions } from '../hooks/usePositions';
 import { useFlatStructure } from '../hooks/useStructure';
-import { formatMoney } from '../utils';
+import { formatMoney, formatDate } from '../utils';
 import Modal from '../components/Modal';
 import { CandidateSearch } from '../components/market/CandidateSearch';
 import { toast } from 'sonner';
@@ -378,7 +378,7 @@ export default function MarketPage() {
                 avg_internal: internalMedian,
                 deviation: median > 0 ? ((internalMedian - median) / median) * 100 : 0,
                 belowP25: internalSals.filter(s => p25 > 0 && s < p25).length,
-                updated_at: lastUpdated ? new Date(lastUpdated).toLocaleDateString() : '—',
+                updated_at: lastUpdated ? formatDate(lastUpdated) : '—',
                 source: items.map((i: MarketDataPoint) => i.source).join(', ')
             };
         });

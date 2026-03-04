@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { EmployeeRecord, FinancialValue, AppUser } from './types';
 import { FinancialCell } from './FinancialCell';
 import { EmployeeActionMenu } from './EmployeeActionMenu';
+import { formatDate } from '../../utils/formatters';
 
 interface UsePayrollColumnsProps {
     onHistory: (e: React.MouseEvent, emp: EmployeeRecord) => void;
@@ -48,7 +49,7 @@ export const usePayrollColumns = ({
         {
             accessorKey: 'hire_date',
             header: 'Дата приема',
-            cell: i => <div className="text-slate-500 text-xs font-mono whitespace-nowrap">{i.getValue() as string || '-'}</div>
+            cell: i => <div className="text-slate-500 text-xs font-mono whitespace-nowrap">{i.getValue() ? formatDate(i.getValue() as string) : '-'}</div>
         },
         {
             accessorKey: 'position',

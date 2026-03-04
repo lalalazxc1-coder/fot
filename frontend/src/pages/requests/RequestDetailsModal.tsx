@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Clock, ArrowUpRight, Eye, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { formatMoney } from '../../utils';
+import { formatMoney, formatDateTime } from '../../utils';
 import { RequestAnalytics } from './RequestAnalytics';
 import { RequestRow, HistoryItem } from '../../hooks/useRequests';
 
@@ -127,7 +127,7 @@ export const RequestDetailsModal = ({ req, isOpen, onClose, onAction }: RequestD
                         </div>
                         <div className="text-right">
                             <p className="text-xs font-bold text-slate-300">ПРОТОКОЛ АНАЛИЗА ЗАЯВКИ</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Отпечатано: {new Date().toLocaleDateString('ru-RU')} {new Date().toLocaleTimeString('ru-RU')}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">Отпечатано: {formatDateTime(new Date())}</p>
                         </div>
                     </div>
                 </div>

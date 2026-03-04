@@ -4,7 +4,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import urllib.parse
 
-def test_1c(url, username, password):
+def check_1c(url, username, password):
     # Encoding URL to handle Cyrillic characters properly
     parsed = urllib.parse.urlparse(url)
     encoded_path = urllib.parse.quote(parsed.path)
@@ -43,4 +43,4 @@ if __name__ == "__main__":
     user = sys.argv[2] if len(sys.argv) > 2 else ""
     pwd = sys.argv[3] if len(sys.argv) > 3 else ""
     
-    test_1c(url, user, pwd)
+    check_1c(url, user, pwd)

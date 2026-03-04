@@ -100,6 +100,7 @@ def create_vacancy(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
+    _require_recruiting_permission(current_user)
     _ensure_department_exists(db, data.department_id)
 
     vacancy = Vacancy(

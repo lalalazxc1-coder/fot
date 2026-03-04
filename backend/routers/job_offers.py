@@ -6,7 +6,7 @@ from typing import List
 
 from database.database import get_db
 from database.models import JobOffer, User, WelcomePageConfig
-from schemas import JobOfferCreate, JobOfferResponse
+from schemas import JobOfferCreate, JobOfferResponse, JobOfferDetailResponse
 from dependencies import get_current_active_user, PermissionChecker
 
 router = APIRouter(prefix="/api/offers", tags=["job-offers"])
@@ -85,7 +85,21 @@ def list_offers(db: Session = Depends(get_db), current_user: User = Depends(get_
     
     return db.query(JobOffer).order_by(JobOffer.id.desc()).all()
 
+@router.get("/{offer_id}", response_model=JobOfferDetailResponse)
+def get_offer(offer_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+
+    perms = current_user.role_rel.permissions if current_user.role_rel else {}
+    if not (perms.get('admin_access') or perms.get('manage_planning') or perms.get('manage_offers')):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    offer = db.query(JobOffer).filter(JobOffer.id == offer_id).first()
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return offer
+
+
 @router.put("/{offer_id}", response_model=JobOfferResponse)
+
 def update_offer(offer_id: int, data: JobOfferCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     perms = current_user.role_rel.permissions if current_user.role_rel else {}
     if not (perms.get('admin_access') or perms.get('manage_planning') or perms.get('manage_offers')):

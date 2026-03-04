@@ -64,7 +64,7 @@ from pydantic import BaseModel
 class ExportRequest(BaseModel):
     ids: Optional[List[int]] = None
 
-@router.post("/employees/export")
+@router.post("/employees/export", dependencies=[Depends(PermissionChecker('edit_employees'))])
 def export_employees_excel(
     req: ExportRequest,
     db: Session = Depends(get_db), 
@@ -191,7 +191,7 @@ def export_employees_excel(
     return Response(
         content=out.getvalue(), 
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 @router.get("/audit-logs/{emp_id}")

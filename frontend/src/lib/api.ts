@@ -82,7 +82,11 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
       originalRequest._retry = true;
       try {
-        await axios.post(getBaseUrl() + '/auth/refresh', {}, { withCredentials: true });
+        const csrfToken = await ensureCsrfToken();
+        await axios.post(getBaseUrl() + '/auth/refresh', {}, {
+          withCredentials: true,
+          headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
+        });
         // Retry original request if refresh is successful
         return api(originalRequest);
       } catch (refreshError) {

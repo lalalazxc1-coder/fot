@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from database.database import get_db
 from sqlalchemy.sql import func, desc
@@ -124,7 +124,19 @@ def get_admin_stats(db: Session = Depends(get_db)):
     }
 
 @router.get("/logs")
-def get_extended_logs(page: int = 1, limit: int = 50, entity: str = None, db: Session = Depends(get_db)):
+def get_extended_logs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=500),  # Cap at 500 to prevent full table dumps
+    entity: str = Query(None),
+    db: Session = Depends(get_db)
+):
+    # Allowlist entity filter to prevent arbitrary column injection
+    VALID_ENTITIES = {
+        'employee', 'planning', 'auth', 'users',
+        'org_unit', 'salary_request', 'salary_config'
+    }
+    if entity and entity not in VALID_ENTITIES:
+        entity = None  # Silently ignore unknown entity types
     offset = (page - 1) * limit
     logs_query = db.query(AuditLog).order_by(desc(AuditLog.id))
     if entity:
@@ -213,8 +225,17 @@ def _parse_ua(ua_string: str | None) -> dict:
 
 
 @router.get("/login-logs")
-def get_login_logs(page: int = 1, limit: int = 50, action: str = None, db: Session = Depends(get_db)):
+def get_login_logs(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=500),  # Cap at 500 rows per request
+    action: str = Query(None),
+    db: Session = Depends(get_db)
+):
     """История входов/выходов пользователей."""
+    # Allowlist action filter
+    VALID_ACTIONS = {'login_success', 'login_failed', 'login_blocked', 'logout'}
+    if action and action not in VALID_ACTIONS:
+        action = None  # Silently ignore unknown action types
     from database.models import LoginLog
     offset = (page - 1) * limit
     q = db.query(LoginLog).order_by(desc(LoginLog.id))

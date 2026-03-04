@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatDate } from '../../utils';
 import { api } from '../../lib/api';
 import { Save, Info, CheckCircle, XCircle, Key, Loader2, Trash2, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
@@ -210,7 +211,7 @@ const IntegrationCard = ({ service, onSave, isSaving }: IntegrationCardProps) =>
                                 </span>
                             )}
                             {service.updated_at && (
-                                <span className="text-xs text-slate-400">Обновлено: {new Date(service.updated_at).toLocaleDateString()}</span>
+                                <span className="text-xs text-slate-400">Обновлено: {formatDate(service.updated_at)}</span>
                             )}
                         </div>
                     </div>

@@ -104,7 +104,17 @@ def create_request(data: SalaryRequestCreate, db: Session = Depends(get_db), cur
     return req
 
 @router.get("")
-def get_requests(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=100), status: str = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+def get_requests(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=200),  # Hard cap: max 200 rows per page
+    status: str = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # Validate status to allowlist to prevent arbitrary ORM filter injection
+    VALID_STATUSES = {None, "pending", "history", "approved", "rejected"}
+    if status not in VALID_STATUSES:
+        status = None
     # FIX #14: Refactored to eliminate N+1 queries using eager loading + pre-fetch maps
     from sqlalchemy.orm import joinedload, selectinload
     from database.models import OrganizationUnit, ApprovalStep, RequestHistory

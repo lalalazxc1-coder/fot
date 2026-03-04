@@ -41,29 +41,37 @@ export const parseMoney = (value: string): number => {
 };
 
 /**
- * Format date to Russian locale
+ * Format date to День-Месяц-Год (DD-MM-YYYY)
  * @param date - Date string or Date object
- * @returns Formatted date (e.g., "06.02.2026")
+ * @returns Formatted date (e.g., "06-02-2026")
  */
 export const formatDate = (date: string | Date): string => {
     const d = typeof date === 'string' ? new Date(date) : date;
     if (Number.isNaN(d.getTime())) {
         return typeof date === 'string' ? date : '—';
     }
-    return d.toLocaleDateString('ru-RU');
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
 };
 
 /**
- * Format datetime to Russian locale with time
+ * Format datetime to День-Месяц-Год with time
  * @param date - Date string or Date object
- * @returns Formatted datetime (e.g., "06.02.2026, 15:30")
+ * @returns Formatted datetime (e.g., "06-02-2026, 15:30")
  */
 export const formatDateTime = (date: string | Date): string => {
     const d = typeof date === 'string' ? new Date(date) : date;
     if (Number.isNaN(d.getTime())) {
         return typeof date === 'string' ? date : '—';
     }
-    return d.toLocaleString('ru-RU');
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}-${month}-${year}, ${hours}:${minutes}`;
 };
 
 /**

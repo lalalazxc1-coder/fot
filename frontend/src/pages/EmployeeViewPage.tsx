@@ -5,6 +5,7 @@ import { useFlatStructure } from '../hooks/useStructure';
 import { AuthUser } from '../types';
 import { PageHeader } from '../components/shared/PageHeader';
 import { resolveAvatarUrl } from '../utils/avatar';
+import { formatDate } from '../utils/formatters';
 
 export default function EmployeeViewPage() {
     const { id } = useParams();
@@ -146,21 +147,21 @@ export default function EmployeeViewPage() {
                                 <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
                                 <div>
                                     <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата найма</div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.hire_date || '-'}</div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.hire_date ? formatDate(employee.hire_date) : '-'}</div>
                                 </div>
                             </div>
                             <div className="flex gap-3">
                                 <Cake className="w-5 h-5 text-slate-400 shrink-0" />
                                 <div>
                                     <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата рождения</div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.dob || '-'}</div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.dob ? formatDate(employee.dob) : '-'}</div>
                                 </div>
                             </div>
                             <div className="flex gap-3">
                                 <TrendingUp className="w-5 h-5 text-slate-400 shrink-0" />
                                 <div>
                                     <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Посл. повышение ЗП</div>
-                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.last_raise_date || '-'}</div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.last_raise_date ? formatDate(employee.last_raise_date) : '-'}</div>
                                 </div>
                             </div>
                         </div>

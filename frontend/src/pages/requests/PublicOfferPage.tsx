@@ -10,7 +10,7 @@ import {
     ArrowRight,
     Sparkles
 } from 'lucide-react';
-import { formatMoney } from '../../utils';
+import { formatMoney, formatDate } from '../../utils/formatters';
 import { toast } from 'sonner';
 import WelcomeDashboard from '../../components/WelcomeDashboard';
 
@@ -401,7 +401,7 @@ export default function PublicOfferPage() {
                                     </p>
                                     {offer.valid_until && (
                                         <p className="text-xs font-bold text-red-500 bg-red-50 inline-block px-3 py-1.5 rounded-lg border border-red-100">
-                                            Оффер действителен до {new Date(offer.valid_until).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).replace(' г.', '')}
+                                            Оффер действителен до {formatDate(offer.valid_until)}
                                         </p>
                                     )}
                                 </div>

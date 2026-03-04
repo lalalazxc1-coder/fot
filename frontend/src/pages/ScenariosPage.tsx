@@ -1,7 +1,7 @@
 ﻿import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { formatMoney } from '../utils';
+import { formatMoney, formatDate } from '../utils';
 import { PageHeader } from '../components/shared';
 import { Trash2, ArrowRight, Save, LayoutDashboard, Copy, Filter, Calculator, Building2, Briefcase, TrendingUp, TrendingDown, DollarSign, HelpCircle } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -285,7 +285,7 @@ export default function ScenariosPage() {
                                         }`}>
                                         {s.status === 'draft' ? 'Черновик' : s.status}
                                     </span>
-                                    <span className="text-slate-400 font-medium">{new Date(s.created_at).toLocaleDateString()}</span>
+                                    <span className="text-slate-400 font-medium">{formatDate(s.created_at)}</span>
                                 </div>
                             </div>
                         ))}

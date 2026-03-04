@@ -1,17 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteAllNotifications } from '../hooks/useAdmin';
-import { Trash2, CheckCircle, Bell, Settings, LogOut, Key, Eye, EyeOff, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout, Send, Briefcase, ChevronDown, Building, User as UserIcon } from 'lucide-react';
+import { Trash2, CheckCircle, Bell, Settings, LogOut, Shield, Clock, Menu, X, Users, FileText, PieChart, ShoppingBag, Layout, Send, Briefcase, ChevronDown, Building } from 'lucide-react';
 import { useSnapshot } from '../context/SnapshotContext';
-import Modal from './Modal';
-import { Button, Input } from './ui-mocks';
-import { api } from '../lib/api';
 import { Notification } from '../hooks/useAdmin';
 import { useOnClickOutside } from 'usehooks-ts';
 import { formatDateTime } from '../utils';
 import type { AuthUser } from '../types';
 import { resolveAvatarUrl } from '../utils/avatar';
-import { getErrorMessage } from '../utils/api-helpers';
 
 type User = AuthUser;
 

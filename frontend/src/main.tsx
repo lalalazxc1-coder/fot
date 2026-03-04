@@ -61,10 +61,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <BrowserRouter>
                     <App />
                     <Toaster
-                        position="top-right"
+                        position="bottom-right"
                         richColors
                         offset="6px"
-                        style={{ right: '250px' }}
+                    //style={{ right: '250px' }}
                     />
                 </BrowserRouter>
             </QueryClientProvider>

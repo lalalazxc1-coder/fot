@@ -5,8 +5,8 @@ from typing import Optional, Dict, List, Literal
 
 # Auth & Users
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=254)
+    password: str = Field(..., min_length=1, max_length=128)
     remember_me: Optional[bool] = False
 
 class LoginResponse(BaseModel):
@@ -22,6 +22,7 @@ class LoginResponse(BaseModel):
     scope_departments: List[int] = []
     avatar_url: Optional[str] = None
     job_title: Optional[str] = None
+    employee_id: Optional[int] = None
     access_token: Optional[str] = None
 
 class RoleCreate(BaseModel):
@@ -29,9 +30,9 @@ class RoleCreate(BaseModel):
     permissions: Dict[str, bool]
 
 class UserCreate(BaseModel):
-    email: str
-    full_name: str
-    password: str
+    email: str = Field(..., min_length=3, max_length=254)
+    full_name: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
     role_id: int
     job_title: Optional[str] = None
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -73,8 +74,8 @@ class UserCreate(BaseModel):
         return cleaned
 
 class UserUpdate(BaseModel):
-    full_name: str
-    email: str
+    full_name: str = Field(..., min_length=1, max_length=255)
+    email: str = Field(..., min_length=3, max_length=254)
     role_id: int
     job_title: Optional[str] = None
     contact_email: Optional[str] = Field(None, max_length=255)
@@ -82,7 +83,7 @@ class UserUpdate(BaseModel):
     scope_branches: Optional[List[int]] = []
     scope_departments: Optional[List[int]] = []
     employee_id: Optional[int] = None
-    password: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=8, max_length=128)
     is_active: bool = True
 
     @field_validator("contact_email")
@@ -167,8 +168,8 @@ class OrgUnitUpdate(BaseModel):
 
 # Employees
 class EmployeeCreate(BaseModel):
-    full_name: str
-    position_title: str
+    full_name: str = Field(..., min_length=1, max_length=255)
+    position_title: str = Field(..., min_length=1, max_length=255)
     branch_id: Optional[int] = None
     department_id: Optional[int] = None
     is_head: Optional[bool] = False
@@ -205,10 +206,10 @@ class EmpDetailsUpdate(BaseModel):
     department_id: int | None = None
 
 class EmployeeUpdate(BaseModel):
-    full_name: str
+    full_name: str = Field(..., min_length=1, max_length=255)
     branch_id: int
     department_id: int | None = None
-    position_title: str
+    position_title: str = Field(..., min_length=1, max_length=255)
     base_net: int = 0
     base_gross: int = 0
     kpi_net: int = 0
@@ -222,12 +223,12 @@ class EmployeeUpdate(BaseModel):
     last_raise_date: Optional[str] = None
     
 class DismissEmployeeRequest(BaseModel):
-    reason: str
-    date: str
+    reason: str = Field(..., min_length=1, max_length=1000)
+    date: str = Field(..., min_length=1, max_length=20)
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str
-    new_password: str
+    old_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
 
 class SalaryRequestCreate(BaseModel):
     employee_id: int = Field(..., gt=0)
@@ -238,7 +239,7 @@ class SalaryRequestCreate(BaseModel):
 
 class SalaryRequestUpdate(BaseModel):
     status: Literal['approved', 'rejected']
-    comment: Optional[str] = None
+    comment: Optional[str] = Field(None, max_length=2000)
 
 class MarketEntryCreate(BaseModel):
     market_id: int
@@ -562,7 +563,8 @@ class JobOfferResponse(BaseModel):
     created_at: str
     valid_until: Optional[str] = None
     candidate_phone: Optional[str] = None
-    access_code: Optional[str] = None
+    # NOTE: access_code (PIN) is intentionally excluded from this response schema
+    # to prevent PIN leakage via listing endpoints. Retrieve it only via admin-only endpoints.
     
     # Customization
     welcome_text: Optional[str] = None
@@ -583,7 +585,15 @@ class JobOfferResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class JobOfferDetailResponse(JobOfferResponse):
+
+    access_code: Optional[str] = None
+    candidate_email: Optional[str] = None
+
+
 class JobOfferTemplateBase(BaseModel):
+
     name: str
     company_name: Optional[str] = None
     benefits: List[str] = []

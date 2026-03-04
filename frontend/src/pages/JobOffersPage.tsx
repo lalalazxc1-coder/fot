@@ -73,6 +73,9 @@ interface JobOffer {
     token: string;
 }
 
+// Локальный кэш PIN-кодов (в рамках сессии страницы)
+const pinCache: Record<number, string> = {};
+
 interface WelcomePageOption {
     id: number;
     name: string;
@@ -85,6 +88,32 @@ export default function JobOffersPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [copiedId, setCopiedId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [visiblePins, setVisiblePins] = useState<Record<number, string>>({}); // { offerId: pin }
+    const [loadingPinId, setLoadingPinId] = useState<number | null>(null);
+
+    const handleRevealPin = async (offerId: number) => {
+        if (visiblePins[offerId]) {
+            // Скрыть если уже показан
+            setVisiblePins(prev => { const next = { ...prev }; delete next[offerId]; return next; });
+            return;
+        }
+        // Проверяем кэш
+        if (pinCache[offerId]) {
+            setVisiblePins(prev => ({ ...prev, [offerId]: pinCache[offerId] }));
+            return;
+        }
+        setLoadingPinId(offerId);
+        try {
+            const res = await api.get(`/offers/${offerId}`);
+            const pin = res.data.access_code || '—';
+            pinCache[offerId] = pin;
+            setVisiblePins(prev => ({ ...prev, [offerId]: pin }));
+        } catch {
+            toast.error('Не удалось загрузить PIN');
+        } finally {
+            setLoadingPinId(null);
+        }
+    };
 
     const initialForm = {
         candidate_name: '',
@@ -348,7 +377,24 @@ export default function JobOffersPage() {
                                         <div className="text-sm font-bold text-slate-900">{formatMoney(offer.kpi_net)}</div>
                                         <div>{getStatusBadge(offer.status)}</div>
                                         <div>
-                                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">{offer.access_code || '---'}</span>
+                                            {visiblePins[offer.id] ? (
+                                                <button
+                                                    onClick={() => handleRevealPin(offer.id)}
+                                                    className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                                                    title="Скрыть PIN"
+                                                >
+                                                    {visiblePins[offer.id]}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleRevealPin(offer.id)}
+                                                    disabled={loadingPinId === offer.id}
+                                                    className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg hover:bg-slate-200 hover:text-slate-700 transition-colors disabled:opacity-50"
+                                                    title="Показать PIN"
+                                                >
+                                                    {loadingPinId === offer.id ? '...' : '••••'}
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="flex items-center justify-end gap-1">
                                             <button

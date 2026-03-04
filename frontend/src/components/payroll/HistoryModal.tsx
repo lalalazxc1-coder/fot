@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '../Modal';
+import { formatDateTime } from '../../utils/formatters';
 
 interface AuditLog {
     date: string;
@@ -104,7 +105,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                                 {i !== grouped.length - 1 && <div className="absolute left-[88px] top-6 bottom-[-24px] w-px bg-slate-100"></div>}
 
                                 <div className="w-20 text-slate-400 text-[10px] text-right pt-1.5 font-mono">
-                                    {group.date.split(' ')[0]}<br />{group.date.split(' ')[1]}
+                                    {formatDateTime(group.date).split(', ')[0]}<br />{formatDateTime(group.date).split(', ')[1]}
                                 </div>
 
                                 <div className="flex-1 pb-4">
