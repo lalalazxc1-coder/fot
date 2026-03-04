@@ -251,10 +251,10 @@ export default function ProfilePage() {
                 <PageHeader title="Мой профиль" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 {/* ЛЕВАЯ КОЛОНКА (Профиль и Контакты) */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                <div className="lg:col-span-1 h-full">
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 h-full flex flex-col">
                         <div className="flex flex-col items-center text-center">
                             {avatarSrc && !avatarFailed ? (
                                 <img
@@ -299,7 +299,7 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div className="mt-8 space-y-3">
+                        <div className="mt-auto pt-8 space-y-3 w-full">
                             <button
                                 onClick={() => {
                                     setFullName(user.full_name || '');
@@ -329,89 +329,91 @@ export default function ProfilePage() {
                 </div>
 
                 {/* ПРАВАЯ КОЛОНКА (Орг. инфа и ЗП) */}
-                <div className="lg:col-span-2 space-y-6">
-                    {(user.employee_id && isEmployeesLoading) ? (
-                        <div className="bg-white rounded-3xl p-5 md:p-12 flex flex-col items-center justify-center text-center shadow-sm border border-slate-200 min-h-[300px]">
-                            <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-3" />
-                            <p className="text-sm text-slate-500">Синхронизация профиля сотрудника...</p>
-                        </div>
-                    ) : employee ? (
-                        <>
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                                <h2 className="text-base font-bold text-slate-900 mb-5 pb-3 border-b border-slate-100">Рабочая информация</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
-                                    <div className="flex gap-3">
-                                        <Building className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Подразделение</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.branch || '-'}</div>
+                <div className="lg:col-span-2 flex flex-col space-y-6 h-full">
+                    {user.employee_id ? (
+                        employee ? (
+                            <>
+                                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                                    <h2 className="text-base font-bold text-slate-900 mb-5 pb-3 border-b border-slate-100">Рабочая информация</h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">
+                                        <div className="flex gap-3">
+                                            <Building className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Подразделение</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.branch || '-'}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <Briefcase className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Отдел</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.department || '-'}</div>
+                                        <div className="flex gap-3">
+                                            <Briefcase className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Отдел</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.department || '-'}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <UserCheck className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Руководитель</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{managerName}</div>
+                                        <div className="flex gap-3">
+                                            <UserCheck className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Руководитель</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{managerName}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата найма</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.hire_date || '-'}</div>
+                                        <div className="flex gap-3">
+                                            <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата найма</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.hire_date || '-'}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <Cake className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата рождения</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.dob || '-'}</div>
+                                        <div className="flex gap-3">
+                                            <Cake className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Дата рождения</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.dob || '-'}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <TrendingUp className="w-5 h-5 text-slate-400 shrink-0" />
-                                        <div>
-                                            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Посл. повышение ЗП</div>
-                                            <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.last_raise_date || '-'}</div>
+                                        <div className="flex gap-3">
+                                            <TrendingUp className="w-5 h-5 text-slate-400 shrink-0" />
+                                            <div>
+                                                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Посл. повышение ЗП</div>
+                                                <div className="text-sm font-semibold text-slate-900 mt-0.5">{employee.last_raise_date || '-'}</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                                <h2 className="text-base font-bold text-slate-900 mb-5 pb-3 border-b border-slate-100 flex items-center justify-between">
-                                    Моя компенсация
-                                    <span className="text-[10px] font-normal text-slate-400 bg-slate-50 px-2 py-1 rounded-md">Строго конфиденциально</span>
-                                </h2>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Оклад</div>
-                                        <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.base?.net || 0)}</div>
-                                    </div>
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">KPI</div>
-                                        <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.kpi?.net || 0)}</div>
-                                    </div>
-                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Доплаты</div>
-                                        <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.bonus?.net || 0)}</div>
-                                    </div>
-                                    <div className="bg-slate-900 p-4 rounded-2xl shadow-md">
-                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Итого (на руки)</div>
-                                        <div className="text-xl font-bold text-white">{formatCurrency(employee.total?.net || 0)}</div>
+                                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                                    <h2 className="text-base font-bold text-slate-900 mb-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                                        Моя компенсация
+                                        <span className="text-[10px] font-normal text-slate-400 bg-slate-50 px-2 py-1 rounded-md">Строго конфиденциально</span>
+                                    </h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Оклад</div>
+                                            <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.base?.net || 0)}</div>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">KPI</div>
+                                            <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.kpi?.net || 0)}</div>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Доплаты</div>
+                                            <div className="text-lg font-bold text-slate-900">{formatCurrency(employee.bonus?.net || 0)}</div>
+                                        </div>
+                                        <div className="bg-slate-900 p-4 rounded-2xl shadow-md">
+                                            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Итого (на руки)</div>
+                                            <div className="text-xl font-bold text-white">{formatCurrency(employee.total?.net || 0)}</div>
+                                        </div>
                                     </div>
                                 </div>
+                            </>
+                        ) : (
+                            <div className="bg-white rounded-3xl p-5 md:p-12 flex flex-col items-center justify-center text-center shadow-sm border border-slate-200 flex-1 min-h-[300px]">
+                                <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-3" />
+                                <p className="text-sm text-slate-500">Синхронизация профиля сотрудника...</p>
                             </div>
-                        </>
+                        )
                     ) : (
-                        <div className="bg-white rounded-3xl p-5 md:p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-sm border border-slate-200 min-h-[300px]">
+                        <div className="bg-white rounded-3xl p-5 md:p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-sm border border-slate-200 flex-1 min-h-[300px]">
                             <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-2">
                                 <ShieldAlert className="w-8 h-8" />
                             </div>
@@ -578,6 +580,6 @@ export default function ProfilePage() {
                     </Button>
                 </form>
             </Modal>
-        </div>
+        </div >
     );
 }

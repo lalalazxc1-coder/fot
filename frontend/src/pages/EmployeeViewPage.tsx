@@ -66,10 +66,10 @@ export default function EmployeeViewPage() {
 
             <PageHeader title="Профиль сотрудника" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
                 {/* ЛЕВАЯ КОЛОНКА (Профиль и Контакты) */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                <div className="lg:col-span-1 h-full">
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 h-full flex flex-col">
                         <div className="flex flex-col items-center text-center">
                             {employee.linked_user_avatar ? (
                                 <img
