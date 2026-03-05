@@ -160,7 +160,7 @@ export type AuthUser = {
     phone?: string | null;
     employee_id?: number | null;
     role: string;
-    permissions: Record<string, boolean>;
+    permissions: UserPermissions;
     scope_unit_name?: string;
     scope_branches?: number[];
     scope_departments?: number[];
@@ -170,3 +170,38 @@ export type AuthUser = {
 };
 
 export type AppUser = AuthUser;
+
+export const PERMISSION_KEYS = [
+    'admin_access',
+    'add_employees',
+    'view_structure',
+    'edit_structure',
+    'view_positions',
+    'edit_positions',
+    'view_financial_reports',
+    'manage_planning',
+    'view_market',
+    'edit_market',
+    'view_analytics',
+    'view_payroll',
+    'view_employees',
+    'view_scenarios',
+    'manage_offers',
+    'edit_financials',
+] as const;
+
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export type UserPermissions = Record<PermissionKey, boolean> & Record<string, boolean>;
+
+export const hasPermission = (user: Pick<AuthUser, 'role' | 'permissions'> | null | undefined, key: PermissionKey): boolean => {
+    if (!user) return false;
+    if (user.role === 'Administrator') return true;
+    if (user.permissions?.admin_access) return true;
+    return Boolean(user.permissions[key]);
+};
+
+export const hasAnyPermission = (
+    user: Pick<AuthUser, 'role' | 'permissions'> | null | undefined,
+    keys: readonly PermissionKey[]
+): boolean => keys.some((key) => hasPermission(user, key));

@@ -3,14 +3,43 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 import httpx
 import logging
+from pydantic import BaseModel, ConfigDict, Field
 from database.database import get_db
 from database.models import MarketData, MarketEntry, User
 from schemas import MarketDataCreate, MarketDataUpdate, MarketEntryCreate, MarketEntryResponse
 from dependencies import get_current_active_user
 from utils.date_utils import now_iso, to_iso_utc, to_utc_datetime
+from utils.outbound_http import async_get_with_retry
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 logger = logging.getLogger("fot.market")
+
+HH_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+
+
+class MarketPointResponse(BaseModel):
+    id: int
+    market_id: int
+    company_name: str
+    salary: int
+    created_at: str
+    url: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MarketDataResponse(BaseModel):
+    id: int
+    position_title: str
+    branch_id: int | None = None
+    min_salary: int
+    max_salary: int
+    median_salary: int
+    source: str | None = None
+    updated_at: str
+    points: list[MarketPointResponse] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
 
 
 def _has_market_view_permission(current_user: User) -> bool:
@@ -69,7 +98,7 @@ def recalculate_stats(db: Session, market_id: int):
     
     db.commit()
 
-@router.get("")
+@router.get("", response_model=list[MarketDataResponse])
 def get_market_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     _require_market_view_permission(current_user)
 
@@ -115,7 +144,7 @@ def get_market_entries(id: int, db: Session = Depends(get_db), current_user: Use
         for e in entries
     ]
 
-@router.post("")
+@router.post("", response_model=MarketDataResponse)
 def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     _require_market_edit_permission(current_user)
     
@@ -129,7 +158,27 @@ def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), cu
     existing = query.first()
     
     if existing:
-        return existing
+        return {
+            "id": existing.id,
+            "position_title": existing.position_title,
+            "branch_id": existing.branch_id,
+            "min_salary": existing.min_salary,
+            "max_salary": existing.max_salary,
+            "median_salary": existing.median_salary,
+            "source": existing.source,
+            "updated_at": to_iso_utc(existing.updated_at) or existing.updated_at,
+            "points": [
+                {
+                    "id": e.id,
+                    "market_id": e.market_id,
+                    "company_name": e.company_name,
+                    "salary": e.salary,
+                    "created_at": to_iso_utc(e.created_at) or e.created_at,
+                    "url": e.url,
+                }
+                for e in existing.entries
+            ] if hasattr(existing, "entries") and existing.entries else [],
+        }
 
     now = now_iso()
     
@@ -146,7 +195,17 @@ def create_market_data(data: MarketDataCreate, db: Session = Depends(get_db), cu
     db.add(new_data)
     db.commit()
     db.refresh(new_data)
-    return new_data
+    return {
+        "id": new_data.id,
+        "position_title": new_data.position_title,
+        "branch_id": new_data.branch_id,
+        "min_salary": new_data.min_salary,
+        "max_salary": new_data.max_salary,
+        "median_salary": new_data.median_salary,
+        "source": new_data.source,
+        "updated_at": to_iso_utc(new_data.updated_at) or new_data.updated_at,
+        "points": [],
+    }
 
 @router.post("/entries", response_model=MarketEntryResponse)
 def add_market_entry(entry: MarketEntryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
@@ -232,17 +291,28 @@ async def sync_market_with_hh(id: int, db: Session = Depends(get_db), current_us
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url, params=params, headers=headers)
-        if resp.status_code != 200:
-            logger.warning("HH sync failed: status=%s body=%s", resp.status_code, resp.text)
-            if resp.status_code == 429:
-                raise HTTPException(429, "HH API rate limit reached. Please try again later.")
-            if 500 <= resp.status_code < 600:
-                raise HTTPException(502, "HH API temporarily unavailable. Please try again later.")
-            raise HTTPException(502, "HH API request failed. Please try again later.")
+    try:
+        resp = await async_get_with_retry(
+            url,
+            params=params,
+            headers=headers,
+            timeout=HH_TIMEOUT,
+            retries=2,
+            backoff_seconds=0.15,
+        )
+    except httpx.RequestError:
+        logger.exception("HH sync request failed")
+        raise HTTPException(502, "HH API temporarily unavailable. Please try again later.")
+
+    if resp.status_code != 200:
+        logger.warning("HH sync failed with status %s", resp.status_code)
+        if resp.status_code == 429:
+            raise HTTPException(429, "HH API rate limit reached. Please try again later.")
+        if 500 <= resp.status_code < 600:
+            raise HTTPException(502, "HH API temporarily unavailable. Please try again later.")
+        raise HTTPException(502, "HH API request failed. Please try again later.")
             
-        data = resp.json()
+    data = resp.json()
         
     vacancies = data.get("items", [])
     if not vacancies:

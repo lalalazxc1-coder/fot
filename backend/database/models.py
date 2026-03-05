@@ -12,7 +12,7 @@ class Role(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
-    permissions = Column(JSON, default={}) 
+    permissions = Column(JSON, default=dict)
     users = relationship("User", back_populates="role_rel")
 
 class User(Base):
@@ -30,8 +30,8 @@ class User(Base):
     
     # NEW: Data Scope (Multi-select)
     # scope_unit_id is deprecated
-    scope_branches = Column(JSON, default=[])      # List of Branch IDs
-    scope_departments = Column(JSON, default=[])   # List of Department IDs
+    scope_branches = Column(JSON, default=list)      # List of Branch IDs
+    scope_departments = Column(JSON, default=list)   # List of Department IDs
     
     is_active = Column(Boolean, default=True)
     
@@ -67,6 +67,10 @@ class AnalyticsConfig(Base):
 
 class Employee(Base):
     __tablename__ = "employees"
+    __table_args__ = (
+        Index("ix_employees_org_unit_id", "org_unit_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True)
     gender = Column(String, nullable=True) # New
@@ -112,7 +116,7 @@ class FinancialRecord(Base):
     # Deprecated / Legacy support (keeping to avoid immediate breaks, but will ignore in logic)
     base_salary = Column(Integer, default=0)
     kpi_amount = Column(Integer, default=0)
-    additional_payments = Column(JSON, default={})
+    additional_payments = Column(JSON, default=dict)
     salary_gross = Column(Integer, default=0)
     salary_net = Column(Integer, default=0)
     total_payment = Column(Integer, default=0)
@@ -121,6 +125,10 @@ class FinancialRecord(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_target_entity_id", "target_entity", "id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     target_entity = Column(String)
@@ -137,6 +145,10 @@ class AuditLog(Base):
 class LoginLog(Base):
     """Лог событий входа/выхода — кто, когда, с какого IP и устройства."""
     __tablename__ = "login_logs"
+    __table_args__ = (
+        Index("ix_login_logs_action_id", "action", "id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable — для failed login
     user_email = Column(String, nullable=True)     # логин при попытке (даже если не нашёл)
@@ -162,6 +174,10 @@ class Scenario(Base):
 # NEW: Planning Table Model
 class PlanningPosition(Base):
     __tablename__ = "planning_lines"
+    __table_args__ = (
+        Index("ix_planning_lines_scenario_branch_department", "scenario_id", "branch_id", "department_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     
     # Scenario Link (Null = Live Budget)
@@ -188,6 +204,12 @@ class PlanningPosition(Base):
 
 class SalaryRequest(Base):
     __tablename__ = "salary_requests"
+    __table_args__ = (
+        Index("ix_salary_requests_status_id", "status", "id"),
+        Index("ix_salary_requests_requester_id_id", "requester_id", "id"),
+        Index("ix_salary_requests_current_step_id", "current_step_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     requester_id = Column(Integer, ForeignKey("users.id"))
     employee_id = Column(Integer, ForeignKey("employees.id"))
@@ -239,6 +261,11 @@ class ApprovalStep(Base):
 
 class RequestHistory(Base):
     __tablename__ = "request_history"
+    __table_args__ = (
+        Index("ix_request_history_request_id_id", "request_id", "id"),
+        Index("ix_request_history_actor_id_request_id", "actor_id", "request_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     request_id = Column(Integer, ForeignKey("salary_requests.id"))
     step_id = Column(Integer, ForeignKey("approval_steps.id"), nullable=True)
@@ -254,6 +281,10 @@ class RequestHistory(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notifications_user_id_is_read_id", "user_id", "is_read", "id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     message = Column(String)
@@ -310,6 +341,10 @@ class Comment(Base):
 
 class MarketData(Base):
     __tablename__ = "market_data"
+    __table_args__ = (
+        Index("ix_market_data_position_title_branch_id", "position_title", "branch_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     position_title = Column(String) # Removed unique=True to allow same title in different branches
     branch_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True) # New: Specific branch
@@ -325,6 +360,10 @@ class MarketData(Base):
 
 class MarketEntry(Base):
     __tablename__ = "market_entries"
+    __table_args__ = (
+        Index("ix_market_entries_market_id", "market_id"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     market_id = Column(Integer, ForeignKey("market_data.id"))
     company_name = Column(String)
@@ -372,7 +411,7 @@ class IntegrationSettings(Base):
     client_id = Column(String, nullable=True)
     client_secret = Column(String, nullable=True)
     is_active = Column(Boolean, default=False)
-    additional_params = Column(JSON, default={}) # For future flexibility
+    additional_params = Column(JSON, default=dict) # For future flexibility
     updated_at = Column(String, default=lambda: datetime.now().isoformat())
     updated_at_dt = Column(DateTime(timezone=True), nullable=True)
 
@@ -404,13 +443,13 @@ class JobOffer(Base):
     # Metadata for the offer page
     company_name = Column(String, nullable=True)
     manager_name = Column(String, nullable=True)
-    benefits = Column(JSON, default=[]) # List of perks
+    benefits = Column(JSON, default=list) # List of perks
     
     # New Customization Fields
     welcome_text = Column(String, nullable=True) 
     description_text = Column(String, nullable=True) 
     theme_color = Column(String, default="#2563eb") 
-    custom_sections = Column(JSON, default=[])
+    custom_sections = Column(JSON, default=list)
     
     # Formal Document Fields
     probation_period = Column(String, default="3 месяца")
@@ -421,7 +460,7 @@ class JobOffer(Base):
     hr_name = Column(String, nullable=True)
     start_date = Column(String, nullable=True)
     
-    signatories = Column(JSON, default=[])
+    signatories = Column(JSON, default=list)
     welcome_content = Column(JSON, nullable=True)  # Welcome Experience data
 
     branch = relationship("OrganizationUnit", foreign_keys=[branch_id])
@@ -435,18 +474,18 @@ class JobOfferTemplate(Base):
     
     # Settings to be copied to the offer
     company_name = Column(String, nullable=True)
-    benefits = Column(JSON, default=[])
+    benefits = Column(JSON, default=list)
     welcome_text = Column(String, nullable=True) 
     description_text = Column(String, nullable=True) 
     theme_color = Column(String, default="#2563eb") 
-    custom_sections = Column(JSON, default=[])
+    custom_sections = Column(JSON, default=list)
     
     probation_period = Column(String, default="3 месяца")
     working_hours = Column(String, default="09:00 - 18:00")
     lunch_break = Column(String, default="13:00 - 14:00")
     non_compete_text = Column(String, nullable=True)
     
-    signatories = Column(JSON, default=[])
+    signatories = Column(JSON, default=list)
     welcome_content = Column(JSON, nullable=True)  # Welcome Experience data
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -460,11 +499,11 @@ class WelcomePageConfig(Base):
     branch_id = Column(Integer, ForeignKey("organization_units.id"), nullable=True)  # Привязка к филиалу
 
     video_url = Column(String, nullable=True)
-    office_tour_images = Column(JSON, default=[])
+    office_tour_images = Column(JSON, default=list)
     address = Column(String, nullable=True)
-    first_day_instructions = Column(JSON, default=[])
+    first_day_instructions = Column(JSON, default=list)
     merch_info = Column(String, nullable=True)
-    team_members = Column(JSON, default=[])  # [{name, role, description}]
+    team_members = Column(JSON, default=list)  # [{name, role, description}]
     company_description = Column(String, nullable=True)  # О компании
     mission = Column(String, nullable=True)               # Миссия
     vision = Column(String, nullable=True)                 # Видение

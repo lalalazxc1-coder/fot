@@ -24,6 +24,8 @@ const api = axios.create({
 
 const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
+let refreshPromise: Promise<void> | null = null;
+
 const readCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -78,15 +80,28 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    const isAuthRoute =
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/logout');
+
     // Attempt refresh on 401 (Unauthorized)
-    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
       try {
-        const csrfToken = await ensureCsrfToken();
-        await axios.post(getBaseUrl() + '/auth/refresh', {}, {
-          withCredentials: true,
-          headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
-        });
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            const csrfToken = await ensureCsrfToken();
+            await axios.post(getBaseUrl() + '/auth/refresh', {}, {
+              withCredentials: true,
+              headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
+            });
+          })().finally(() => {
+            refreshPromise = null;
+          });
+        }
+
+        await refreshPromise;
         // Retry original request if refresh is successful
         return api(originalRequest);
       } catch (refreshError) {

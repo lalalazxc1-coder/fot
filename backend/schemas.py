@@ -1,7 +1,7 @@
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Optional, Dict, List, Literal
+from typing import Any, Optional, Dict, List, Literal
 
 # Auth & Users
 class LoginRequest(BaseModel):
@@ -230,6 +230,94 @@ class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=1, max_length=128)
     new_password: str = Field(..., min_length=8, max_length=128)
 
+
+class StatusResponse(BaseModel):
+    status: str
+
+
+class LogoutResponse(StatusResponse):
+    message: str
+
+
+class CurrentUserResponse(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    contact_email: Optional[str] = None
+    phone: Optional[str] = None
+    role: str
+    permissions: Dict[str, bool]
+    scope_branches: List[int] = []
+    scope_departments: List[int] = []
+    avatar_url: Optional[str] = None
+    job_title: Optional[str] = None
+    employee_id: Optional[int] = None
+
+
+class NotificationItemResponse(BaseModel):
+    id: int
+    user_id: int
+    message: str
+    is_read: bool
+    created_at: Optional[str] = None
+    link: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IntegrationSettingsUpdate(BaseModel):
+    service_name: str
+    api_key: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    is_active: bool
+    additional_params: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class IntegrationSettingsResponse(BaseModel):
+    id: int
+    service_name: str
+    is_active: bool
+    has_api_key: bool
+    has_client_secret: bool
+    client_id: Optional[str] = None
+    updated_at: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TestConnectionRequest(BaseModel):
+    service_name: str
+    api_key: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    base_url: Optional[str] = Field(None, max_length=512)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TestConnectionResponse(BaseModel):
+    success: bool
+    message: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AnalyzeRequest(BaseModel):
+    candidate_data: Dict[str, Any]
+    job_description: Optional[str] = Field(None, max_length=10000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AnalyzeResponse(BaseModel):
+    analysis: str
+    match_score: int
+
+    model_config = ConfigDict(extra="forbid")
+
 class SalaryRequestCreate(BaseModel):
     employee_id: int = Field(..., gt=0)
     type: Literal['raise', 'bonus']  # Только допустимые значения
@@ -269,6 +357,27 @@ class MarketDataUpdate(BaseModel):
     max_salary: int | None = None
     median_salary: int | None = None
     source: str | None = None
+
+
+class MarketPointResponse(BaseModel):
+    id: int
+    market_id: int
+    company_name: str
+    salary: int
+    created_at: str
+    url: Optional[str] = None
+
+
+class MarketDataResponse(BaseModel):
+    id: int
+    position_title: str
+    branch_id: Optional[int] = None
+    min_salary: int
+    max_salary: int
+    median_salary: int
+    source: Optional[str] = None
+    updated_at: str
+    points: list[MarketPointResponse]
 
 # Analytics
 class AnalyticsFactPlan(BaseModel):

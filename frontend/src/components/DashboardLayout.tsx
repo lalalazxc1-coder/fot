@@ -6,7 +6,7 @@ import { useSnapshot } from '../context/SnapshotContext';
 import { Notification } from '../hooks/useAdmin';
 import { useOnClickOutside } from 'usehooks-ts';
 import { formatDateTime } from '../utils';
-import type { AuthUser } from '../types';
+import { hasAnyPermission, hasPermission as userHasPermission, type AuthUser, type PermissionKey } from '../types';
 import { resolveAvatarUrl } from '../utils/avatar';
 
 type User = AuthUser;
@@ -17,21 +17,14 @@ export default function DashboardLayout({ user, onLogout, onUserUpdate }: { user
     const navigate = useNavigate();
     const location = useLocation();
 
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
-    const canViewMarket = hasAdminAccess || user.permissions?.view_market;
+    const hasAdminAccess = userHasPermission(user, 'admin_access');
+    const canViewMarket = userHasPermission(user, 'view_market');
 
-    const hasPermission = (key: string) => {
-        if (!user) return false;
-        if (user.role === 'Administrator') return true;
-        if (user.permissions?.admin_access) return true;
-        return user.permissions?.[key];
+    const hasUiPermission = (key: PermissionKey) => {
+        return userHasPermission(user, key);
     };
 
-    const hasSettingsAccess = hasAdminAccess ||
-        user.permissions?.view_structure ||
-        user.permissions?.edit_structure ||
-        user.permissions?.view_positions ||
-        user.permissions?.edit_positions;
+    const hasSettingsAccess = hasAnyPermission(user, ['view_structure', 'edit_structure', 'view_positions', 'edit_positions']);
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -75,11 +68,11 @@ export default function DashboardLayout({ user, onLogout, onUserUpdate }: { user
 
 
     const navGroups = React.useMemo(() => {
-        const canViewAnalytics = hasAdminAccess || user.permissions?.view_analytics;
-        const canViewPayroll = hasAdminAccess || user.permissions?.view_payroll;
-        const canViewEmployees = hasAdminAccess || user.permissions?.view_employees;
-        const canViewScenarios = hasAdminAccess || user.permissions?.view_scenarios;
-        const canViewOffers = hasAdminAccess || user.permissions?.manage_planning || user.permissions?.manage_offers;
+        const canViewAnalytics = userHasPermission(user, 'view_analytics');
+        const canViewPayroll = userHasPermission(user, 'view_payroll');
+        const canViewEmployees = userHasPermission(user, 'view_employees');
+        const canViewScenarios = userHasPermission(user, 'view_scenarios');
+        const canViewOffers = hasAnyPermission(user, ['manage_planning', 'manage_offers']);
 
         const groups = [];
 
@@ -131,14 +124,14 @@ export default function DashboardLayout({ user, onLogout, onUserUpdate }: { user
         }
 
         return groups;
-    }, [hasAdminAccess, canViewMarket, user.permissions]);
+    }, [canViewMarket, hasAdminAccess, user]);
 
     const settingsSubPages = [
         { name: 'Структура компании', url: '/settings/structure', permissionKey: 'view_structure', icon: Building },
         { name: 'Справочник должностей', url: '/settings/positions', permissionKey: 'view_positions', icon: Briefcase },
         { name: 'Шаблоны офферов', url: '/settings/offer-templates', permissionKey: 'admin_access', icon: Send },
         { name: 'Welcome Pages', url: '/settings/welcome-pages', permissionKey: 'admin_access', icon: Layout },
-    ].filter(p => hasPermission(p.permissionKey));
+    ].filter(p => hasUiPermission(p.permissionKey as PermissionKey));
 
     const adminSubPages = [
         { name: 'Главная', url: '/admin', icon: Shield },

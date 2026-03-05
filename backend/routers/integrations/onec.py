@@ -2,29 +2,43 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Any, cast, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 from database.models import IntegrationSettings, Employee, AuditLog
 from dependencies import get_db, require_admin
 from services.onec_service import OneCService
 from utils.secret_store import decrypt_secret
+from utils.security.url_guard import UnsafeOutboundUrlError, validate_outbound_base_url
 
 router = APIRouter(tags=["onec"])
 logger = logging.getLogger("fot.integrations.onec")
 
+
+class ImportOneCResponse(BaseModel):
+    imported: int
+    skipped: int
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class OneCConnectionSettings(BaseModel):
-    base_url: str
+    base_url: str = Field(..., max_length=512)
     username: Optional[str] = None
     password: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 @router.get("/employees", response_model=List[str])
 def get_onec_employees(db: Session = Depends(get_db), current_user = Depends(require_admin)):
     """
     Fetch employees from 1C using stored settings.
     """
-    setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == 'onec').first()
-    if not setting or not setting.is_active:
+    setting = db.query(IntegrationSettings).filter(
+        IntegrationSettings.service_name == 'onec',
+        IntegrationSettings.is_active.is_(True),
+    ).first()
+    if setting is None:
         raise HTTPException(status_code=400, detail="1C Integration not configured or inactive")
 
     settings = cast(Any, setting)
@@ -33,25 +47,32 @@ def get_onec_employees(db: Session = Depends(get_db), current_user = Depends(req
     if not base_url:
         logger.error("1C base URL is not configured in settings")
         raise HTTPException(status_code=400, detail="1C base URL is not configured")
+
+    try:
+        base_url = validate_outbound_base_url(str(base_url), "onec")
+    except UnsafeOutboundUrlError:
+        raise HTTPException(status_code=400, detail="Некорректный Base URL 1С-интеграции.")
     
     username = settings.client_id
     password = decrypt_secret(settings.client_secret) if settings.client_secret else None
     
-    logger.info(f"Connecting to 1C at: {base_url} (User: {username})")
+    logger.info("Connecting to 1C integration", extra={"base_url": base_url, "user": username})
     
     service = OneCService(base_url, username, password)
     try:
         data = service.get_employees()
         logger.info(f"Successfully fetched {len(data)} employees from 1C")
         return data
-    except Exception as e:
-        logger.error(f"1C Connection Error for {base_url}: {e}")
-        raise HTTPException(status_code=502, detail=f"Ошибка 1С: {str(e)}")
+    except Exception:
+        logger.exception("1C connection error", extra={"base_url": base_url})
+        raise HTTPException(status_code=502, detail="Не удалось получить данные из 1С. Попробуйте позже.")
 
 class ImportOneCRequest(BaseModel):
     names: List[str]
 
-@router.post("/import")
+    model_config = ConfigDict(extra="forbid")
+
+@router.post("/import", response_model=ImportOneCResponse)
 def import_onec_employees(
     data: ImportOneCRequest,
     db: Session = Depends(get_db),
@@ -73,8 +94,7 @@ def import_onec_employees(
         
         new_emp = Employee(
             full_name=name,
-            status="Active",
-            created_at=datetime.now().isoformat()
+            status="Active"
         )
         db.add(new_emp)
         db.flush() # Get ID

@@ -1,33 +1,10 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
 import { formatMoney } from '../../utils';
 import { AlertTriangle, UserX } from 'lucide-react';
-
-interface RiskItem {
-    id: number;
-    full_name: string;
-    position: string;
-    branch: string;
-    months_stagnant: number;
-    gap_percent: number;
-    risk_score: number;
-    current_salary: number;
-    market_median: number;
-}
+import { useRetentionRisk } from '../../hooks/useAnalytics';
 
 export const RetentionDashboard = () => {
-    const [items, setItems] = useState<RiskItem[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        api.get('/analytics/retention-risk').then(res => {
-            setItems(res.data.items);
-            setLoading(false);
-        }).catch(err => {
-            console.error(err);
-            setLoading(false);
-        });
-    }, []);
+    const { data, isLoading: loading } = useRetentionRisk();
+    const items = data?.items ?? [];
 
     if (loading) return <div className="p-10 text-center text-slate-500">Загрузка аналитики удержания...</div>;
 

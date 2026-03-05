@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { api } from './lib/api';
 import { SnapshotProvider } from './context/SnapshotContext';
-import type { AuthUser } from './types';
+import { hasAnyPermission, hasPermission, type AuthUser } from './types';
 
 const EmployeeTable = lazy(() => import('./components/EmployeeTable'));
 const PlanningTable = lazy(() => import('./components/PlanningTable'));
@@ -36,7 +36,7 @@ const WelcomePagesPage = lazy(() => import('./pages/settings/WelcomePagesPage'))
 
 // Security Wrappers
 const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAdminAccess = user.role === 'Administrator' || user.permissions?.admin_access;
+    const hasAdminAccess = hasPermission(user, 'admin_access');
     if (!hasAdminAccess) {
         return <Navigate to="/" replace />;
     }
@@ -44,12 +44,7 @@ const ProtectedAdminRoute = ({ user, children }: { user: AuthUser, children: JSX
 };
 
 const ProtectedSettingsRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' ||
-        user.permissions?.admin_access ||
-        user.permissions?.view_structure ||
-        user.permissions?.edit_structure ||
-        user.permissions?.view_positions ||
-        user.permissions?.edit_positions;
+    const hasAccess = hasAnyPermission(user, ['view_structure', 'edit_structure', 'view_positions', 'edit_positions']);
 
     if (!hasAccess) {
         return <Navigate to="/" replace />;
@@ -58,7 +53,7 @@ const ProtectedSettingsRoute = ({ user, children }: { user: AuthUser, children: 
 };
 
 const ProtectedMarketRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_market;
+    const hasAccess = hasPermission(user, 'view_market');
     if (!hasAccess) {
         return <Navigate to="/" replace />;
     }
@@ -66,31 +61,31 @@ const ProtectedMarketRoute = ({ user, children }: { user: AuthUser, children: JS
 };
 
 const ProtectedAnalyticsRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics;
+    const hasAccess = hasPermission(user, 'view_analytics');
     if (!hasAccess) return <Navigate to="/requests" replace />;
     return children;
 };
 
 const ProtectedPayrollRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_payroll;
+    const hasAccess = hasPermission(user, 'view_payroll');
     if (!hasAccess) return <Navigate to="/requests" replace />;
     return children;
 };
 
 const ProtectedEmployeesRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_employees;
+    const hasAccess = hasPermission(user, 'view_employees');
     if (!hasAccess) return <Navigate to="/requests" replace />;
     return children;
 };
 
 const ProtectedScenariosRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_scenarios;
+    const hasAccess = hasPermission(user, 'view_scenarios');
     if (!hasAccess) return <Navigate to="/requests" replace />;
     return children;
 };
 
 const ProtectedOffersRoute = ({ user, children }: { user: AuthUser, children: JSX.Element }) => {
-    const hasAccess = user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.manage_planning || user.permissions?.manage_offers;
+    const hasAccess = hasAnyPermission(user, ['manage_planning', 'manage_offers']);
     if (!hasAccess) return <Navigate to="/requests" replace />;
     return children;
 };
@@ -225,7 +220,7 @@ function App() {
                     {/* Protected Routes */}
                     {isAuthenticated && user ? (
                         <Route element={<DashboardLayout user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />}>
-                            <Route path="/" element={<Navigate to={(user.role === 'Administrator' || user.permissions?.admin_access || user.permissions?.view_analytics) ? "/analytics" : "/requests"} replace />} />
+                            <Route path="/" element={<Navigate to={hasPermission(user, 'view_analytics') ? "/analytics" : "/requests"} replace />} />
                             <Route path="/profile" element={<ProfilePage />} />
                             <Route path="/analytics" element={<ProtectedAnalyticsRoute user={user}><AnalyticsPage /></ProtectedAnalyticsRoute>} />
                             <Route path="/payroll" element={<ProtectedPayrollRoute user={user}><PlanningTable user={user} /></ProtectedPayrollRoute>} />

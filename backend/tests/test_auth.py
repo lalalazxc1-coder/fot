@@ -2,6 +2,16 @@
 Tests for Auth system: login, /me, change-password.
 """
 
+from jose import jwt
+
+from security import ALGORITHM, SECRET_KEY
+
+
+def _decode_refresh_cookie(resp):
+    token = resp.cookies.get("refresh_token")
+    assert token
+    return token, jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
 def test_login_success(client, admin_user):
     resp = client.post("/api/auth/login", json={
         "username": "admin@test.com",
@@ -77,6 +87,65 @@ def test_change_password_wrong_old(client, auth_headers):
         "new_password": "newpass123"
     })
     assert resp.status_code == 400
+
+
+def test_refresh_rotates_refresh_token(client, admin_user):
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin@test.com", "password": "admin123"},
+    )
+    assert login_resp.status_code == 200
+
+    old_refresh, old_payload = _decode_refresh_cookie(login_resp)
+
+    refresh_resp = client.post("/api/auth/refresh", headers={"X-CSRF-Token": client.cookies.get("csrf_token") or ""})
+    assert refresh_resp.status_code == 200
+
+    new_refresh, new_payload = _decode_refresh_cookie(refresh_resp)
+    assert new_refresh != old_refresh
+    assert new_payload["sid"] == old_payload["sid"]
+    assert new_payload["jti"] != old_payload["jti"]
+
+
+def test_refresh_reuse_detection_revokes_session(client, admin_user):
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin@test.com", "password": "admin123"},
+    )
+    assert login_resp.status_code == 200
+
+    old_refresh, _ = _decode_refresh_cookie(login_resp)
+    csrf = client.cookies.get("csrf_token") or ""
+
+    first_refresh = client.post("/api/auth/refresh", headers={"X-CSRF-Token": csrf})
+    assert first_refresh.status_code == 200
+    new_refresh = first_refresh.cookies.get("refresh_token")
+    assert new_refresh
+
+    client.cookies.set("refresh_token", old_refresh)
+    reuse_resp = client.post("/api/auth/refresh", headers={"X-CSRF-Token": csrf})
+    assert reuse_resp.status_code == 401
+    assert reuse_resp.json()["detail"] == "Refresh token reuse detected"
+
+    client.cookies.set("refresh_token", new_refresh)
+    after_revoke_resp = client.post("/api/auth/refresh", headers={"X-CSRF-Token": csrf})
+    assert after_revoke_resp.status_code == 401
+    assert after_revoke_resp.json()["detail"] == "Refresh session has been revoked"
+
+
+def test_logout_revokes_refresh_session(client, admin_user):
+    login_resp = client.post(
+        "/api/auth/login",
+        json={"username": "admin@test.com", "password": "admin123"},
+    )
+    assert login_resp.status_code == 200
+
+    csrf = client.cookies.get("csrf_token") or ""
+    logout_resp = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf})
+    assert logout_resp.status_code == 200
+
+    refresh_resp = client.post("/api/auth/refresh", headers={"X-CSRF-Token": csrf})
+    assert refresh_resp.status_code == 401
 
 
 def test_update_my_profile(client, auth_headers):

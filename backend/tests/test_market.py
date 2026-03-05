@@ -35,10 +35,10 @@ def test_market_sync_hh_happy_path_with_mock(client, auth_headers, monkeypatch):
                 ]
             }
 
-    async def _fake_get(*args, **kwargs):
+    async def _fake_async_get_with_retry(*args, **kwargs):
         return _FakeResponse()
 
-    monkeypatch.setattr(market_router.httpx.AsyncClient, "get", _fake_get)
+    monkeypatch.setattr(market_router, "async_get_with_retry", _fake_async_get_with_retry)
 
     create_resp = client.post(
         "/api/market",

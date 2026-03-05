@@ -1,7 +1,7 @@
 import logging
-import requests
 from requests.auth import HTTPBasicAuth
 from typing import List, Optional, Dict, Any
+from utils.outbound_http import request_with_retry
 
 logger = logging.getLogger("fot.onec")
 
@@ -33,14 +33,21 @@ class OneCService:
         print(f"DEBUG: Connecting to 1C URL: {url}")
         
         try:
-            response = requests.get(url, auth=self.auth, timeout=10)
+            response = request_with_retry(
+                "GET",
+                url,
+                auth=self.auth,
+                timeout=10,
+                retries=2,
+                backoff_seconds=0.2,
+            )
             if response.status_code == 404:
                 raise Exception(f"404 Not Found по адресу: {url}")
             response.raise_for_status()
             return response.json()
-        except Exception as e:
-            logger.error(f"Failed to fetch employees from 1C: {e}")
-            raise e
+        except Exception:
+            logger.exception("Failed to fetch employees from 1C")
+            raise
 
     def test_connection(self) -> bool:
         """

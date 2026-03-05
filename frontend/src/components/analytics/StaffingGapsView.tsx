@@ -1,8 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api';
 import { Loader2, AlertCircle, ChevronRight, ChevronDown, Building2, LayoutGrid, User } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import React, { useState, useMemo } from 'react';
+import { useTurnoverAnalytics } from '../../hooks/useAnalytics';
 
 interface StaffingGapItem {
     id: number;
@@ -16,18 +15,6 @@ interface StaffingGapItem {
 
 interface GapTreeNode extends StaffingGapItem {
     children: GapTreeNode[];
-}
-
-interface TurnoverReasonItem {
-    name: string;
-    value: number;
-}
-
-interface TurnoverResponse {
-    turnover_rate: number;
-    dismissed_count: number;
-    reasons_distribution: TurnoverReasonItem[];
-    staffing_gaps: StaffingGapItem[];
 }
 
 // Tree row component with individual expansion state management
@@ -90,13 +77,7 @@ const GapTreeRows = ({ node, level, expandedNodes, onToggle }: {
 };
 
 export const StaffingGapsView = () => {
-    const { data, isLoading } = useQuery({
-        queryKey: ['analytics', 'turnover', 365],
-        queryFn: async () => {
-            const res = await api.get('/analytics/turnover?days=365');
-            return res.data as TurnoverResponse;
-        }
-    });
+    const { data, isLoading } = useTurnoverAnalytics(365);
 
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
 

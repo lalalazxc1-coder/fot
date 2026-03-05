@@ -44,7 +44,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-fot_admin}:${POSTGRES_PASSWORD:-fot_pass}@db:5432/${POSTGRES_DB:-fot_db}
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-your-secure-secret-key-change-in-prod}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env (use a strong random value)}
+      - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:?SECRETS_ENCRYPTION_KEY must be set in .env (use a strong random value separate from SECRET_KEY)}
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:?ALLOWED_ORIGINS must be set in .env (e.g. https://your-domain.com)}

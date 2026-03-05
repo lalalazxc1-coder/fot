@@ -23,3 +23,25 @@ def test_analytics_cost_distribution_happy_path(client, auth_headers, org_struct
 def test_analytics_cost_distribution_requires_auth(client):
     resp = client.get("/api/analytics/cost-distribution")
     assert resp.status_code in (401, 403)
+
+
+def test_analytics_turnover_happy_path(client, auth_headers):
+    resp = client.get("/api/analytics/turnover", headers=auth_headers)
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert "staffing_gaps" in data
+    assert "turnover_rate" in data
+    assert "dismissed_count" in data
+    assert "reasons_distribution" in data
+
+
+def test_analytics_employees_happy_path(client, auth_headers):
+    resp = client.get("/api/analytics/employees", headers=auth_headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_analytics_employees_requires_auth(client):
+    resp = client.get("/api/analytics/employees")
+    assert resp.status_code in (401, 403)

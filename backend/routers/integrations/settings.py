@@ -1,14 +1,15 @@
 import logging
-import requests
 from requests import RequestException
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional, cast
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from database.models import IntegrationSettings
 from dependencies import get_db, require_admin
 from utils.date_utils import now_iso, to_utc_datetime
+from utils.outbound_http import request_with_retry
 from utils.secret_store import decrypt_secret, encrypt_secret, is_secret_encrypted
+from utils.security.url_guard import UnsafeOutboundUrlError, validate_outbound_base_url
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 logger = logging.getLogger("fot.integrations")
@@ -76,44 +77,59 @@ def _ai_analyze_error_message(status_code: int) -> str:
         return "Превышен лимит запросов к AI-провайдеру. Попробуйте позже."
     return "AI-провайдер временно недоступен. Попробуйте позже."
 
-# --- Schemas ---
+
 class IntegrationSettingsUpdate(BaseModel):
     service_name: str
     api_key: Optional[str] = None
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     is_active: bool
-    additional_params: Optional[dict] = {}
+    additional_params: Optional[dict[str, Any]] = None
+
+    model_config = ConfigDict(extra="forbid")
+
 
 class IntegrationSettingsResponse(BaseModel):
     id: int
     service_name: str
     is_active: bool
-    has_api_key: bool # Don't return the actual key
+    has_api_key: bool
     has_client_secret: bool
     client_id: Optional[str] = None
     updated_at: str
+
+    model_config = ConfigDict(extra="forbid")
+
 
 class TestConnectionRequest(BaseModel):
     service_name: str
     api_key: Optional[str] = None
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
-    base_url: Optional[str] = None
+    base_url: Optional[str] = Field(None, max_length=512)
+
+    model_config = ConfigDict(extra="forbid")
+
 
 class TestConnectionResponse(BaseModel):
     success: bool
     message: str
 
+    model_config = ConfigDict(extra="forbid")
+
+
 class AnalyzeRequest(BaseModel):
-    candidate_data: dict
-    job_description: Optional[str] = None
+    candidate_data: dict[str, Any]
+    job_description: Optional[str] = Field(None, max_length=10000)
+
+    model_config = ConfigDict(extra="forbid")
+
 
 class AnalyzeResponse(BaseModel):
     analysis: str
     match_score: int
 
-# --- Endpoints ---
+    model_config = ConfigDict(extra="forbid")
 
 @router.get("/settings", response_model=List[IntegrationSettingsResponse])
 def get_integration_settings(db: Session = Depends(get_db), current_user = Depends(require_admin)):
@@ -173,7 +189,7 @@ def update_integration_settings(
     # In real app: Add permission check!
     
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == data.service_name).first()
-    if not setting:
+    if setting is None:
         setting = IntegrationSettings(service_name=data.service_name)
         db.add(setting)
     setting_row = cast(Any, setting)
@@ -187,10 +203,23 @@ def update_integration_settings(
         setting_row.client_secret = encrypt_secret(data.client_secret)
 
     _ensure_setting_secrets_encrypted(setting_row)
+
+    normalized_params = data.additional_params if isinstance(data.additional_params, dict) else {}
+    if "base_url" in normalized_params and normalized_params.get("base_url") is None:
+        normalized_params.pop("base_url", None)
+
+    if "base_url" in normalized_params:
+        try:
+            normalized_params["base_url"] = validate_outbound_base_url(
+                str(normalized_params.get("base_url") or ""),
+                data.service_name,
+            )
+        except UnsafeOutboundUrlError as exc:
+            raise HTTPException(status_code=400, detail=f"Некорректный Base URL: {exc}")
         
     setting_row.is_active = data.is_active
     if data.additional_params is not None:
-        setting_row.additional_params = data.additional_params
+        setting_row.additional_params = normalized_params
 
     _touch_updated_at(setting_row)
         
@@ -214,13 +243,13 @@ def test_connection(
     current_user = Depends(require_admin)
 ):
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == data.service_name).first()
-    if not setting:
+    if setting is None:
         setting = IntegrationSettings(service_name=data.service_name)
     setting_row = cast(Any, setting)
 
     if _ensure_setting_secrets_encrypted(setting_row):
         _touch_updated_at(setting_row)
-        if setting.id:
+        if getattr(setting_row, "id", None) is not None:
             db.commit()
             db.refresh(setting)
 
@@ -247,7 +276,15 @@ def test_connection(
             # HH requires User-Agent
             headers = {"User-Agent": "FOT-Manager/1.0 (test@example.com)"}
 
-            resp = requests.post(token_url, data=payload, headers=headers, timeout=5)
+            resp = request_with_retry(
+                "POST",
+                token_url,
+                data=payload,
+                headers=headers,
+                timeout=5,
+                retries=2,
+                backoff_seconds=0.15,
+            )
 
             if resp.status_code == 200:
                  return {"success": True, "message": "Connection successful! Token received."}
@@ -266,10 +303,10 @@ def test_connection(
         # Determine base URL: Priority: Request param > DB param > default OpenAI
         setting_params = setting_row.additional_params if isinstance(setting_row.additional_params, dict) else {}
         raw_base_url = data.base_url or (setting_params or {}).get('base_url') or "https://api.openai.com/v1"
-        base_url = str(raw_base_url)
-        
-        # Ensure base_url doesn't end with slash for consistency if we append /models
-        base_url = base_url.rstrip('/')
+        try:
+            base_url = validate_outbound_base_url(str(raw_base_url), data.service_name)
+        except UnsafeOutboundUrlError as exc:
+            return {"success": False, "message": f"Некорректный Base URL: {exc}"}
         
         try:
             # Simple models list call
@@ -279,7 +316,14 @@ def test_connection(
             }
             # Use /models for testing general connectivity
             test_url = f"{base_url}/models"
-            resp = requests.get(test_url, headers=headers, timeout=10)
+            resp = request_with_retry(
+                "GET",
+                test_url,
+                headers=headers,
+                timeout=10,
+                retries=2,
+                backoff_seconds=0.2,
+            )
 
             if resp.status_code == 200:
                 provider = "DeepSeek" if "deepseek" in base_url.lower() else ("OpenRouter" if "openrouter" in base_url.lower() else "AI")
@@ -299,6 +343,11 @@ def test_connection(
         
         if not base_url:
             return {"success": False, "message": "Base URL is required (e.g. http://192.168.1.10/mybase)"}
+
+        try:
+            base_url = validate_outbound_base_url(str(base_url), data.service_name)
+        except UnsafeOutboundUrlError as exc:
+            return {"success": False, "message": f"Некорректный Base URL: {exc}"}
         
         from services.onec_service import OneCService
         service = OneCService(base_url, client_id, client_secret)
@@ -308,9 +357,9 @@ def test_connection(
                 return {"success": True, "message": "Соединение с 1С успешно установлено!"}
             else:
                 return {"success": False, "message": "Не удалось получить данные из 1С. Проверьте URL и учетные данные."}
-        except Exception as e:
+        except Exception:
             logger.exception("1C test connection failed")
-            return {"success": False, "message": f"Ошибка подключения к 1С: {str(e)}"}
+            return {"success": False, "message": "Не удалось подключиться к 1С. Проверьте URL и учетные данные."}
 
     return {"success": False, "message": "Unknown service"}
 
@@ -322,7 +371,7 @@ def ai_analyze(
 ):
     """Real AI Analysis using configured provider"""
     setting = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == 'openai').first()
-    if not setting:
+    if setting is None:
         raise HTTPException(status_code=400, detail="AI Integration not configured")
 
     setting_row = cast(Any, setting)
@@ -336,8 +385,13 @@ def ai_analyze(
         raise HTTPException(status_code=400, detail="AI Integration not configured")
 
     setting_params = setting_row.additional_params if isinstance(setting_row.additional_params, dict) else {}
-    base_url = str((setting_params or {}).get('base_url') or "https://api.openai.com/v1")
-    base_url = base_url.rstrip('/')
+    try:
+        base_url = validate_outbound_base_url(
+            str((setting_params or {}).get('base_url') or "https://api.openai.com/v1"),
+            "openai",
+        )
+    except UnsafeOutboundUrlError:
+        raise HTTPException(status_code=400, detail="Некорректный Base URL AI-интеграции.")
 
     prompt = f"""
     Проанализируй кандидата для вакансии.
@@ -375,7 +429,15 @@ def ai_analyze(
         }
 
         try:
-            resp = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=30)
+            resp = request_with_retry(
+                "POST",
+                f"{base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=30,
+                retries=2,
+                backoff_seconds=0.2,
+            )
         except RequestException:
             logger.exception("AI analyze request failed")
             raise HTTPException(status_code=502, detail="AI-провайдер временно недоступен. Попробуйте позже.")

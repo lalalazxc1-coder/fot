@@ -1,11 +1,12 @@
 import logging
 import random
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from dependencies import get_db, get_current_active_user
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from utils.outbound_http import async_get_with_retry
 
 router = APIRouter(prefix="/api/integrations/hh", tags=["integrations-hh"])
 logger = logging.getLogger("fot.integrations.hh")
@@ -22,10 +23,12 @@ class CandidateSchema(BaseModel):
     url: str
     area: str
 
+    model_config = ConfigDict(extra="forbid")
+
 @router.get("/search", response_model=List[CandidateSchema])
 async def search_candidates(
-    text: str,
-    area: Optional[int] = 160,
+    text: str = Query(..., min_length=1, max_length=200),
+    area: Optional[int] = Query(160, gt=0),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_active_user)
 ):
@@ -45,28 +48,34 @@ async def search_candidates(
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(url, params=params, headers=headers, timeout=10)
-        except httpx.RequestError:
-            logger.exception("HH search request failed")
-            raise HTTPException(status_code=502, detail="Сервис HH временно недоступен. Попробуйте позже.")
+    try:
+        resp = await async_get_with_retry(
+            url,
+            params=params,
+            headers=headers,
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            retries=2,
+            backoff_seconds=0.15,
+        )
+    except httpx.RequestError:
+        logger.exception("HH search request failed")
+        raise HTTPException(status_code=502, detail="Сервис HH временно недоступен. Попробуйте позже.")
 
-        if resp.status_code != 200:
-            logger.warning("HH search failed with status %s", resp.status_code)
-            if resp.status_code in {400, 401, 403}:
-                detail = "Не удалось получить данные из HH. Проверьте параметры запроса."
-            elif resp.status_code == 429:
-                detail = "HH временно ограничил количество запросов. Попробуйте позже."
-            else:
-                detail = "Сервис HH временно недоступен. Попробуйте позже."
-            raise HTTPException(status_code=429 if resp.status_code == 429 else 502, detail=detail)
+    if resp.status_code != 200:
+        logger.warning("HH search failed with status %s", resp.status_code)
+        if resp.status_code in {400, 401, 403}:
+            detail = "Не удалось получить данные из HH. Проверьте параметры запроса."
+        elif resp.status_code == 429:
+            detail = "HH временно ограничил количество запросов. Попробуйте позже."
+        else:
+            detail = "Сервис HH временно недоступен. Попробуйте позже."
+        raise HTTPException(status_code=429 if resp.status_code == 429 else 502, detail=detail)
 
-        try:
-            data = resp.json()
-        except ValueError:
-            logger.warning("HH search returned invalid JSON")
-            raise HTTPException(status_code=502, detail="Сервис HH вернул некорректный ответ.")
+    try:
+        data = resp.json()
+    except ValueError:
+        logger.warning("HH search returned invalid JSON")
+        raise HTTPException(status_code=502, detail="Сервис HH вернул некорректный ответ.")
         
     vacancies = data.get("items", [])
     results = []

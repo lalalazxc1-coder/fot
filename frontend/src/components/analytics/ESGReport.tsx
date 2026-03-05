@@ -1,32 +1,8 @@
-import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-
-type ESGItem = {
-    category: string;
-    count: number;
-    avg_salary: number;
-};
-
-type ESGResponse = {
-    gender_equity: ESGItem[];
-    age_equity: ESGItem[];
-    cached_at?: string;
-};
+import { useEsgMetrics } from '../../hooks/useAnalytics';
 
 export const ESGReport = () => {
-    const [data, setData] = useState<ESGResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        api.get('/analytics/esg/pay-equity').then(res => {
-            setData(res.data as ESGResponse);
-            setLoading(false);
-        }).catch(err => {
-            console.error(err);
-            setLoading(false);
-        });
-    }, []);
+    const { data, isLoading: loading } = useEsgMetrics();
 
     if (loading) return <div className="p-10 text-center text-slate-500">Загрузка метрик ESG...</div>;
     if (!data) return <div className="p-10 text-center text-slate-500">Нет данных ESG</div>;

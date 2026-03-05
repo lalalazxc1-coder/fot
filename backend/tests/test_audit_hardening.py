@@ -1,6 +1,9 @@
 """Security hardening tests from deep audit remediation plan."""
 
 import pytest
+import importlib
+import sys
+from typing import Any, cast
 from main import _get_client_ip
 from utils.secret_store import decrypt_secret
 
@@ -111,7 +114,7 @@ def test_forwarded_headers_ignored_for_untrusted_proxy():
         client = _Client()
         headers = {"X-Forwarded-For": "1.2.3.4", "X-Real-IP": "5.6.7.8"}
 
-    assert _get_client_ip(_Req()) == "203.0.113.10"
+    assert _get_client_ip(cast(Any, _Req())) == "203.0.113.10"
 
 
 def test_forwarded_headers_used_for_trusted_proxy(monkeypatch):
@@ -127,7 +130,7 @@ def test_forwarded_headers_used_for_trusted_proxy(monkeypatch):
         client = _Client()
         headers = {"X-Forwarded-For": "1.2.3.4, 127.0.0.1"}
 
-    assert _get_client_ip(_Req()) == "1.2.3.4"
+    assert _get_client_ip(cast(Any, _Req())) == "1.2.3.4"
 
 
 def test_planning_export_hides_internal_exception_details(client, auth_headers, planning_position, monkeypatch):
@@ -171,10 +174,10 @@ def test_market_sync_hh_sanitizes_upstream_errors(
         def json(self):
             return {"items": []}
 
-    async def _fake_get(*args, **kwargs):
+    async def _fake_async_get_with_retry(*args, **kwargs):
         return _FakeResponse(hh_status, "upstream-internal-debug-body")
 
-    monkeypatch.setattr(market_router.httpx.AsyncClient, "get", _fake_get)
+    monkeypatch.setattr(market_router, "async_get_with_retry", _fake_async_get_with_retry)
 
     create_resp = client.post(
         "/api/market",
@@ -190,3 +193,94 @@ def test_market_sync_hh_sanitizes_upstream_errors(
     payload = sync_resp.json()
     assert payload["detail"] == expected_detail
     assert "upstream-internal-debug-body" not in sync_resp.text
+
+
+def test_secret_key_required_in_production(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SECRET_KEY", "")
+    monkeypatch.setenv("FOT_SECRET_KEY", "")
+    monkeypatch.delenv("SECRETS_ENCRYPTION_KEY", raising=False)
+
+    module_name = "security"
+    original = sys.modules.get(module_name)
+    sys.modules.pop(module_name, None)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY is required in production"):
+        importlib.import_module(module_name)
+
+    if original is not None:
+        sys.modules[module_name] = original
+    else:
+        sys.modules.pop(module_name, None)
+
+
+def test_secrets_encryption_key_required_in_production(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.delenv("SECRETS_ENCRYPTION_KEY", raising=False)
+    monkeypatch.setenv("SECRET_KEY", "fallback-not-allowed-in-prod")
+
+    with pytest.raises(RuntimeError, match="SECRETS_ENCRYPTION_KEY is required in production"):
+        decrypt_secret("enc:gAAAAABinvalid-token")
+
+
+@pytest.mark.parametrize("service_name", ["openai", "onec"])
+def test_test_connection_rejects_private_base_url(client, auth_headers, service_name):
+    payload = {
+        "service_name": service_name,
+        "base_url": "http://127.0.0.1:8000/internal",
+    }
+    if service_name == "openai":
+        payload["api_key"] = "test-key"
+
+    resp = client.post("/api/integrations/test-connection", headers=auth_headers, json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is False
+    assert "Некорректный Base URL" in data["message"]
+
+
+def test_update_settings_rejects_private_base_url(client, auth_headers):
+    resp = client.post(
+        "/api/integrations/settings",
+        headers=auth_headers,
+        json={
+            "service_name": "openai",
+            "is_active": True,
+            "additional_params": {"base_url": "http://127.0.0.1:11434/v1"},
+        },
+    )
+    assert resp.status_code == 400
+    assert "Некорректный Base URL" in resp.json()["detail"]
+
+
+def test_openai_test_connection_rejects_bad_scheme(client, auth_headers):
+    resp = client.post(
+        "/api/integrations/test-connection",
+        headers=auth_headers,
+        json={
+            "service_name": "openai",
+            "api_key": "test-key",
+            "base_url": "file:///etc/passwd",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is False
+    assert "Некорректный Base URL" in body["message"]
+
+
+def test_ai_analyze_rejects_private_base_url(client, auth_headers, integration_settings, db):
+    from database.models import IntegrationSettings
+
+    openai_row = db.query(IntegrationSettings).filter(IntegrationSettings.service_name == "openai").first()
+    assert openai_row is not None
+    openai_row.additional_params = {"base_url": "http://127.0.0.1:11434/v1"}
+    db.commit()
+
+    resp = client.post(
+        "/api/integrations/ai-analyze",
+        headers=auth_headers,
+        json={"candidate_data": {"name": "Ivan"}, "job_description": "Python"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Некорректный Base URL AI-интеграции."

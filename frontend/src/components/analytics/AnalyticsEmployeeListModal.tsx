@@ -1,41 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api';
 import Modal from '../Modal';
 import { formatMoney } from '../../utils';
 import { Loader2, User } from 'lucide-react';
-import { useSnapshot } from '../../context/SnapshotContext';
-
-interface AnalyticsEmployee {
-    id: number;
-    full_name: string;
-    position: string;
-    unit_name: string;
-    total_net: number;
-}
+import { useAnalyticsEmployees, type AnalyticsEmployeeFilters } from '../../hooks/useAnalytics';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     title: string;
-    filters: {
-        unit_id?: number;
-        position?: string;
-        risk_level?: string;
-    };
+    filters: AnalyticsEmployeeFilters;
 }
 
 export const AnalyticsEmployeeListModal = ({ isOpen, onClose, title, filters }: Props) => {
-    const { snapshotDate } = useSnapshot();
-
-    const { data: employees = [], isLoading } = useQuery({
-        queryKey: ['analytics', 'drill-down', filters, snapshotDate],
-        queryFn: async () => {
-            const params = { ...filters, date: snapshotDate };
-            const res = await api.get('/analytics/employees', { params });
-            return res.data as AnalyticsEmployee[];
-        },
-        enabled: isOpen,
-    });
+    const { data: employees = [], isLoading } = useAnalyticsEmployees(filters, { enabled: isOpen });
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-2xl">
