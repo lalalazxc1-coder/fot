@@ -45,6 +45,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-fot_admin}:${POSTGRES_PASSWORD:-fot_pass}@db:5432/${POSTGRES_DB:-fot_db}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env (use a strong random value)}
+      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY:?REFRESH_SECRET_KEY must be set in .env (use a strong random value separate from SECRET_KEY)}
       - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:?SECRETS_ENCRYPTION_KEY must be set in .env (use a strong random value separate from SECRET_KEY)}
       - ENVIRONMENT=production
       - LOG_LEVEL=INFO
@@ -63,6 +64,12 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     deploy:
       resources:
         limits:
@@ -102,8 +109,10 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     depends_on:
-      - frontend
-      - backend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
 
 volumes:
   postgres_data:

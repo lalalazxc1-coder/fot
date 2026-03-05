@@ -31,6 +31,7 @@ from schemas import (
 )
 from security import (
     ALGORITHM,
+    REFRESH_SECRET_KEY,
     SECRET_KEY,
     create_access_token,
     create_refresh_token,
@@ -121,7 +122,7 @@ def _token_sid(payload: dict[str, Any]) -> str:
 
 def _decode_refresh_token(token_value: str) -> tuple[int, str, str, int]:
     try:
-        payload = cast(dict[str, Any], jwt.decode(token_value, SECRET_KEY, algorithms=[ALGORITHM]))
+        payload = cast(dict[str, Any], jwt.decode(token_value, REFRESH_SECRET_KEY, algorithms=[ALGORITHM]))
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -140,12 +141,8 @@ def _decode_refresh_token(token_value: str) -> tuple[int, str, str, int]:
 
 
 def _get_request_ip(request: Request) -> str:
-    try:
-        from main import _get_client_ip
-
-        return _get_client_ip(request)
-    except Exception:
-        return request.client.host if request.client else "unknown"
+    from utils.network import get_client_ip
+    return get_client_ip(request)
 
 
 @router.post("/login", response_model=LoginResponse, response_model_exclude_none=True)

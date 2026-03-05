@@ -1,7 +1,6 @@
 import sys
 import os
 import logging
-from ipaddress import ip_address, ip_network
 from pathlib import Path
 
 # 1. Add current directory to path so python sees 'routers', 'database', etc.
@@ -141,71 +140,11 @@ async def add_security_headers(request: Request, call_next):
 # --- Rate Limiting Middleware (NEW-3 FIX: Redis-based, работает в multi-worker) ---
 import time
 from utils.rate_limiter import check_rate_limit
+from utils.network import get_client_ip, TRUSTED_PROXY_IPS
 
 RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "10"))
 RATE_LIMIT_WINDOW = 300  # 5 minutes
-TRUSTED_PROXY_IPS = os.environ.get("TRUSTED_PROXY_IPS", "127.0.0.1,::1")
 
-
-def _parse_trusted_proxy_networks(raw_value: str):
-    networks = []
-    for token in [item.strip() for item in raw_value.split(",") if item.strip()]:
-        try:
-            if "/" in token:
-                networks.append(ip_network(token, strict=False))
-            elif ":" in token:
-                networks.append(ip_network(f"{token}/128", strict=False))
-            else:
-                networks.append(ip_network(f"{token}/32", strict=False))
-        except ValueError:
-            logger.warning("Ignoring invalid TRUSTED_PROXY_IPS entry", extra={"value": token})
-    return networks
-
-
-TRUSTED_PROXY_NETWORKS = _parse_trusted_proxy_networks(TRUSTED_PROXY_IPS)
-
-
-def _is_trusted_proxy(client_host: str) -> bool:
-    try:
-        client_ip = ip_address(client_host)
-    except ValueError:
-        return False
-    return any(client_ip in network for network in TRUSTED_PROXY_NETWORKS)
-
-def _get_client_ip(request: Request) -> str:
-    """Extract real client IP, trusting proxy headers only from trusted proxies."""
-    client_host = request.client.host if request.client else "unknown"
-    if client_host == "unknown":
-        return client_host
-
-    if not _is_trusted_proxy(client_host):
-        return client_host
-
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        candidate = forwarded.split(",")[0].strip()
-        try:
-            ip_address(candidate)
-            return candidate
-        except ValueError:
-            logger.warning(
-                "Ignoring invalid X-Forwarded-For from trusted proxy",
-                extra={"proxy_ip": client_host, "value": forwarded},
-            )
-
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        candidate = real_ip.strip()
-        try:
-            ip_address(candidate)
-            return candidate
-        except ValueError:
-            logger.warning(
-                "Ignoring invalid X-Real-IP from trusted proxy",
-                extra={"proxy_ip": client_host, "value": real_ip},
-            )
-
-    return client_host
 
 @app.middleware("http")
 async def rate_limit_login(request: Request, call_next):
@@ -214,7 +153,7 @@ async def rate_limit_login(request: Request, call_next):
         if env == "testing":
             return await call_next(request)
 
-        client_ip = _get_client_ip(request)
+        client_ip = get_client_ip(request)
         # NEW-3: Redis sliding window rate limit — общий для всех воркеров
         if check_rate_limit(f"login:{client_ip}", RATE_LIMIT_MAX, RATE_LIMIT_WINDOW):
             logger.warning(f"Rate limit exceeded for {client_ip} on /api/auth/login")
@@ -225,6 +164,12 @@ async def rate_limit_login(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+# --- Health Check ---
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
 
 # 5. Connect Routers
 all_routers = [
