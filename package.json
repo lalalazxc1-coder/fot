@@ -1,7 +1,7 @@
 {
   "scripts": {
     "lint": "npm --prefix frontend run lint",
-    "validate": "npm --prefix frontend run build && python -m pytest backend"
+    "validate": "npm --prefix frontend run build && python -m pytest --rootdir=backend backend/tests"
   },
   "dependencies": {
     "@types/canvas-confetti": "^1.9.0",
