@@ -4,13 +4,13 @@ Tests for Auth system: login, /me, change-password.
 
 from jose import jwt
 
-from security import ALGORITHM, SECRET_KEY
+from security import ALGORITHM, REFRESH_SECRET_KEY
 
 
 def _decode_refresh_cookie(resp):
     token = resp.cookies.get("refresh_token")
     assert token
-    return token, jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    return token, jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
 
 def test_login_success(client, admin_user):
     resp = client.post("/api/auth/login", json={

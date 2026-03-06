@@ -4,7 +4,7 @@ import pytest
 import importlib
 import sys
 from typing import Any, cast
-from main import _get_client_ip
+from utils.network import get_client_ip
 from utils.secret_store import decrypt_secret
 
 
@@ -114,14 +114,14 @@ def test_forwarded_headers_ignored_for_untrusted_proxy():
         client = _Client()
         headers = {"X-Forwarded-For": "1.2.3.4", "X-Real-IP": "5.6.7.8"}
 
-    assert _get_client_ip(cast(Any, _Req())) == "203.0.113.10"
+    assert get_client_ip(cast(Any, _Req())) == "203.0.113.10"
 
 
 def test_forwarded_headers_used_for_trusted_proxy(monkeypatch):
     from ipaddress import ip_network
-    import main
+    from utils import network as network_utils
 
-    monkeypatch.setattr(main, "TRUSTED_PROXY_NETWORKS", [ip_network("127.0.0.1/32")])
+    monkeypatch.setattr(network_utils, "TRUSTED_PROXY_NETWORKS", [ip_network("127.0.0.1/32")])
 
     class _Req:
         class _Client:
@@ -130,7 +130,7 @@ def test_forwarded_headers_used_for_trusted_proxy(monkeypatch):
         client = _Client()
         headers = {"X-Forwarded-For": "1.2.3.4, 127.0.0.1"}
 
-    assert _get_client_ip(cast(Any, _Req())) == "1.2.3.4"
+    assert get_client_ip(cast(Any, _Req())) == "1.2.3.4"
 
 
 def test_planning_export_hides_internal_exception_details(client, auth_headers, planning_position, monkeypatch):
