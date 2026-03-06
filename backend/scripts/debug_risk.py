@@ -1,12 +1,15 @@
 import os
 import sys
 from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
+from pathlib import Path
 
-# Add backend to path
-sys.path.append(os.path.join(os.getcwd(), 'backend'))
+backend_root = Path(__file__).resolve().parents[1]
+if str(backend_root) not in sys.path:
+    sys.path.append(str(backend_root))
 
-load_dotenv()
+from utils.env_loader import load_project_env
+
+load_project_env()
 
 # FIX #17: Prevent accidental execution in production
 if os.environ.get("ENVIRONMENT", "development") == "production":
@@ -25,7 +28,7 @@ def run_sql(query):
         result = conn.execute(text(query))
         if result.returns_rows:
             return [dict(row._mapping) for row in result]
-        return None
+        return []
 
 print("Checking Market Data...")
 market = run_sql("SELECT * FROM market_data LIMIT 5")

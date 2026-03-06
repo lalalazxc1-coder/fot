@@ -1,40 +1,86 @@
-import React, { useState } from 'react';
-import { Plus, Search, Building2, Briefcase } from 'lucide-react';
-import { useVacancies, useCreateVacancy } from '../hooks/useRecruiting';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Building2, Briefcase, Clock, MessageSquare, User as UserIcon } from 'lucide-react';
+import { useVacancies, useCreateVacancy, useCandidates } from '../hooks/useRecruiting';
 import { useFlatStructure, FlatStructureItem } from '../hooks/useStructure';
+import { useUsers } from '../hooks/useAdmin';
+import { usePositions } from '../hooks/usePositions';
 import { Button, Input, Select } from '../components/ui-mocks';
 import Modal from '../components/Modal';
 import { CommentsSection } from '../components/recruiting/CommentsSection';
+import { PageHeader } from '../components/shared';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
     'Draft': 'bg-slate-100 text-slate-700 border-slate-200',
-    'Open': 'bg-blue-50 text-blue-700 border-blue-200',
-    'In Progress': 'bg-amber-50 text-amber-700 border-amber-200',
-    'Closed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    'Cancelled': 'bg-red-50 text-red-700 border-red-200',
+    'Open': 'bg-blue-100 text-blue-700',
+    'In Progress': 'bg-amber-100 text-amber-700',
+    'Closed': 'bg-emerald-100 text-emerald-700',
+    'Cancelled': 'bg-red-100 text-red-700',
+};
+
+const statusLabels: Record<string, string> = {
+    'Draft': 'Черновик',
+    'Open': 'Открыта',
+    'In Progress': 'В работе',
+    'Closed': 'Закрыта',
+    'Cancelled': 'Отменена',
 };
 
 const priorityColors: Record<string, string> = {
-    'Low': 'text-slate-500',
-    'Medium': 'text-blue-500',
-    'High': 'text-amber-500',
-    'Critical': 'text-red-500',
+    'Low': 'bg-slate-100 text-slate-700',
+    'Medium': 'bg-blue-100 text-blue-700',
+    'High': 'bg-amber-100 text-amber-700',
+    'Critical': 'bg-red-100 text-red-700',
+};
+
+const priorityLabels: Record<string, string> = {
+    'Low': 'Низкий',
+    'Medium': 'Средний',
+    'High': 'Срочно',
+    'Critical': 'Критично',
 };
 
 export default function JobRequestsPage() {
     const { data: vacancies = [], isLoading } = useVacancies();
     const createVacancy = useCreateVacancy();
     const { data: flatStructure = [] } = useFlatStructure();
+    const { data: users = [] } = useUsers();
+    const { data: positions = [] } = usePositions();
 
     const [isCreateModalOpen, setCreateModalOpen] = useState(false);
     const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [activeModalTab, setActiveModalTab] = useState<'discussion' | 'pipeline'>('discussion');
+    const { data: candidates = [] } = useCandidates(selectedRequestId || undefined);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Auto-open vacancy from URL param (e.g. from notification link)
+    useEffect(() => {
+        const vacancyIdParam = searchParams.get('vacancy_id');
+        if (vacancyIdParam && vacancies.length > 0) {
+            const id = Number(vacancyIdParam);
+            const found = vacancies.find(v => v.id === id);
+            if (found) {
+                setSelectedRequestId(id);
+                setActiveModalTab('pipeline');
+                // Clean up the URL param
+                setSearchParams({}, { replace: true });
+            }
+        }
+    }, [searchParams, vacancies]);
 
     const [newRequest, setNewRequest] = useState({
-        title: '',
+        position_name: '',
+        description: '',
         department_id: '',
         planned_count: 1,
-        priority: 'Medium'
+        priority: 'Medium',
+        assignee_id: '',
+        salary_from: '',
+        salary_to: '',
     });
 
     const flatOptions = React.useMemo(() => {
@@ -65,129 +111,248 @@ export default function JobRequestsPage() {
 
     const handleCreateRequest = (e: React.FormEvent) => {
         e.preventDefault();
+
+        const salaryFrom = newRequest.salary_from ? Number(newRequest.salary_from) : null;
+        const salaryTo = newRequest.salary_to ? Number(newRequest.salary_to) : null;
+
+        if (salaryFrom !== null && salaryTo !== null && salaryFrom > salaryTo) {
+            toast.error('Минимальная зарплата не может превышать максимальную');
+            return;
+        }
+
         createVacancy.mutate({
-            title: newRequest.title,
+            title: newRequest.position_name,
             department_id: Number(newRequest.department_id),
-            location: 'Определяется отделом', // default fallback
+            location: '',
             planned_count: Number(newRequest.planned_count),
             priority: newRequest.priority,
-            status: 'Draft'
+            status: 'Draft',
+            assignee_id: newRequest.assignee_id ? Number(newRequest.assignee_id) : null,
+            position_name: newRequest.position_name,
+            description: newRequest.description.trim() || null,
+            salary_from: salaryFrom,
+            salary_to: salaryTo,
         }, {
             onSuccess: () => {
                 setCreateModalOpen(false);
-                setNewRequest({ title: '', department_id: '', planned_count: 1, priority: 'Medium' });
+                setNewRequest({
+                    position_name: '',
+                    description: '',
+                    department_id: '',
+                    planned_count: 1,
+                    priority: 'Medium',
+                    assignee_id: '',
+                    salary_from: '',
+                    salary_to: '',
+                });
             }
         });
     };
 
-    const filteredRequests = vacancies.filter(v =>
-        v.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredRequests = vacancies.filter(v => {
+        const searchHaystack = `${v.title} ${v.position_name || ''}`.toLowerCase();
+        const matchesSearch = searchHaystack.includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 border-b-2 border-slate-900/10 pb-1">Заявки на подбор</h1>
-                    <p className="text-sm text-slate-500 mt-1">Создание и отслеживание статуса заявок на поиск сотрудников.</p>
-                </div>
-                <Button onClick={() => setCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md rounded-xl">
-                    <Plus className="w-4 h-4" />
-                    Новая заявка
-                </Button>
-            </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <PageHeader
+                title="Найм: Заявки на подбор"
+            />
 
-            <div className="bg-white border text-sm border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-                {/* Header Actions */}
-                <div className="p-4 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between bg-slate-50/50">
-                    <div className="relative w-full sm:w-auto min-w-[300px]">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 w-full mb-2 bg-white p-3 sm:p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+                    <div className="relative flex-1 min-w-[200px] sm:min-w-[280px]">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <Input
-                            placeholder="Поиск по названию должности..."
+                            placeholder="Поиск по должности..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-white border-slate-200"
+                            className="pl-9 bg-slate-50 border-slate-200 w-full rounded-xl text-sm h-[42px]"
                         />
                     </div>
+                    <Select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-slate-50 border-slate-200 text-sm rounded-xl h-[42px]"
+                    >
+                        <option value="all">Все статусы</option>
+                        <option value="Draft">Черновик</option>
+                        <option value="Open">Открытые</option>
+                        <option value="In Progress">В работе</option>
+                        <option value="Closed">Закрытые</option>
+                    </Select>
                 </div>
 
-                {isLoading ? (
-                    <div className="flex-1 flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                ) : filteredRequests.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-64">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                            <Briefcase className="w-8 h-8 text-slate-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-slate-900 mb-1">Нет заявок</h3>
-                        <p className="text-slate-500">Заявок на подбор персонала пока не создано.</p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto flex-1">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                                    <th className="px-5 py-4 whitespace-nowrap">Должность</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Подразделение</th>
-                                    <th className="px-5 py-4 whitespace-nowrap text-center">Количество</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Приоритет</th>
-                                    <th className="px-5 py-4 whitespace-nowrap">Статус</th>
-                                    <th className="px-5 py-4 whitespace-nowrap text-right">Действия</th>
+                <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                    <button
+                        onClick={() => setCreateModalOpen(true)}
+                        className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 h-[42px] rounded-xl font-medium shadow-lg shadow-slate-900/20 transition-all active:scale-95 whitespace-nowrap w-full sm:w-auto text-sm"
+                    >
+                        <Plus className="w-4 h-4" /> Создать заявку
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
+                <div className="overflow-x-auto w-full custom-scrollbar pb-2">
+                    <table className="w-full text-left text-sm min-w-[800px]">
+                        <thead className="sticky top-0 z-20 backdrop-blur-md bg-white/85 text-slate-500 font-bold uppercase text-[10px] tracking-wider after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200/80 shadow-sm">
+                            <tr>
+                                <th className="px-6 py-4 font-bold">Должность</th>
+                                <th className="px-6 py-4 font-bold">Подразделение</th>
+                                <th className="px-6 py-4 font-bold">Исполнитель</th>
+                                <th className="px-6 py-4 font-bold text-center">Мест</th>
+                                <th className="px-6 py-4 font-bold">Приоритет</th>
+                                <th className="px-6 py-4 font-bold">Статус</th>
+                                <th className="px-4 py-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center">
+                                        <div className="flex justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-sm">
-                                {filteredRequests.map(req => (
-                                    <tr key={req.id} className="hover:bg-slate-50/80 transition-colors group">
-                                        <td className="px-5 py-4 font-medium text-slate-900">
-                                            {req.title}
-                                        </td>
-                                        <td className="px-5 py-4 text-slate-600">
-                                            <div className="flex items-center gap-1.5">
-                                                <Building2 className="w-4 h-4 text-slate-400" />
-                                                Деп: {req.department_id}
+                            ) : filteredRequests.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                                <Briefcase className="w-8 h-8 text-slate-300" />
                                             </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-center font-medium">
-                                            {req.planned_count}
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 ${priorityColors[req.priority] || priorityColors['Medium']}`}>
-                                                <span className={`w-2 h-2 rounded-full ${req.priority === 'Critical' ? 'bg-red-500 animate-pulse' : req.priority === 'High' ? 'bg-amber-500' : req.priority === 'Medium' ? 'bg-blue-500' : 'bg-slate-400'}`}></span>
-                                                {req.priority}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg border flex w-fit ${statusColors[req.status] || statusColors['Draft']}`}>
-                                                {req.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4 text-right">
-                                            <Button
-                                                onClick={() => setSelectedRequestId(req.id)}
-                                                className="bg-white border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 shadow-sm"
-                                            >
-                                                ДЕТАЛИ И ЧАТ
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                            <div className="text-slate-500 font-medium mb-1 text-base">Заявки не найдены</div>
+                                            <div className="text-slate-400 text-sm">Создайте новую заявку или измените параметры поиска</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredRequests.map(req => {
+                                    const assigneeUser = users.find(u => u.id === req.assignee_id);
+                                    return (
+                                        <tr
+                                            key={req.id}
+                                            className="group hover:bg-slate-50 cursor-pointer transition-colors"
+                                            onClick={() => setSelectedRequestId(req.id)}
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
+                                                    {/* <Briefcase className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" /> */}
+                                                    {req.position_name || req.title}
+                                                </div>
+                                                <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    создано {new Date(req.created_at).toLocaleDateString('ru-RU')}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-2 text-slate-700 font-medium">
+                                                        <Building2 className="w-4 h-4 text-slate-400" />
+                                                        {(() => {
+                                                            const dept = flatStructure.find(s => s.id === Number(req.department_id));
+                                                            if (!dept) return `Отдел: ${req.department_id}`;
+                                                            if (!dept.parent_id) return dept.name;
+                                                            const parent = flatStructure.find(s => s.id === dept.parent_id);
+                                                            return parent ? `${parent.name} / ${dept.name}` : dept.name;
+                                                        })()}
+                                                    </div>
+                                                    {req.location && req.location !== 'Определяется отделом' && <div className="text-xs text-slate-500 pl-6">{req.location}</div>}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {assigneeUser ? (
+                                                    <div className="flex items-center gap-2">
+                                                        {assigneeUser.avatar_url ? (
+                                                            <img src={assigneeUser.avatar_url} alt="" className="w-6 h-6 rounded-full border border-slate-200" />
+                                                        ) : (
+                                                            <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center border border-slate-300">
+                                                                <UserIcon className="w-3 h-3 text-slate-500" />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-medium text-slate-700 break-words group-hover:text-blue-600 transition-colors line-clamp-2">
+                                                                {assigneeUser.full_name}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm italic text-slate-400">Не назначен</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-sm">
+                                                    {req.planned_count}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${priorityColors[req.priority] || priorityColors['Medium']}`}>
+                                                    {priorityLabels[req.priority] || req.priority}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${statusColors[req.status] || statusColors['Draft']}`}>
+                                                    {statusLabels[req.status] || req.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <div className="p-2 rounded-lg text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors inline-block" title="Детали и чат">
+                                                    <MessageSquare className="w-5 h-5" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Create Modal */}
             <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="Новая заявка на подбор">
-                <form onSubmit={handleCreateRequest} className="space-y-4">
+                <form onSubmit={handleCreateRequest} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Название должности</label>
-                        <Input required value={newRequest.title} onChange={e => setNewRequest({ ...newRequest, title: e.target.value })} placeholder="Напр. Грузчик" />
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Должность (из справочника)</label>
+                        <Select
+                            required
+                            value={newRequest.position_name}
+                            onChange={e => setNewRequest({ ...newRequest, position_name: e.target.value })}
+                            className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                        >
+                            <option value="" disabled>Выберите должность...</option>
+                            {positions.map((position) => (
+                                <option key={position.id} value={position.title}>{position.title}</option>
+                            ))}
+                        </Select>
+                        {positions.length === 0 && (
+                            <p className="mt-1 text-xs text-amber-600">Справочник должностей пуст. Добавьте должности в настройках.</p>
+                        )}
                     </div>
                     <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Подразделение (Отдел)</label>
-                        <Select required value={newRequest.department_id} onChange={e => setNewRequest({ ...newRequest, department_id: e.target.value })}>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Что должен делать кандидат</label>
+                        <textarea
+                            required
+                            rows={4}
+                            value={newRequest.description}
+                            onChange={e => setNewRequest({ ...newRequest, description: e.target.value })}
+                            placeholder="Кратко опишите обязанности и ожидания по роли"
+                            className="w-full rounded-lg border border-slate-200 bg-slate-50 focus:bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-colors resize-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Подразделение (Отдел)</label>
+                        <Select
+                            required
+                            value={newRequest.department_id}
+                            onChange={e => setNewRequest({ ...newRequest, department_id: e.target.value })}
+                            className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                        >
                             <option value="" disabled>Выберите подразделение...</option>
                             {flatOptions.map(opt => (
                                 <option key={opt.id} value={opt.id} className={opt.depth === 0 ? 'font-bold' : ''}>
@@ -197,40 +362,175 @@ export default function JobRequestsPage() {
                             ))}
                         </Select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Исполнитель (Опционально)</label>
+                        <Select
+                            value={newRequest.assignee_id}
+                            onChange={e => setNewRequest({ ...newRequest, assignee_id: e.target.value })}
+                            className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                        >
+                            <option value="">Не назначен (Любой рекрутер)</option>
+                            {users.map(u => (
+                                <option key={u.id} value={u.id}>
+                                    {u.full_name || u.email}
+                                </option>
+                            ))}
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Количество мест</label>
-                            <Input required type="number" min="1" value={newRequest.planned_count} onChange={e => setNewRequest({ ...newRequest, planned_count: parseInt(e.target.value) })} />
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Зарплата от (опц.)</label>
+                            <Input
+                                type="number"
+                                min="0"
+                                value={newRequest.salary_from}
+                                onChange={e => setNewRequest({ ...newRequest, salary_from: e.target.value })}
+                                placeholder="Напр. 500000"
+                                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1">Приоритет</label>
-                            <Select value={newRequest.priority} onChange={e => setNewRequest({ ...newRequest, priority: e.target.value })}>
-                                <option value="Low">Низкий (Low)</option>
-                                <option value="Medium">Средний (Medium)</option>
-                                <option value="High">Срочно (High)</option>
-                                <option value="Critical">Очень срочно (Critical)</option>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Зарплата до (опц.)</label>
+                            <Input
+                                type="number"
+                                min="0"
+                                value={newRequest.salary_to}
+                                onChange={e => setNewRequest({ ...newRequest, salary_to: e.target.value })}
+                                placeholder="Напр. 800000"
+                                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Количество мест</label>
+                            <Input
+                                required
+                                type="number"
+                                min="1"
+                                value={newRequest.planned_count}
+                                onChange={e => setNewRequest({ ...newRequest, planned_count: parseInt(e.target.value) || 1 })}
+                                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Приоритет</label>
+                            <Select
+                                value={newRequest.priority}
+                                onChange={e => setNewRequest({ ...newRequest, priority: e.target.value })}
+                                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                            >
+                                <option value="Low">Низкий</option>
+                                <option value="Medium">Средний</option>
+                                <option value="High">Срочно</option>
+                                <option value="Critical">Критично</option>
                             </Select>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-6">
-                        <Button type="button" onClick={() => setCreateModalOpen(false)} className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-transparent focus:ring-0 transition-colors">Отмена</Button>
-                        <Button type="submit" disabled={createVacancy.isPending} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
-                            {createVacancy.isPending ? 'Создание...' : 'Создать заявку'}
+                    <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-100">
+                        <Button
+                            type="button"
+                            onClick={() => setCreateModalOpen(false)}
+                            className="bg-white border text-slate-700 hover:bg-slate-50 border-slate-200 transition-colors font-medium px-5 rounded-xl shadow-sm h-[40px]"
+                        >
+                            Отмена
                         </Button>
+                        <button
+                            type="submit"
+                            disabled={createVacancy.isPending}
+                            className="bg-slate-900 hover:bg-slate-800 text-white min-w-[140px] font-medium transition-all active:scale-95 shadow-lg shadow-slate-900/20 rounded-xl px-5 h-[40px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {createVacancy.isPending ? 'Создание...' : 'Создать заявку'}
+                        </button>
                     </div>
                 </form>
             </Modal>
 
-            {/* View Modal with Chat */}
-            <Modal isOpen={selectedRequestId !== null} onClose={() => setSelectedRequestId(null)} title="Заявка и переписка">
-                <div className="h-[600px] flex flex-col">
-                    <div className="mb-4">
-                        <p className="text-sm text-slate-600 mb-2">Здесь вы можете общаться с рекрутером по поводу этой заявки.</p>
+            {/* View Modal with Chat and Candidates */}
+            <Modal isOpen={selectedRequestId !== null} onClose={() => setSelectedRequestId(null)} title="Детали заявки">
+                <div className="h-[650px] flex flex-col -mx-2">
+                    <div className="flex border-b border-slate-200 mb-4 px-2">
+                        <button
+                            onClick={() => setActiveModalTab('discussion')}
+                            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeModalTab === 'discussion'
+                                ? 'border-blue-600 text-blue-700'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="w-4 h-4" />
+                                Описание и обсуждение
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setActiveModalTab('pipeline')}
+                            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeModalTab === 'pipeline'
+                                ? 'border-blue-600 text-blue-700'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <UserIcon className="w-4 h-4" />
+                                Воронка кандидатов ({candidates.length})
+                            </div>
+                        </button>
                     </div>
-                    <div className="flex-1 bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
-                        {selectedRequestId && (
-                            <CommentsSection targetType="vacancy" targetId={selectedRequestId} />
+
+                    <div className="flex-1 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-inner mx-2 flex flex-col min-h-0">
+                        {activeModalTab === 'discussion' && selectedRequestId && (
+                            <div className="h-full flex flex-col p-2">
+                                <div className="mb-2">
+                                    <p className="text-sm text-slate-500 bg-white p-3 rounded-xl border border-slate-100 flex items-start gap-3 shadow-sm">
+                                        <MessageSquare className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                                        Здесь вы можете обсудить детали вакансии с рекрутером и другими участниками процесса подбора.
+                                    </p>
+                                </div>
+                                <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                                    <CommentsSection targetType="vacancy" targetId={selectedRequestId} />
+                                </div>
+                            </div>
+                        )}
+                        {activeModalTab === 'pipeline' && selectedRequestId && (
+                            <div className="h-full flex flex-col">
+                                {candidates.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
+                                        <UserIcon className="w-10 h-10 opacity-20" />
+                                        <p className="text-sm">Кандидатов пока нет</p>
+                                        <p className="text-xs text-slate-400">Рекрутер ещё не добавил кандидатов по этой заявке</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
+                                        {candidates.map((candidate) => {
+                                            const stageConfig: Record<string, { label: string; color: string }> = {
+                                                'New': { label: 'Новый', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                                                'Screening': { label: 'Скрининг', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+                                                'Interview': { label: 'Интервью', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                                                'Offer': { label: 'Оффер', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+                                                'Hired': { label: 'Принят', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                                                'Rejected': { label: 'Отказ', color: 'bg-red-100 text-red-700 border-red-200' },
+                                            };
+                                            const stage = stageConfig[candidate.stage] || { label: candidate.stage, color: 'bg-slate-100 text-slate-600' };
+                                            return (
+                                                <div key={candidate.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm shrink-0">
+                                                            {candidate.first_name[0]}{candidate.last_name[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-slate-800">{candidate.first_name} {candidate.last_name}</p>
+                                                            <p className="text-xs text-slate-400">Добавлен: {candidate.created_at ? new Date(candidate.created_at).toLocaleDateString('ru-RU') : '—'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${stage.color}`}>
+                                                        {stage.label}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>

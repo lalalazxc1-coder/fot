@@ -132,6 +132,24 @@ export const useCreateCandidate = () => {
     });
 };
 
+export const useUploadCandidateResume = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ candidateId, file }: { candidateId: number; file: File }) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post<{ resume_url: string }>(`/candidates/${candidateId}/resume`, formData);
+            return data;
+        },
+        onSuccess: (_, variables) => {
+            toast.success('Резюме прикреплено');
+            queryClient.invalidateQueries({ queryKey: ['candidates'] });
+            queryClient.invalidateQueries({ queryKey: ['candidates', 'single', variables.candidateId] });
+        },
+        onError: () => toast.error('Ошибка при загрузке резюме'),
+    });
+};
+
 export const useUpdateCandidateStage = () => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -160,6 +178,21 @@ export const useDeleteCandidate = () => {
             queryClient.invalidateQueries({ queryKey: ['candidates'] });
         },
         onError: () => toast.error('Ошибка при удалении кандидата'),
+    });
+};
+
+export const useNotifyCustomer = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ candidateId, message }: { candidateId: number; message: string }) => {
+            const { data } = await api.post(`/candidates/${candidateId}/notify`, { message });
+            return data;
+        },
+        onSuccess: (_, variables) => {
+            toast.success('Заказчик уведомлен');
+            queryClient.invalidateQueries({ queryKey: ['comments', 'candidate', variables.candidateId] });
+        },
+        onError: () => toast.error('Ошибка при уведомлении заказчика'),
     });
 };
 

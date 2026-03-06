@@ -45,7 +45,8 @@ export const parseMoney = (value: string): number => {
  * @param date - Date string or Date object
  * @returns Formatted date (e.g., "06-02-2026")
  */
-export const formatDate = (date: string | Date): string => {
+export const formatDate = (date: string | Date | null | undefined): string => {
+    if (date === null || date === undefined) return '—';
     const d = typeof date === 'string' ? new Date(date) : date;
     if (Number.isNaN(d.getTime())) {
         return typeof date === 'string' ? date : '—';
@@ -61,7 +62,8 @@ export const formatDate = (date: string | Date): string => {
  * @param date - Date string or Date object
  * @returns Formatted datetime (e.g., "06-02-2026, 15:30")
  */
-export const formatDateTime = (date: string | Date): string => {
+export const formatDateTime = (date: string | Date | null | undefined): string => {
+    if (date === null || date === undefined) return '—';
     const d = typeof date === 'string' ? new Date(date) : date;
     if (Number.isNaN(d.getTime())) {
         return typeof date === 'string' ? date : '—';

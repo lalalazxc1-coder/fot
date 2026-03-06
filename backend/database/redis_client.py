@@ -3,6 +3,9 @@ import redis
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+from utils.env_loader import load_project_env
+
+load_project_env()
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")

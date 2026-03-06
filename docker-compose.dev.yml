@@ -28,6 +28,11 @@ services:
       - redis_data_dev:/data
     command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   backend:
     build:
@@ -37,7 +42,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-fot_admin}:${POSTGRES_PASSWORD:-fot_pass}@db:5432/${POSTGRES_DB:-fot_db}
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-for-local-development}
+      # Требуется задать в .env:
+      - SECRET_KEY=${SECRET_KEY}
+      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY:-}
       - ENVIRONMENT=development
       - LOG_LEVEL=DEBUG
       - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
@@ -54,7 +61,7 @@ services:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
 
   frontend:
     image: node:22-alpine

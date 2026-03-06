@@ -453,6 +453,11 @@ class VacancyCreate(BaseModel):
     planned_count: int = Field(1, ge=1)
     status: str = Field("Draft", min_length=1, max_length=100)
     priority: str = Field("Medium", min_length=1, max_length=100)
+    assignee_id: Optional[int] = Field(None, gt=0)
+    position_name: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=10000)
+    salary_from: Optional[int] = Field(None, ge=0)
+    salary_to: Optional[int] = Field(None, ge=0)
 
 
 class VacancyUpdate(BaseModel):
@@ -462,6 +467,11 @@ class VacancyUpdate(BaseModel):
     planned_count: Optional[int] = Field(None, ge=1)
     status: Optional[str] = Field(None, min_length=1, max_length=100)
     priority: Optional[str] = Field(None, min_length=1, max_length=100)
+    assignee_id: Optional[int] = Field(None, gt=0)
+    position_name: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=10000)
+    salary_from: Optional[int] = Field(None, ge=0)
+    salary_to: Optional[int] = Field(None, ge=0)
 
 
 class VacancyStatusUpdate(BaseModel):
@@ -477,7 +487,12 @@ class VacancyResponse(BaseModel):
     status: str
     priority: str
     creator_id: int
+    assignee_id: Optional[int] = None
     created_at: str
+    position_name: Optional[str] = None
+    description: Optional[str] = None
+    salary_from: Optional[int] = None
+    salary_to: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -487,6 +502,8 @@ class CandidateCreate(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     last_name: str = Field(..., min_length=1, max_length=200)
     stage: str = Field("New", min_length=1, max_length=100)
+    phone: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=255)
 
 
 class CandidateUpdate(BaseModel):
@@ -494,11 +511,16 @@ class CandidateUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=200)
     last_name: Optional[str] = Field(None, min_length=1, max_length=200)
     stage: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone: Optional[str] = Field(None, max_length=50)
+    email: Optional[str] = Field(None, max_length=255)
+    resume_url: Optional[str] = Field(None, max_length=1024)
 
 
 class CandidateStageUpdate(BaseModel):
     stage: str = Field(..., min_length=1, max_length=100)
 
+class CandidateNotifyRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=5000)
 
 class CandidateResponse(BaseModel):
     id: int
@@ -507,6 +529,9 @@ class CandidateResponse(BaseModel):
     last_name: str
     stage: str
     created_at: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    resume_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

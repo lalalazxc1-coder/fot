@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useComments, useAddComment } from '../../hooks/useRecruiting';
 import { Button, Input } from '../ui-mocks';
 import { Send, MessageSquare, Bot } from 'lucide-react';
@@ -11,6 +11,12 @@ export const CommentsSection: React.FC<{ targetType: "vacancy" | "candidate", ta
     const { snapshotDate } = useSnapshot();
     const isHistorical = !!snapshotDate;
     const [content, setContent] = useState('');
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom when new comments arrive
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [comments.length]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,7 +33,8 @@ export const CommentsSection: React.FC<{ targetType: "vacancy" | "candidate", ta
 
     return (
         <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
+            {/* Header - always visible */}
+            <div className="shrink-0 p-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
                 <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
                     <MessageSquare className="w-5 h-5" />
                 </div>
@@ -37,13 +44,14 @@ export const CommentsSection: React.FC<{ targetType: "vacancy" | "candidate", ta
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages - scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-full">
+                    <div className="flex justify-center items-center h-20">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
                     </div>
                 ) : comments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                    <div className="flex flex-col items-center justify-center h-20 text-slate-400">
                         <MessageSquare className="w-8 h-8 mb-2 opacity-20" />
                         <p className="text-sm">Нет комментариев</p>
                     </div>
@@ -70,24 +78,31 @@ export const CommentsSection: React.FC<{ targetType: "vacancy" | "candidate", ta
                         </div>
                     ))
                 )}
+                <div ref={bottomRef} />
             </div>
 
+            {/* Input - always pinned at bottom */}
             {!isHistorical && (
-                <div className="p-4 bg-slate-50 border-t border-slate-100">
+                <div className="shrink-0 p-3 bg-white border-t border-slate-100 shadow-[0_-1px_6px_rgba(0,0,0,0.04)]">
                     <form onSubmit={handleSubmit} className="flex gap-2">
                         <Input
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
-                            placeholder="Написать комментарий..."
-                            className="bg-white border-slate-200 shadow-sm rounded-xl focus:ring-indigo-500/20"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSubmit(e as any);
+                                }
+                            }}
+                            placeholder="Написать комментарий... (Enter — отправить)"
+                            className="bg-slate-50 border-slate-200 shadow-sm rounded-xl focus:ring-indigo-500/20 focus:bg-white transition-colors"
                         />
                         <Button
                             type="submit"
                             disabled={!content.trim() || addComment.isPending}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm px-4"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm px-4 shrink-0 disabled:opacity-40"
                         >
-                            <Send className="w-4 h-4 mr-2" />
-                            ОТПРАВИТЬ
+                            <Send className="w-4 h-4" />
                         </Button>
                     </form>
                 </div>

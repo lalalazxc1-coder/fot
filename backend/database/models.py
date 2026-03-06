@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, JSON, Boolean, DateTime, Index
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import Base
 try:
     from utils.date_utils import now_iso
@@ -289,7 +289,7 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     message = Column(String)
     is_read = Column(Boolean, default=False)
-    created_at = Column(String)
+    created_at = Column(String, default=now_iso)
     created_at_dt = Column(DateTime(timezone=True), nullable=True)
     link = Column(String, nullable=True)
     
@@ -306,10 +306,17 @@ class Vacancy(Base):
     status = Column(String, default="Draft")
     priority = Column(String, default="Medium")
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    assignee_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(String, default=now_iso)
+    # New fields
+    position_name = Column(String, nullable=True)       # Должность из справочника
+    description = Column(String, nullable=True)         # Что должен делать кандидат
+    salary_from = Column(Integer, nullable=True)        # Отправные точки (рекрутер видит условия)
+    salary_to = Column(Integer, nullable=True)
 
     department = relationship("OrganizationUnit", foreign_keys=[department_id])
     creator = relationship("User", foreign_keys=[creator_id])
+    assignee = relationship("User", foreign_keys=[assignee_id])
     candidates = relationship("Candidate", back_populates="vacancy", cascade="all, delete-orphan")
 
 
@@ -321,6 +328,10 @@ class Candidate(Base):
     last_name = Column(String, nullable=False)
     stage = Column(String, default="New")
     created_at = Column(String, default=now_iso)
+    # New fields
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    resume_url = Column(String, nullable=True)   # Путь к файлу резюме
 
     vacancy = relationship("Vacancy", back_populates="candidates")
 
@@ -487,7 +498,7 @@ class JobOfferTemplate(Base):
     
     signatories = Column(JSON, default=list)
     welcome_content = Column(JSON, nullable=True)  # Welcome Experience data
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class WelcomePageConfig(Base):
@@ -508,6 +519,6 @@ class WelcomePageConfig(Base):
     mission = Column(String, nullable=True)               # Миссия
     vision = Column(String, nullable=True)                 # Видение
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     branch = relationship("OrganizationUnit", foreign_keys=[branch_id])

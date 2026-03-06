@@ -36,14 +36,14 @@ pip install -r requirements-dev.txt
 cd ..
 ```
 
-### 2. Создать `.env` для backend
+### 2. Создать корневой `.env`
 
 Скопировать шаблон:
 ```bash
-cp backend/.env.example backend/.env
+cp .env.example .env
 ```
 
-Открыть `backend/.env` и заполнить секретные ключи.  
+Открыть `.env` и заполнить секретные ключи.  
 Сгенерировать три независимых ключа:
 ```bash
 python -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))"
@@ -51,13 +51,15 @@ python -c "import secrets; print('REFRESH_SECRET_KEY=' + secrets.token_hex(32))"
 python -c "import secrets; print('SECRETS_ENCRYPTION_KEY=' + secrets.token_hex(32))"
 ```
 
+> ⚠️ `SECRET_KEY` теперь обязателен **даже для `docker-compose.dev.yml`** — слабый дефолт убран.
+
 Минимальный `.env` для локальной разработки:
 ```env
 SECRET_KEY=<сюда вставить первый ключ>
 REFRESH_SECRET_KEY=<сюда вставить второй ключ>
 SECRETS_ENCRYPTION_KEY=<сюда вставить третий ключ>
 
-DATABASE_URL=sqlite:///./fot.db
+DATABASE_URL=postgresql://fot_admin:fot_pass@localhost:5433/fot_db
 ENVIRONMENT=development
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 TRUSTED_PROXY_IPS=127.0.0.1,::1
@@ -65,9 +67,12 @@ FORWARDED_ALLOW_IPS=127.0.0.1
 LOG_LEVEL=INFO
 ```
 
+> Для `docker-compose.dev.yml` Postgres доступен с хоста на порту `5433`.
+
 ### 3. Инициализировать базу данных
 
 ```bash
+docker compose -f docker-compose.dev.yml up -d db
 cd backend
 python -m alembic upgrade head
 python init_db.py        # создаёт первого admin пользователя
@@ -187,7 +192,7 @@ Access-токены (15 минут жизни) истекут естествен
 | `SECRET_KEY` | ✅ Всегда | Подписывает access JWT токены |
 | `REFRESH_SECRET_KEY` | ✅ Всегда | Подписывает refresh JWT токены (добавлено в аудите) |
 | `SECRETS_ENCRYPTION_KEY` | ✅ В production | Шифрует секреты интеграций |
-| `DATABASE_URL` | — | По умолчанию SQLite. Для prod: `postgresql://...` |
+| `DATABASE_URL` | — | Для dev с Docker: `postgresql://fot_admin:fot_pass@localhost:5433/fot_db`; для prod: `postgresql://...` |
 | `REDIS_URL` | — | По умолчанию `redis://localhost:6379/0` |
 | `ALLOWED_ORIGINS` | ✅ В production | CORS список доменов через запятую |
 | `TRUSTED_PROXY_IPS` | ✅ В production | IP доверенных прокси (Caddy/Nginx) |

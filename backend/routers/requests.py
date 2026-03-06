@@ -422,7 +422,11 @@ def _notify(db: Session, user_id: int, message: str, link: str = None):
 def delete_request(req_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     req = db.get(SalaryRequest, req_id)
     if not req: raise HTTPException(404, "Not found")
-    
+
+    # Нельзя удалить уже обработанную заявку — сохраняем историю аудита
+    if req.status != 'pending':
+        raise HTTPException(400, "Нельзя удалить заявку в статусе '%s'. Обратитесь к администратору." % req.status)
+
     # Only Owner can delete pending? Or Admin anywhere?
     if req.requester_id != current_user.id:
          # Check admin

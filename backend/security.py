@@ -2,17 +2,12 @@ import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
-from pathlib import Path
-
-env_path = Path(__file__).resolve().parent.parent / '.env'
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path)
-else:
-    load_dotenv()
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from utils.env_loader import load_project_env
+
+load_project_env()
 
 # Configuration — loaded from environment variables
 ENVIRONMENT = (os.environ.get("ENVIRONMENT") or "development").strip().lower()

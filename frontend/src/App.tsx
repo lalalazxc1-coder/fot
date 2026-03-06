@@ -10,6 +10,7 @@ const DashboardLayout = lazy(() => import('./components/DashboardLayout'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const RequestsPage = lazy(() => import('./pages/RequestsPage'));
+const JobRequestsPage = lazy(() => import('./pages/JobRequestsPage'));
 const MarketPage = lazy(() => import('./pages/MarketPage'));
 const ScenariosPage = lazy(() => import('./pages/ScenariosPage'));
 const JobOffersPage = lazy(() => import('./pages/JobOffersPage'));
@@ -227,6 +228,7 @@ function App() {
                             <Route path="/employees" element={<ProtectedEmployeesRoute user={user}><EmployeeTable user={user} onLogout={handleLogout} /></ProtectedEmployeesRoute>} />
                             <Route path="/employees/:id" element={<ProtectedEmployeesRoute user={user}><EmployeeViewPage /></ProtectedEmployeesRoute>} />
                             <Route path="/requests" element={<RequestsPage />} />
+                            <Route path="/job-requests" element={<JobRequestsPage />} />
                             <Route path="/offers" element={<ProtectedOffersRoute user={user}><JobOffersPage /></ProtectedOffersRoute>} />
                             <Route path="/recruiting" element={<ProtectedOffersRoute user={user}><RecruitingPage /></ProtectedOffersRoute>} />
                             <Route path="/scenarios" element={<ProtectedScenariosRoute user={user}><ScenariosPage /></ProtectedScenariosRoute>} />

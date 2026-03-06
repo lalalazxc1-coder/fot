@@ -1,0 +1,1336 @@
+backend  | 2026-03-06 16:34:30.618 | INFO:     172.18.0.4:40088 - "GET /api/auth/notifications HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:32.870 | INFO:     172.18.0.4:56036 - "GET /api/auth/me HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.002 | INFO:     172.18.0.4:56042 - "GET /api/auth/me HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.165 | INFO:     172.18.0.4:56044 - "GET /uploads/avatars/user_1_e100ce70.jpg HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.281 | INFO:     172.18.0.4:56058 - "GET /api/structure/flat HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.354 | INFO:     172.18.0.4:56068 - "GET /api/users HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.426 | INFO:     172.18.0.4:56072 - "GET /api/auth/notifications HTTP/1.1" 200 OK
+backend  | 2026-03-06 16:34:33.453 | INFO:     172.18.0.4:56078 - "GET /api/positions HTTP/1.1" 200 OK
+db       | 2026-03-06 16:34:33.521 | 2026-03-06 16:34:33.520 +05 [570] ERROR:  column vacancies.position_name does not exist at character 440
+db       | 2026-03-06 16:34:33.521 | 2026-03-06 16:34:33.520 +05 [570] STATEMENT:  SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+db       | 2026-03-06 16:34:33.521 | 	FROM vacancies ORDER BY vacancies.id DESC
+backend  | 2026-03-06 16:34:33.535 | 2026-03-06 16:34:33 [ERROR] fot: Unhandled exception on GET /api/vacancies: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:33.535 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:33.535 |                                                              ^
+backend  | 2026-03-06 16:34:33.535 | 
+backend  | 2026-03-06 16:34:33.535 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:33.535 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:33.535 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:33.535 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.535 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.535 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.535 | psycopg2.errors.UndefinedColumn: column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:33.535 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:33.535 |                                                              ^
+backend  | 2026-03-06 16:34:33.535 | 
+backend  | 2026-03-06 16:34:33.535 | 
+backend  | 2026-03-06 16:34:33.535 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:33.535 | 
+backend  | 2026-03-06 16:34:33.535 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:33.535 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.535 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.535 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.535 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.535 |     raise exc
+backend  | 2026-03-06 16:34:33.535 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.535 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.535 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.535 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:33.535 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.536 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.536 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.536 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.536 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.536 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.536 |     raise exc
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.536 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.536 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:33.536 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.536 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.536 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.536 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.536 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.536 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.536 |     raise exc
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.536 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.536 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:33.536 |     return await call_next(request)
+backend  | 2026-03-06 16:34:33.536 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.536 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:33.536 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.536 |     raise exc
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.536 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:33.536 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:33.536 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:33.536 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:33.536 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.536 |     raise exc
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.536 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:33.536 |     response = await f(request)
+backend  | 2026-03-06 16:34:33.536 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:33.536 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:33.536 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:33.536 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:33.536 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:33.536 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:33.536 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.536 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:33.536 | INFO:     172.18.0.4:56084 - "GET /api/vacancies HTTP/1.1" 500 Internal Server Error
+backend  | 2026-03-06 16:34:33.537 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:33.537 |     return await future
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:33.537 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:33.537 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/app/routers/recruiting.py", line 116, in list_vacancies
+backend  | 2026-03-06 16:34:33.537 |     return query.order_by(Vacancy.id.desc()).all()
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:33.537 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:33.537 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:33.537 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:33.537 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:33.537 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:33.537 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:33.537 |     result = conn.execute(
+backend  | 2026-03-06 16:34:33.537 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:33.537 |     return meth(
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:33.537 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:33.537 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:33.537 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:33.537 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:33.537 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:33.537 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:33.537 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.537 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.537 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.537 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.537 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:33.537 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:33.537 |                                                              ^
+backend  | 2026-03-06 16:34:33.537 | 
+backend  | 2026-03-06 16:34:33.537 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:33.537 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:33.537 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:33.554 | ERROR:    Exception in ASGI application
+backend  | 2026-03-06 16:34:33.554 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.554 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.554 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.554 | psycopg2.errors.UndefinedColumn: column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:33.554 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:33.554 |                                                              ^
+backend  | 2026-03-06 16:34:33.554 | 
+backend  | 2026-03-06 16:34:33.554 | 
+backend  | 2026-03-06 16:34:33.554 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:33.554 | 
+backend  | 2026-03-06 16:34:33.554 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+backend  | 2026-03-06 16:34:33.554 |     result = await app(  # type: ignore[func-returns-value]
+backend  | 2026-03-06 16:34:33.554 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+backend  | 2026-03-06 16:34:33.554 |     return await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await super().__call__(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.554 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.554 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.554 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.554 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:33.554 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.554 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.554 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.554 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.554 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.554 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:33.554 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.554 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.554 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.554 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.554 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.554 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:33.554 |     return await call_next(request)
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.554 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.554 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:33.554 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:33.554 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:33.554 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:33.554 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.554 |     raise exc
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.554 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:33.554 |     response = await f(request)
+backend  | 2026-03-06 16:34:33.554 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:33.554 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:33.554 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:33.554 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:33.554 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:33.554 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:33.554 |     return await future
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:33.554 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:33.554 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/app/routers/recruiting.py", line 116, in list_vacancies
+backend  | 2026-03-06 16:34:33.554 |     return query.order_by(Vacancy.id.desc()).all()
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:33.554 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:33.554 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:33.554 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:33.554 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:33.554 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:33.554 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:33.554 |     result = conn.execute(
+backend  | 2026-03-06 16:34:33.554 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:33.554 |     return meth(
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:33.554 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:33.554 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:33.554 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:33.554 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:33.554 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:33.554 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:33.554 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.554 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.554 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.554 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.554 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:33.554 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:33.554 |                                                              ^
+backend  | 2026-03-06 16:34:33.554 | 
+backend  | 2026-03-06 16:34:33.554 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:33.554 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:33.554 | (Background on this error at: https://sqlalche.me/e/20/f405)
+db       | 2026-03-06 16:34:33.575 | 2026-03-06 16:34:33.575 +05 [569] ERROR:  column candidates.phone does not exist at character 268
+db       | 2026-03-06 16:34:33.576 | 2026-03-06 16:34:33.575 +05 [569] STATEMENT:  SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+db       | 2026-03-06 16:34:33.576 | 	FROM candidates ORDER BY candidates.id DESC
+backend  | 2026-03-06 16:34:33.588 | 2026-03-06 16:34:33 [ERROR] fot: Unhandled exception on GET /api/candidates: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:33.589 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:33.589 |                                                              ^
+backend  | 2026-03-06 16:34:33.589 | 
+backend  | 2026-03-06 16:34:33.589 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:33.589 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:33.589 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:33.589 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.589 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.589 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.589 | psycopg2.errors.UndefinedColumn: column candidates.phone does not exist
+backend  | 2026-03-06 16:34:33.589 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:33.589 |                                                              ^
+backend  | 2026-03-06 16:34:33.589 | 
+backend  | 2026-03-06 16:34:33.589 | 
+backend  | 2026-03-06 16:34:33.589 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:33.589 | 
+backend  | 2026-03-06 16:34:33.589 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.589 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.589 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.589 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.589 |     raise exc
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.589 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:33.589 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.589 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.589 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.589 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.589 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.589 |     raise exc
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.589 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:33.589 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.589 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.589 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.589 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.589 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.589 |     raise exc
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.589 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:33.589 |     return await call_next(request)
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.589 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:33.589 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.589 |     raise exc
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.589 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:33.589 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:33.589 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:33.589 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:33.589 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.589 |     raise exc
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.589 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:33.589 |     response = await f(request)
+backend  | 2026-03-06 16:34:33.589 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:33.589 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:33.589 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:33.589 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:33.589 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:33.589 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:33.589 |     return await future
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:33.589 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:33.589 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/app/routers/recruiting.py", line 256, in list_candidates
+backend  | 2026-03-06 16:34:33.589 |     return query.order_by(Candidate.id.desc()).all()
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:33.589 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:33.589 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:33.589 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:33.589 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:33.589 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:33.589 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:33.589 |     result = conn.execute(
+backend  | 2026-03-06 16:34:33.589 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:33.589 |     return meth(
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:33.589 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:33.589 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:33.589 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:33.589 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:33.589 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:33.589 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:33.589 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.589 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.589 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.589 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.589 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:33.589 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:33.589 |                                                              ^
+backend  | 2026-03-06 16:34:33.589 | 
+backend  | 2026-03-06 16:34:33.589 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:33.589 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:33.589 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:33.589 | INFO:     172.18.0.4:56098 - "GET /api/candidates HTTP/1.1" 500 Internal Server Error
+backend  | 2026-03-06 16:34:33.610 | ERROR:    Exception in ASGI application
+backend  | 2026-03-06 16:34:33.610 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.610 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.610 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.610 | psycopg2.errors.UndefinedColumn: column candidates.phone does not exist
+backend  | 2026-03-06 16:34:33.610 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:33.610 |                                                              ^
+backend  | 2026-03-06 16:34:33.610 | 
+backend  | 2026-03-06 16:34:33.610 | 
+backend  | 2026-03-06 16:34:33.610 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:33.610 | 
+backend  | 2026-03-06 16:34:33.610 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+backend  | 2026-03-06 16:34:33.610 |     result = await app(  # type: ignore[func-returns-value]
+backend  | 2026-03-06 16:34:33.610 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+backend  | 2026-03-06 16:34:33.610 |     return await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.610 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
+backend  | 2026-03-06 16:34:33.610 |     await super().__call__(scope, receive, send)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+backend  | 2026-03-06 16:34:33.610 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+backend  | 2026-03-06 16:34:33.610 |     raise exc
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:33.610 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.610 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.610 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.610 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.610 |     raise exc
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.610 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.610 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:33.610 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.610 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.610 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.610 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.610 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.610 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.610 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.610 |     raise exc
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.610 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.610 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:33.610 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:33.610 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.610 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.610 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:33.610 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:33.610 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:33.610 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:33.610 |     raise exc
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:33.610 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:33.610 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:33.610 |     return await call_next(request)
+backend  | 2026-03-06 16:34:33.610 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:33.610 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:33.610 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:33.610 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.610 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:33.611 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.611 |     raise exc
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.611 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:33.611 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:33.611 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:33.611 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:33.611 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:33.611 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:33.611 |     raise exc
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:33.611 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:33.611 |     response = await f(request)
+backend  | 2026-03-06 16:34:33.611 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:33.611 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:33.611 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:33.611 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:33.611 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:33.611 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:33.611 |     return await future
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:33.611 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:33.611 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/app/routers/recruiting.py", line 256, in list_candidates
+backend  | 2026-03-06 16:34:33.611 |     return query.order_by(Candidate.id.desc()).all()
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:33.611 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:33.611 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:33.611 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:33.611 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:33.611 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:33.611 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:33.611 |     result = conn.execute(
+backend  | 2026-03-06 16:34:33.611 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:33.611 |     return meth(
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:33.611 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:33.611 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:33.611 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:33.611 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:33.611 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:33.611 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:33.611 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:33.611 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:33.611 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:33.611 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:33.611 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:33.611 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:33.611 |                                                              ^
+backend  | 2026-03-06 16:34:33.611 | 
+backend  | 2026-03-06 16:34:33.611 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:33.611 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:33.611 | (Background on this error at: https://sqlalche.me/e/20/f405)
+db       | 2026-03-06 16:34:34.662 | 2026-03-06 16:34:34.662 +05 [568] ERROR:  column vacancies.position_name does not exist at character 440
+db       | 2026-03-06 16:34:34.662 | 2026-03-06 16:34:34.662 +05 [568] STATEMENT:  SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+db       | 2026-03-06 16:34:34.662 | 	FROM vacancies ORDER BY vacancies.id DESC
+backend  | 2026-03-06 16:34:34.698 | 2026-03-06 16:34:34 [ERROR] fot: Unhandled exception on GET /api/vacancies: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:34.698 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:34.698 |                                                              ^
+backend  | 2026-03-06 16:34:34.698 | 
+backend  | 2026-03-06 16:34:34.698 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:34.698 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:34.698 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:34.698 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.698 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.698 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.698 | psycopg2.errors.UndefinedColumn: column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:34.698 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:34.698 |                                                              ^
+backend  | 2026-03-06 16:34:34.698 | 
+backend  | 2026-03-06 16:34:34.698 | 
+backend  | 2026-03-06 16:34:34.698 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:34.698 | 
+backend  | 2026-03-06 16:34:34.698 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:34.698 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.698 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.698 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.698 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.698 |     raise exc
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.698 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.698 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:34.698 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.698 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.698 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.698 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.698 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.698 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.698 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.698 |     raise exc
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.698 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.698 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:34.698 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.698 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.698 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.698 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.698 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.698 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.698 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.698 |     raise exc
+backend  | 2026-03-06 16:34:34.698 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.699 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.699 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:34.699 |     return await call_next(request)
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.699 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.699 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:34.699 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:34.699 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.699 |     raise exc
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.699 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:34.699 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:34.699 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:34.699 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:34.699 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:34.699 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.699 |     raise exc
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.699 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:34.699 |     response = await f(request)
+backend  | 2026-03-06 16:34:34.699 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:34.699 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:34.699 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:34.699 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:34.699 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:34.699 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:34.699 |     return await future
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:34.699 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:34.699 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/app/routers/recruiting.py", line 116, in list_vacancies
+backend  | 2026-03-06 16:34:34.699 |     return query.order_by(Vacancy.id.desc()).all()
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:34.699 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:34.699 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:34.699 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:34.699 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:34.699 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:34.699 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:34.699 |     result = conn.execute(
+backend  | 2026-03-06 16:34:34.699 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:34.699 |     return meth(
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:34.699 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:34.699 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:34.699 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:34.699 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:34.699 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:34.699 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:34.699 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.699 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.699 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.699 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.699 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:34.699 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:34.699 |                                                              ^
+backend  | 2026-03-06 16:34:34.699 | 
+backend  | 2026-03-06 16:34:34.699 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:34.699 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:34.699 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:34.700 | INFO:     172.18.0.4:56100 - "GET /api/vacancies HTTP/1.1" 500 Internal Server Error
+backend  | 2026-03-06 16:34:34.736 | ERROR:    Exception in ASGI application
+backend  | 2026-03-06 16:34:34.736 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.736 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.736 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.736 | psycopg2.errors.UndefinedColumn: column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:34.736 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:34.736 |                                                              ^
+backend  | 2026-03-06 16:34:34.736 | 
+backend  | 2026-03-06 16:34:34.736 | 
+backend  | 2026-03-06 16:34:34.736 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:34.736 | 
+backend  | 2026-03-06 16:34:34.736 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+backend  | 2026-03-06 16:34:34.736 |     result = await app(  # type: ignore[func-returns-value]
+backend  | 2026-03-06 16:34:34.736 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+backend  | 2026-03-06 16:34:34.736 |     return await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await super().__call__(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.736 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.736 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.736 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.736 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:34.736 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.736 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.736 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.736 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.736 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.736 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:34.736 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.736 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.736 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.736 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.736 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.736 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:34.736 |     return await call_next(request)
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.736 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.736 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:34.736 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:34.736 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:34.736 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:34.736 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.736 |     raise exc
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.736 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:34.736 |     response = await f(request)
+backend  | 2026-03-06 16:34:34.736 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:34.736 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:34.736 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:34.736 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:34.736 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:34.736 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:34.736 |     return await future
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:34.736 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:34.736 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/app/routers/recruiting.py", line 116, in list_vacancies
+backend  | 2026-03-06 16:34:34.736 |     return query.order_by(Vacancy.id.desc()).all()
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:34.736 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:34.736 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:34.736 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:34.736 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:34.736 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:34.736 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:34.736 |     result = conn.execute(
+backend  | 2026-03-06 16:34:34.736 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:34.736 |     return meth(
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:34.736 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:34.736 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:34.736 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:34.736 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:34.736 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:34.736 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:34.736 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.736 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.736 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.736 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.736 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column vacancies.position_name does not exist
+backend  | 2026-03-06 16:34:34.736 | LINE 1: ...id, vacancies.created_at AS vacancies_created_at, vacancies....
+backend  | 2026-03-06 16:34:34.736 |                                                              ^
+backend  | 2026-03-06 16:34:34.736 | 
+backend  | 2026-03-06 16:34:34.736 | [SQL: SELECT vacancies.id AS vacancies_id, vacancies.title AS vacancies_title, vacancies.department_id AS vacancies_department_id, vacancies.location AS vacancies_location, vacancies.planned_count AS vacancies_planned_count, vacancies.status AS vacancies_status, vacancies.priority AS vacancies_priority, vacancies.creator_id AS vacancies_creator_id, vacancies.assignee_id AS vacancies_assignee_id, vacancies.created_at AS vacancies_created_at, vacancies.position_name AS vacancies_position_name, vacancies.description AS vacancies_description, vacancies.salary_from AS vacancies_salary_from, vacancies.salary_to AS vacancies_salary_to 
+backend  | 2026-03-06 16:34:34.736 | FROM vacancies ORDER BY vacancies.id DESC]
+backend  | 2026-03-06 16:34:34.736 | (Background on this error at: https://sqlalche.me/e/20/f405)
+db       | 2026-03-06 16:34:34.742 | 2026-03-06 16:34:34.742 +05 [593] ERROR:  column candidates.phone does not exist at character 268
+db       | 2026-03-06 16:34:34.742 | 2026-03-06 16:34:34.742 +05 [593] STATEMENT:  SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+db       | 2026-03-06 16:34:34.742 | 	FROM candidates ORDER BY candidates.id DESC
+backend  | 2026-03-06 16:34:34.776 | 2026-03-06 16:34:34 [ERROR] fot: Unhandled exception on GET /api/candidates: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:34.776 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:34.776 |                                                              ^
+backend  | 2026-03-06 16:34:34.776 | 
+backend  | 2026-03-06 16:34:34.776 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:34.776 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:34.776 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:34.776 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.776 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.776 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.776 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.776 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.776 | psycopg2.errors.UndefinedColumn: column candidates.phone does not exist
+backend  | 2026-03-06 16:34:34.776 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:34.776 |                                                              ^
+backend  | 2026-03-06 16:34:34.776 | 
+backend  | 2026-03-06 16:34:34.776 | 
+backend  | 2026-03-06 16:34:34.776 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:34.776 | 
+backend  | 2026-03-06 16:34:34.776 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.776 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:34.776 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.777 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.777 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.777 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.777 |     raise exc
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.777 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:34.777 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.777 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.777 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.777 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.777 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.777 |     raise exc
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.777 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:34.777 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.777 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.777 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.777 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.777 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.777 |     raise exc
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.777 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:34.777 |     return await call_next(request)
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.777 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:34.777 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.777 |     raise exc
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.777 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:34.777 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:34.777 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:34.777 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:34.777 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.777 |     raise exc
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.777 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:34.777 |     response = await f(request)
+backend  | 2026-03-06 16:34:34.777 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:34.777 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:34.777 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:34.777 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:34.777 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:34.777 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:34.777 |     return await future
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:34.777 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:34.777 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/app/routers/recruiting.py", line 256, in list_candidates
+backend  | 2026-03-06 16:34:34.777 |     return query.order_by(Candidate.id.desc()).all()
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:34.777 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:34.777 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:34.777 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:34.777 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:34.777 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:34.777 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:34.777 |     result = conn.execute(
+backend  | 2026-03-06 16:34:34.777 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:34.777 |     return meth(
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:34.777 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:34.777 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:34.777 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:34.777 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:34.777 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:34.777 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:34.777 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.777 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.777 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.777 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.777 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:34.777 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:34.777 |                                                              ^
+backend  | 2026-03-06 16:34:34.777 | 
+backend  | 2026-03-06 16:34:34.777 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:34.777 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:34.777 | (Background on this error at: https://sqlalche.me/e/20/f405)
+backend  | 2026-03-06 16:34:34.785 | INFO:     172.18.0.4:56114 - "GET /api/candidates HTTP/1.1" 500 Internal Server Error
+backend  | 2026-03-06 16:34:34.829 | ERROR:    Exception in ASGI application
+backend  | 2026-03-06 16:34:34.829 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.829 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.829 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.829 | psycopg2.errors.UndefinedColumn: column candidates.phone does not exist
+backend  | 2026-03-06 16:34:34.829 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:34.829 |                                                              ^
+backend  | 2026-03-06 16:34:34.829 | 
+backend  | 2026-03-06 16:34:34.829 | 
+backend  | 2026-03-06 16:34:34.829 | The above exception was the direct cause of the following exception:
+backend  | 2026-03-06 16:34:34.829 | 
+backend  | 2026-03-06 16:34:34.829 | Traceback (most recent call last):
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+backend  | 2026-03-06 16:34:34.829 |     result = await app(  # type: ignore[func-returns-value]
+backend  | 2026-03-06 16:34:34.829 |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+backend  | 2026-03-06 16:34:34.829 |     return await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.829 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1160, in __call__
+backend  | 2026-03-06 16:34:34.829 |     await super().__call__(scope, receive, send)
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 107, in __call__
+backend  | 2026-03-06 16:34:34.829 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+backend  | 2026-03-06 16:34:34.829 |     raise exc
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+backend  | 2026-03-06 16:34:34.829 |     await self.app(scope, receive, _send)
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.829 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.829 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.829 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.829 |     raise exc
+backend  | 2026-03-06 16:34:34.829 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.829 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.829 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.829 |   File "/app/main.py", line 165, in rate_limit_login
+backend  | 2026-03-06 16:34:34.829 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.832 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.832 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.832 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.832 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.832 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.832 |     raise exc
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.832 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.832 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/app/main.py", line 116, in add_security_headers
+backend  | 2026-03-06 16:34:34.832 |     response = await call_next(request)
+backend  | 2026-03-06 16:34:34.832 |                ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.832 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 191, in __call__
+backend  | 2026-03-06 16:34:34.832 |     with recv_stream, send_stream, collapse_excgroups():
+backend  | 2026-03-06 16:34:34.832 |                                    ^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+backend  | 2026-03-06 16:34:34.832 |     self.gen.throw(value)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+backend  | 2026-03-06 16:34:34.832 |     raise exc
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 193, in __call__
+backend  | 2026-03-06 16:34:34.832 |     response = await self.dispatch_func(request, call_next)
+backend  | 2026-03-06 16:34:34.832 |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/app/main.py", line 99, in csrf_protection
+backend  | 2026-03-06 16:34:34.832 |     return await call_next(request)
+backend  | 2026-03-06 16:34:34.832 |            ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 168, in call_next
+backend  | 2026-03-06 16:34:34.832 |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive_or_disconnect, send_no_error)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py", line 87, in __call__
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+backend  | 2026-03-06 16:34:34.832 |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.832 |     raise exc
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.832 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+backend  | 2026-03-06 16:34:34.832 |     await self.middleware_stack(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+backend  | 2026-03-06 16:34:34.832 |     await route.handle(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+backend  | 2026-03-06 16:34:34.832 |     await self.app(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 130, in app
+backend  | 2026-03-06 16:34:34.832 |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+backend  | 2026-03-06 16:34:34.832 |     raise exc
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+backend  | 2026-03-06 16:34:34.832 |     await app(scope, receive, sender)
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 116, in app
+backend  | 2026-03-06 16:34:34.832 |     response = await f(request)
+backend  | 2026-03-06 16:34:34.832 |                ^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 670, in app
+backend  | 2026-03-06 16:34:34.832 |     raw_response = await run_endpoint_function(
+backend  | 2026-03-06 16:34:34.832 |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 326, in run_endpoint_function
+backend  | 2026-03-06 16:34:34.832 |     return await run_in_threadpool(dependant.call, **values)
+backend  | 2026-03-06 16:34:34.832 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.832 |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 32, in run_in_threadpool
+backend  | 2026-03-06 16:34:34.832 |     return await anyio.to_thread.run_sync(func)
+backend  | 2026-03-06 16:34:34.832 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 63, in run_sync
+backend  | 2026-03-06 16:34:34.833 |     return await get_async_backend().run_sync_in_worker_thread(
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2502, in run_sync_in_worker_thread
+backend  | 2026-03-06 16:34:34.833 |     return await future
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 986, in run
+backend  | 2026-03-06 16:34:34.833 |     result = context.run(func, *args)
+backend  | 2026-03-06 16:34:34.833 |              ^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/app/routers/recruiting.py", line 256, in list_candidates
+backend  | 2026-03-06 16:34:34.833 |     return query.order_by(Candidate.id.desc()).all()
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
+backend  | 2026-03-06 16:34:34.833 |     return self._iter().all()  # type: ignore
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
+backend  | 2026-03-06 16:34:34.833 |     result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+backend  | 2026-03-06 16:34:34.833 |                                                   ^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+backend  | 2026-03-06 16:34:34.833 |     return self._execute_internal(
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+backend  | 2026-03-06 16:34:34.833 |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+backend  | 2026-03-06 16:34:34.833 |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+backend  | 2026-03-06 16:34:34.833 |     result = conn.execute(
+backend  | 2026-03-06 16:34:34.833 |              ^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+backend  | 2026-03-06 16:34:34.833 |     return meth(
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend  | 2026-03-06 16:34:34.833 |     return connection._execute_clauseelement(
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend  | 2026-03-06 16:34:34.833 |     ret = self._execute_context(
+backend  | 2026-03-06 16:34:34.833 |           ^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend  | 2026-03-06 16:34:34.833 |     return self._exec_single_context(
+backend  | 2026-03-06 16:34:34.833 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend  | 2026-03-06 16:34:34.833 |     self._handle_dbapi_exception(
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend  | 2026-03-06 16:34:34.833 |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend  | 2026-03-06 16:34:34.833 |     self.dialect.do_execute(
+backend  | 2026-03-06 16:34:34.833 |   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend  | 2026-03-06 16:34:34.833 |     cursor.execute(statement, parameters)
+backend  | 2026-03-06 16:34:34.833 | sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column candidates.phone does not exist
+backend  | 2026-03-06 16:34:34.833 | LINE 1: ..., candidates.created_at AS candidates_created_at, candidates...
+backend  | 2026-03-06 16:34:34.833 |                                                              ^
+backend  | 2026-03-06 16:34:34.833 | 
+backend  | 2026-03-06 16:34:34.833 | [SQL: SELECT candidates.id AS candidates_id, candidates.vacancy_id AS candidates_vacancy_id, candidates.first_name AS candidates_first_name, candidates.last_name AS candidates_last_name, candidates.stage AS candidates_stage, candidates.created_at AS candidates_created_at, candidates.phone AS candidates_phone, candidates.email AS candidates_email, candidates.resume_url AS candidates_resume_url 
+backend  | 2026-03-06 16:34:34.833 | FROM candidates ORDER BY candidates.id DESC]
+backend  | 2026-03-06 16:34:34.833 | (Background on this error at: https://sqlalche.me/e/20/f405)

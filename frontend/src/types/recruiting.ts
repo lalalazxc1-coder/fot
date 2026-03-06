@@ -7,7 +7,12 @@ export interface Vacancy {
     status: string;
     priority: string;
     creator_id: number;
+    assignee_id: number | null;
     created_at: string;
+    position_name: string | null;
+    description: string | null;
+    salary_from: number | null;
+    salary_to: number | null;
 }
 
 export interface Candidate {
@@ -17,6 +22,9 @@ export interface Candidate {
     last_name: string;
     stage: string;
     created_at: string;
+    phone: string | null;
+    email: string | null;
+    resume_url: string | null;
 }
 
 export interface Comment {
@@ -37,6 +45,11 @@ export interface VacancyCreate {
     planned_count: number;
     status?: string;
     priority?: string;
+    assignee_id?: number | null;
+    position_name?: string | null;
+    description?: string | null;
+    salary_from?: number | null;
+    salary_to?: number | null;
 }
 
 export interface VacancyUpdate {
@@ -46,6 +59,11 @@ export interface VacancyUpdate {
     planned_count?: number;
     status?: string;
     priority?: string;
+    assignee_id?: number | null;
+    position_name?: string | null;
+    description?: string | null;
+    salary_from?: number | null;
+    salary_to?: number | null;
 }
 
 export interface CandidateCreate {
@@ -53,6 +71,8 @@ export interface CandidateCreate {
     first_name: string;
     last_name: string;
     stage?: string;
+    phone?: string | null;
+    email?: string | null;
 }
 
 export interface CandidateUpdate {
@@ -60,6 +80,9 @@ export interface CandidateUpdate {
     first_name?: string;
     last_name?: string;
     stage?: string;
+    phone?: string | null;
+    email?: string | null;
+    resume_url?: string | null;
 }
 
 export interface CommentCreate {

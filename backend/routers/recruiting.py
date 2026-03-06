@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session, joinedload
 
 from database.database import get_db
@@ -9,6 +9,7 @@ from schemas import (
     CandidateResponse,
     CandidateStageUpdate,
     CandidateUpdate,
+    CandidateNotifyRequest,
     CommentCreate,
     CommentResponse,
     VacancyCreate,
@@ -83,6 +84,27 @@ def _validate_comment_target(db: Session, target_type: str, target_id: int) -> N
     raise HTTPException(status_code=400, detail="Unsupported target_type")
 
 
+def _can_change_assignee(current_user: User, vacancy: Vacancy) -> bool:
+    if current_user.role_rel and current_user.role_rel.permissions.get("admin_access"):
+        return True
+    if current_user.id == vacancy.creator_id:
+        return True
+    return False
+
+
+def _can_work_on_vacancy(current_user: User, vacancy: Vacancy) -> bool:
+    if current_user.role_rel and current_user.role_rel.permissions.get("admin_access"):
+        return True
+    if current_user.id == vacancy.creator_id:
+        return True
+    if vacancy.assignee_id:
+        if current_user.id == vacancy.assignee_id:
+            return True
+        return False
+    # If no one is assigned yet, allow any recruiter to work on it (or self-assign)
+    return True
+
+
 @router.get("/vacancies", response_model=list[VacancyResponse])
 def list_vacancies(
     db: Session = Depends(get_db),
@@ -111,6 +133,11 @@ def create_vacancy(
         status=data.status,
         priority=data.priority,
         creator_id=current_user.id,
+        assignee_id=data.assignee_id,
+        position_name=data.position_name,
+        description=data.description,
+        salary_from=data.salary_from,
+        salary_to=data.salary_to,
     )
     db.add(vacancy)
     db.commit()
@@ -141,6 +168,16 @@ def update_vacancy(
     vacancy = _ensure_vacancy_exists(db, vacancy_id)
 
     update_data = data.model_dump(exclude_unset=True)
+    
+    # Check assignee change permissions
+    if "assignee_id" in update_data and update_data["assignee_id"] != vacancy.assignee_id:
+        if not _can_change_assignee(current_user, vacancy):
+            raise HTTPException(status_code=403, detail="Только ответственный (создатель) может назначать или менять исполнителя")
+
+    # For other changes, must be able to work on it
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
+
     if "department_id" in update_data:
         _ensure_department_exists(db, update_data["department_id"])
 
@@ -171,6 +208,8 @@ def update_vacancy_status(
 ):
     _require_recruiting_permission(current_user)
     vacancy = _ensure_vacancy_exists(db, vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
 
     if data.status != vacancy.status:
         author_name = current_user.full_name or current_user.email or f"User {current_user.id}"
@@ -196,6 +235,9 @@ def delete_vacancy(
 ):
     _require_recruiting_permission(current_user)
     vacancy = _ensure_vacancy_exists(db, vacancy_id)
+    if not current_user.role_rel.permissions.get("admin_access") and current_user.id != vacancy.creator_id:
+        raise HTTPException(status_code=403, detail="Только создатель может удалить заявку")
+
     db.delete(vacancy)
     db.commit()
     return {"status": "deleted"}
@@ -221,13 +263,17 @@ def create_candidate(
     current_user: User = Depends(get_current_active_user),
 ):
     _require_recruiting_permission(current_user)
-    _ensure_vacancy_exists(db, data.vacancy_id)
+    vacancy = _ensure_vacancy_exists(db, data.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
 
     candidate = Candidate(
         vacancy_id=data.vacancy_id,
         first_name=data.first_name,
         last_name=data.last_name,
         stage=data.stage,
+        phone=data.phone,
+        email=data.email,
     )
     db.add(candidate)
     db.commit()
@@ -254,10 +300,15 @@ def update_candidate(
 ):
     _require_recruiting_permission(current_user)
     candidate = _ensure_candidate_exists(db, candidate_id)
+    vacancy = _ensure_vacancy_exists(db, candidate.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
 
     update_data = data.model_dump(exclude_unset=True)
     if "vacancy_id" in update_data:
-        _ensure_vacancy_exists(db, update_data["vacancy_id"])
+        new_vacancy = _ensure_vacancy_exists(db, update_data["vacancy_id"])
+        if not _can_work_on_vacancy(current_user, new_vacancy):
+            raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с новой заявкой")
 
     if "stage" in update_data and update_data["stage"] != candidate.stage:
         author_name = current_user.full_name or current_user.email or f"User {current_user.id}"
@@ -286,6 +337,9 @@ def update_candidate_stage(
 ):
     _require_recruiting_permission(current_user)
     candidate = _ensure_candidate_exists(db, candidate_id)
+    vacancy = _ensure_vacancy_exists(db, candidate.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
 
     if data.stage != candidate.stage:
         author_name = current_user.full_name or current_user.email or f"User {current_user.id}"
@@ -311,9 +365,104 @@ def delete_candidate(
 ):
     _require_recruiting_permission(current_user)
     candidate = _ensure_candidate_exists(db, candidate_id)
+    vacancy = _ensure_vacancy_exists(db, candidate.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
+
     db.delete(candidate)
     db.commit()
     return {"status": "deleted"}
+
+
+@router.post("/candidates/{candidate_id}/resume")
+async def upload_resume(
+    candidate_id: int,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    import os, uuid, pathlib
+    _require_recruiting_permission(current_user)
+    candidate = _ensure_candidate_exists(db, candidate_id)
+    vacancy = _ensure_vacancy_exists(db, candidate.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
+
+    # Validate file type
+    allowed_types = {"application/pdf", "application/msword",
+                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Только PDF и Word файлы (.pdf, .doc, .docx)")
+
+    # Save file
+    upload_root = os.environ.get("UPLOADS_DIR")
+    if upload_root:
+        upload_dir = pathlib.Path(upload_root) / "resumes"
+    else:
+        upload_dir = pathlib.Path(__file__).resolve().parents[1] / "uploads" / "resumes"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    ext = pathlib.Path(file.filename).suffix
+    filename = f"{candidate_id}_{uuid.uuid4().hex[:8]}{ext}"
+    dest = upload_dir / filename
+    with open(dest, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    resume_url = f"/uploads/resumes/{filename}"
+    candidate.resume_url = resume_url
+    db.commit()
+    db.refresh(candidate)
+    return {"resume_url": resume_url}
+
+
+@router.post("/candidates/{candidate_id}/notify")
+def notify_customer_about_candidate(
+    candidate_id: int,
+    data: CandidateNotifyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _require_recruiting_permission(current_user)
+    candidate = _ensure_candidate_exists(db, candidate_id)
+    vacancy = _ensure_vacancy_exists(db, candidate.vacancy_id)
+    if not _can_work_on_vacancy(current_user, vacancy):
+        raise HTTPException(status_code=403, detail="Только назначенный исполнитель может работать с этой заявкой")
+
+    customer_id = vacancy.creator_id
+
+    author_name = current_user.full_name or current_user.email or f"User {current_user.id}"
+    
+    # System comment on candidate for recruiter log
+    _create_system_comment(
+        db=db,
+        target_type="candidate",
+        target_id=candidate.id,
+        author_id=current_user.id,
+        content=f"Уведомление заказчику от {author_name}: {data.message}",
+    )
+
+    # In-app notification for customer
+    from database.models import Notification
+    notification_msg = f"Рекрутер {author_name} сообщает по кандидату '{candidate.first_name} {candidate.last_name}' (заявка '{vacancy.title}'): {data.message}"
+    notification = Notification(
+        user_id=customer_id,
+        message=notification_msg,
+        link=f"/job-requests?vacancy_id={vacancy.id}"
+    )
+    db.add(notification)
+    
+    # Visible comment on vacancy so customer sees it in their discussion tab
+    # Not system - so it appears as a real message from the recruiter
+    db.add(Comment(
+        target_type="vacancy",
+        target_id=vacancy.id,
+        author_id=current_user.id,
+        content=f"По кандидату {candidate.first_name} {candidate.last_name}: {data.message}",
+        is_system=False,
+    ))
+    db.commit()
+
+    return {"status": "notified"}
 
 
 @router.get("/comments", response_model=list[CommentResponse])
